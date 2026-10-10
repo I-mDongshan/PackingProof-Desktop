@@ -581,6 +581,8 @@
   <data name="点击任意位置唤醒，再将面单放入识别框" xml:space="preserve"><value>Click anywhere to wake the camera, then place the shipping label inside the recognition guide</value></data>
   <data name="摄像头自动识别面单" xml:space="preserve"><value>Camera shipping-label recognition</value></data>
   <data name="将条形码放入预览引导框，稳定识别后自动开始或切换录像" xml:space="preserve"><value>Place the barcode inside the preview guide to start or switch recordings after a stable read</value></data>
+  <data name="识别二维码" xml:space="preserve"><value>QR code recognition</value></data>
+  <data name="面单上印的是二维码时打开，开启后条码识别会略慢" xml:space="preserve"><value>Turn on when the shipping label only carries a QR code; barcode recognition becomes slightly slower</value></data>
   <data name="新增摄像头识别面单" xml:space="preserve"><value>Camera shipping-label recognition</value></data>
   <data name="无需扫码枪，也能自动开始录像" xml:space="preserve"><value>Start recording without a scanner</value></data>
   <data name="将面单条形码放入预览引导框，稳定识别后会自动开始或切换录像" xml:space="preserve"><value>Place the shipping-label barcode inside the preview guide to start or switch recordings after a stable read</value></data>

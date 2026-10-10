@@ -1026,6 +1026,60 @@ public sealed class CameraBarcodeRecognitionTests
         Assert.Null(decoder.DecodeGuideRegion(frame));
     }
 
+    /// <summary>二维码开关关闭（默认）时行为与从前完全一致：二维码解不出来。</summary>
+    [Fact]
+    public void Decoder_IgnoresQrCodeWhenQrSwitchOff()
+    {
+        using Mat frame = CreateFrameWithQrCode("YT123456789012", rotate90: false);
+        using var decoder = new CameraBarcodeFrameDecoder();
+
+        Assert.Null(decoder.DecodeGuideRegion(frame, _ => true));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Decoder_DecodesQrCodeWhenQrSwitchOn(bool rotate90)
+    {
+        using Mat frame = CreateFrameWithQrCode("YT123456789012", rotate90);
+        using var decoder = new CameraBarcodeFrameDecoder(() => true);
+
+        Assert.Equal(
+            "YT123456789012",
+            decoder.DecodeGuideRegion(frame, _ => true));
+    }
+
+    /// <summary>
+    /// 二维码内容原样返回、不做链接或 JSON 解析；算不算单号交给上层候选校验，
+    /// 与一维条码走同一条路径（校验不通过时由服务层报非法候选）。
+    /// </summary>
+    [Fact]
+    public void Decoder_QrCodeContentIsNeverParsed()
+    {
+        using Mat frame = CreateFrameWithQrCode("https://example.com/t/1", rotate90: false);
+        using var decoder = new CameraBarcodeFrameDecoder(() => true);
+
+        Assert.Equal("HTTPS://EXAMPLE.COM/T/1", decoder.DecodeGuideRegion(frame));
+    }
+
+    /// <summary>
+    /// 快速通道保持只认一维码：同框里有合法一维码时，二维码开关打开也不改变识别结果。
+    /// </summary>
+    [Fact]
+    public void Decoder_ValidBarcodeWinsOverQrCodeOnSameFrame()
+    {
+        using Mat frame = CreateFrameWithBarcodeAndQrCode(
+            "YT123456789012",
+            "JD123456789012");
+        using var decoder = new CameraBarcodeFrameDecoder(() => true);
+
+        Assert.Equal(
+            "YT123456789012",
+            decoder.DecodeGuideRegion(
+                frame,
+                value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$")));
+    }
+
     [Fact]
     public void Decoder_ReusesLargePixelBuffersForStableFrameSize()
     {
@@ -1173,6 +1227,66 @@ public sealed class CameraBarcodeRecognitionTests
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, recognized.Count);
+    }
+
+    /// <summary>二维码开关打开后，二维码走与一维条码相同的确认次数与录制决策链路。</summary>
+    [Fact]
+    public async Task RecognitionService_QrCodeConfirmsWhenQrSwitchOn()
+    {
+        using Mat frame = CreateFrameWithQrCode("YT123456789012", rotate90: false);
+        var confirmed = new List<string>();
+        using var service = new CameraBarcodeRecognitionService(
+            value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"),
+            qrCodeEnabledProvider: () => true);
+        service.BarcodeConfirmed += confirmed.Add;
+
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        Assert.Equal("YT123456789012", Assert.Single(confirmed));
+    }
+
+    [Fact]
+    public async Task RecognitionService_QrCodeNeverConfirmsWhenQrSwitchOff()
+    {
+        using Mat frame = CreateFrameWithQrCode("YT123456789012", rotate90: false);
+        var confirmed = new List<string>();
+        using var service = new CameraBarcodeRecognitionService(
+            value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"));
+        service.BarcodeConfirmed += confirmed.Add;
+
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        Assert.Empty(confirmed);
+    }
+
+    /// <summary>
+    /// 二维码里不是单号（例如链接）时沿用现有非法候选告警路径，不触发确认。
+    /// </summary>
+    [Fact]
+    public async Task RecognitionService_QrCodeWithNonOrderContentIsReportedAsInvalidCandidate()
+    {
+        using Mat frame = CreateFrameWithQrCode("https://example.com/waybill/123456", rotate90: false);
+        var invalid = new List<string>();
+        var confirmed = new List<string>();
+        using var service = new CameraBarcodeRecognitionService(
+            value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"),
+            qrCodeEnabledProvider: () => true);
+        service.InvalidCandidate += invalid.Add;
+        service.BarcodeConfirmed += confirmed.Add;
+
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        service.TrySubmitFrame(frame);
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        Assert.Empty(confirmed);
+        Assert.NotEmpty(invalid);
     }
 
     [Theory]
@@ -1330,6 +1444,7 @@ public sealed class CameraBarcodeRecognitionTests
 
         Assert.NotNull(config);
         Assert.False(config.EnableCameraBarcodeRecognition);
+        Assert.False(config.EnableCameraBarcodeQrCode);
         Assert.Equal(0, config.CameraBarcodeSetupVersion);
         Assert.Equal(CameraBarcodeSpeed.Standard, config.CameraBarcodeRecognitionSpeed);
         // 存下来的是"用户没调过"的哨兵值（宽高同值 + 居中）；
@@ -1343,6 +1458,23 @@ public sealed class CameraBarcodeRecognitionTests
         Assert.Equal(2.0, config.CameraSameBarcodeConfirmationSeconds);
         Assert.Equal(2, config.CameraSameBarcodeConfirmationHits);
         Assert.True(config.EnableGlobalKeyboard);
+    }
+
+    /// <summary>二维码开关随配置一起保存与读取。</summary>
+    [Fact]
+    public void QrCodeSwitchSurvivesConfigRoundTrip()
+    {
+        var config = new AppConfig
+        {
+            EnableCameraBarcodeRecognition = true,
+            EnableCameraBarcodeQrCode = true
+        };
+
+        AppConfig? restored = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(config));
+
+        Assert.NotNull(restored);
+        Assert.True(restored.EnableCameraBarcodeQrCode);
+        Assert.True(restored.EnableCameraBarcodeRecognition);
     }
 
     [Theory]
@@ -1736,7 +1868,7 @@ public sealed class CameraBarcodeRecognitionTests
     private static Mat CreateSolidFrame(byte value) =>
         new(new OpenCvSharp.Size(1280, 720), MatType.CV_8UC3, new Scalar(value, value, value));
 
-    private static Mat CreateFrameWithQrCode(string value, bool rotate90)
+    private static Mat CreateQrCodeMat(string value)
     {
         var writer = new BarcodeWriterPixelData
         {
@@ -1756,6 +1888,28 @@ public sealed class CameraBarcodeRecognitionTests
             pixels.Pixels).Clone();
         using Mat qr = new();
         Cv2.CvtColor(bgra, qr, ColorConversionCodes.BGRA2BGR);
+        return qr.Clone();
+    }
+
+    /// <summary>
+    /// 一维码放在识别框中心附近，二维码偏向一侧：同框时按现有中心距离规则选一维码，
+    /// 用来验证二维码开关不会改变快速通道的结果。
+    /// </summary>
+    private static Mat CreateFrameWithBarcodeAndQrCode(string barcodeValue, string qrCodeValue)
+    {
+        var frame = new Mat(new OpenCvSharp.Size(1280, 720), MatType.CV_8UC3, Scalar.White);
+        using Mat barcode = CreateBarcodeMat(barcodeValue, rotate90: false);
+        using Mat barcodeTarget = frame.SubMat(new Rect(200, 250, barcode.Width, barcode.Height));
+        barcode.CopyTo(barcodeTarget);
+        using Mat qr = CreateQrCodeMat(qrCodeValue);
+        using Mat qrTarget = frame.SubMat(new Rect(740, 90, qr.Width, qr.Height));
+        qr.CopyTo(qrTarget);
+        return frame;
+    }
+
+    private static Mat CreateFrameWithQrCode(string value, bool rotate90)
+    {
+        using Mat qr = CreateQrCodeMat(value);
         using Mat oriented = new();
         if (rotate90)
             Cv2.Rotate(qr, oriented, RotateFlags.Rotate90Clockwise);

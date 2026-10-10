@@ -44,6 +44,14 @@ public sealed class DefaultConfigurationTests
         Assert.False(JsonSerializer.Deserialize<AppConfig>("{}")!.AllowPrereleaseUpdates);
     }
 
+    /// <summary>识别二维码默认关闭：不开就跟从前一样只认一维条码，也没有额外解码开销。</summary>
+    [Fact]
+    public void NewConfigurationDoesNotRecognizeQrCodeByDefault()
+    {
+        Assert.False(new AppConfig().EnableCameraBarcodeQrCode);
+        Assert.False(JsonSerializer.Deserialize<AppConfig>("{}")!.EnableCameraBarcodeQrCode);
+    }
+
     [Fact]
     public void NewConfigurationUsesTwoPointFiveSecondZoomDwellByDefault()
     {

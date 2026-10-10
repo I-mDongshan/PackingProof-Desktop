@@ -352,6 +352,8 @@ namespace ExpressPackingMonitoring.Config
         // 只影响屏幕预览，录像、条码识别与运动检测照常。
         public bool EnablePreviewIdleThrottle { get; set; } = true;
         public bool EnableCameraBarcodeRecognition { get; set; } = false;
+        // 面单上只有二维码时打开：二维码解码文本按条码文本处理，走同一套校验与录制决策，不做内容解析
+        public bool EnableCameraBarcodeQrCode { get; set; } = false;
         public bool EnableSameBarcodeStopRecording { get; set; } = false;
         public bool EnableEventRecordingBuffer { get; set; } = false;
         // 原始帧预录容量，按当前摄像头规格换算为预计秒数。0 表示不预录，只保留同码收尾

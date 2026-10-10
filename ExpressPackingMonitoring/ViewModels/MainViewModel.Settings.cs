@@ -189,7 +189,8 @@ namespace ExpressPackingMonitoring.ViewModels
                         IsRecording);
                     bool themeChanged = Config.Theme != nextConfig.Theme;
                     bool extensionAutoUpdateWasEnabled = Config.AutoUpdateExtensions;
-                    bool cameraBarcodeChanged = Config.EnableCameraBarcodeRecognition != nextConfig.EnableCameraBarcodeRecognition;
+                    bool cameraBarcodeChanged = Config.EnableCameraBarcodeRecognition != nextConfig.EnableCameraBarcodeRecognition
+                        || Config.EnableCameraBarcodeQrCode != nextConfig.EnableCameraBarcodeQrCode;
                     bool workstationChanged = !string.Equals(
                         Config.DeploymentPreset,
                         nextConfig.DeploymentPreset,

@@ -606,6 +606,18 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
         BarcodeFormat.CODABAR
     ];
 
+    private static readonly List<BarcodeFormat> AllowedFormatsWithQrCode =
+    [
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.CODE_39,
+        BarcodeFormat.CODE_93,
+        BarcodeFormat.CODABAR,
+        BarcodeFormat.QR_CODE
+    ];
+
+    private readonly Func<bool> _qrCodeEnabledProvider;
+
+    // 快速通道永远只认一维码：框里有一维码时二维码解码完全不参与，识别延迟不变。
     private readonly BarcodeReaderGeneric _fastReader = new()
     {
         AutoRotate = false,
@@ -625,13 +637,44 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
             PossibleFormats = AllowedFormats.ToList()
         }
     };
+
+    // 慢速通道的二维码版本：只有快速通道没拿到有效结果、且开关打开时才会用到。
+    private readonly BarcodeReaderGeneric _readerWithQrCode = new()
+    {
+        AutoRotate = false,
+        Options = new DecodingOptions
+        {
+            TryHarder = true,
+            PossibleFormats = AllowedFormatsWithQrCode.ToList()
+        }
+    };
     private readonly DecodeWorkspace _guideWorkspace = new();
     private readonly DecodeWorkspace _fullFrameWorkspace = new();
     private bool _disposed;
     internal CameraBarcodeGeometry? LastGeometry { get; private set; }
 
+    public CameraBarcodeFrameDecoder(Func<bool>? qrCodeEnabledProvider = null)
+    {
+        _qrCodeEnabledProvider = qrCodeEnabledProvider ?? (() => false);
+    }
+
     internal int PixelBufferAllocationCount =>
         _guideWorkspace.Buffers.AllocationCount + _fullFrameWorkspace.Buffers.AllocationCount;
+
+    private bool IsQrCodeEnabled()
+    {
+        try { return _qrCodeEnabledProvider(); }
+        catch { return false; }
+    }
+
+    /// <summary>一维码恒接受；二维码只在开关打开时接受。</summary>
+    private bool IsAcceptedFormat(BarcodeFormat format) =>
+        format == BarcodeFormat.QR_CODE
+            ? IsQrCodeEnabled()
+            : AllowedFormats.Contains(format);
+
+    private BarcodeReaderGeneric SelectSlowReader() =>
+        IsQrCodeEnabled() ? _readerWithQrCode : _reader;
 
     public string? DecodeGuideRegion(Mat frame)
         => DecodeGuideRegion(frame, isValid: null, CameraBarcodeGuideGeometry.Default);
@@ -735,6 +778,7 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
         buffers.EnsureSize(length);
         Marshal.Copy(source.Data, buffers.Pixels, 0, length);
 
+        BarcodeReaderGeneric slowReader = SelectSlowReader();
         Result? result = null;
         for (int orientation = 0; orientation < 4 && result == null; orientation++)
         {
@@ -744,9 +788,9 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
                 source.Width,
                 source.Height,
                 orientation);
-            result = _fastReader.Decode(luminance) ?? _reader.Decode(luminance);
+            result = _fastReader.Decode(luminance) ?? slowReader.Decode(luminance);
         }
-        if (result == null || !AllowedFormats.Contains(result.BarcodeFormat))
+        if (result == null || !IsAcceptedFormat(result.BarcodeFormat))
             return null;
 
         string normalized = NormalizeResult(result.Text);
@@ -801,12 +845,13 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
         DecodedCandidate? fallback = null;
         DecodedCandidate? pendingWaybill = preferredWaybill == null
             ? null : new DecodedCandidate(preferredWaybill, double.MaxValue, 0, null);
+        BarcodeReaderGeneric slowReader = SelectSlowReader();
 
         // 快速通道不启用 TryHarder；扫不到有效码或只得到京东裸号时，
         // 才复用当前图像走慢通道，查找对应包裹码，不等待另一帧。
         for (int phase = 0; phase < 2; phase++)
         {
-            BarcodeReaderGeneric reader = phase == 0 ? _fastReader : _reader;
+            BarcodeReaderGeneric reader = phase == 0 ? _fastReader : slowReader;
             candidates.Clear();
             CollectCandidates(
                 reader,
@@ -890,7 +935,7 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
 
         foreach (Result result in results)
         {
-            if (result == null || !AllowedFormats.Contains(result.BarcodeFormat))
+            if (result == null || !IsAcceptedFormat(result.BarcodeFormat))
                 continue;
 
             string normalized = NormalizeResult(result.Text);
@@ -1434,7 +1479,7 @@ internal sealed class CameraBarcodeRecognitionService : IDisposable
     private readonly Func<TimeSpan> _guideIntervalProvider;
     private readonly Func<CameraBarcodeGuideGeometry> _guideGeometryProvider;
     private readonly bool _reportVisibleCodes;
-    private readonly CameraBarcodeFrameDecoder _decoder = new();
+    private readonly CameraBarcodeFrameDecoder _decoder;
     private readonly CameraBarcodeMotionGate _motionGate = new();
     private readonly CameraBarcodeStabilityTracker _stabilityTracker = new();
     private readonly object _pendingLock = new();
@@ -1475,9 +1520,11 @@ internal sealed class CameraBarcodeRecognitionService : IDisposable
         Func<DateTimeOffset>? utcNowProvider = null,
         Func<TimeSpan>? guideIntervalProvider = null,
         Func<CameraBarcodeGuideGeometry>? guideGeometryProvider = null,
-        Func<int>? confirmationHitsProvider = null)
+        Func<int>? confirmationHitsProvider = null,
+        Func<bool>? qrCodeEnabledProvider = null)
     {
         _candidateValidator = candidateValidator ?? throw new ArgumentNullException(nameof(candidateValidator));
+        _decoder = new CameraBarcodeFrameDecoder(qrCodeEnabledProvider);
         _confirmationWindowProvider = confirmationWindowProvider;
         _confirmationHitsProvider = confirmationHitsProvider;
         _rearmDelayProvider = rearmDelayProvider;

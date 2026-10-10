@@ -581,6 +581,8 @@
   <data name="点击任意位置唤醒，再将面单放入识别框" xml:space="preserve"><value>任意の場所をクリックして復帰させ、送り状を認識枠に入れてください</value></data>
   <data name="摄像头自动识别面单" xml:space="preserve"><value>カメラによる送り状の自動認識</value></data>
   <data name="将条形码放入预览引导框，稳定识别后自动开始或切换录像" xml:space="preserve"><value>バーコードをプレビューのガイド枠に入れると、安定して認識した後に録画を開始または切り替えます</value></data>
+  <data name="识别二维码" xml:space="preserve"><value>QRコード認識</value></data>
+  <data name="面单上印的是二维码时打开，开启后条码识别会略慢" xml:space="preserve"><value>送り状がQRコードの場合にオンにしてください。バーコード認識は少し遅くなります</value></data>
   <data name="新增摄像头识别面单" xml:space="preserve"><value>カメラによる送り状認識</value></data>
   <data name="无需扫码枪，也能自动开始录像" xml:space="preserve"><value>バーコードスキャナーがなくても自動で録画を開始できます</value></data>
   <data name="将面单条形码放入预览引导框，稳定识别后会自动开始或切换录像" xml:space="preserve"><value>送り状のバーコードをプレビューのガイド枠に入れると、安定して認識した後に自動で録画を開始または切り替えます</value></data>

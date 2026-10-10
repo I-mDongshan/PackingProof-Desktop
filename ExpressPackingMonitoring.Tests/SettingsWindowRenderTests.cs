@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.UI;
 using Xunit;
@@ -106,6 +108,48 @@ public sealed class SettingsWindowRenderTests
             // 预留只能从磁盘右键改：保存位置与备份位置的行样式都要挂上"设置预留空间…"菜单
             AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("StorageDataGrid")));
             AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("BackupStorageDataGrid")));
+
+            window.Close();
+        });
+    }
+
+    /// <summary>
+    /// 「识别二维码」必须挂在配置项上并保留能力门控。未显示的窗口里页签内容不会求值，
+    /// 所以这里校验绑定本身——绑定路径写错时 XAML 不会报错，只有检查绑定才抓得到。
+    /// </summary>
+    [Fact]
+    public void Constructor_QrCodeSwitchIsBoundToConfigAndStaysGated()
+    {
+        RunOnStaThread(() =>
+        {
+            var config = new AppConfig
+            {
+                DeploymentPreset = DeploymentPresets.RecordingWorkstation,
+                EnableCameraBarcodeRecognition = true
+            };
+            AppConfig.NormalizeAfterLoad(config);
+
+            var context = new SettingsContext
+            {
+                Capabilities = SettingsCapabilities.ForPreset(config.DeploymentPreset),
+                ApplyAsync = _ => Task.FromResult(true)
+            };
+
+            var window = new SettingsWindow(context, config, 12d, "12%");
+            window.Measure(new Size(1200, 900));
+            window.Arrange(new Rect(0, 0, 1200, 900));
+            window.UpdateLayout();
+
+            var checkBox = Assert.IsType<CheckBox>(window.FindName("CameraBarcodeQrCodeCheckBox"));
+            Assert.Equal(
+                "Config.EnableCameraBarcodeQrCode",
+                BindingOperations.GetBinding(checkBox, ToggleButton.IsCheckedProperty)?.Path.Path);
+
+            var row = Assert.IsType<Grid>(window.FindName("CameraBarcodeQrCodeRow"));
+            // 门控不能被摘掉：录像主机/从机之外的工位不该看到这个开关
+            Assert.Equal(
+                "Capabilities.CanUseCameraBarcode",
+                BindingOperations.GetBinding(row, UIElement.VisibilityProperty)?.Path.Path);
 
             window.Close();
         });

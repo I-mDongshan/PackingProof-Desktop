@@ -1461,6 +1461,27 @@
                                                   Style="{StaticResource ToggleSwitchStyle}"/>
                                     </Grid>
 
+                                    <Grid x:Name="CameraBarcodeQrCodeRow"
+                                          Style="{StaticResource SettingRowStyle}"
+                                          Visibility="{Binding Capabilities.CanUseCameraBarcode, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="识别二维码" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="面单上印的是二维码时打开，开启后条码识别会略慢"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="CameraBarcodeQrCodeCheckBox"
+                                                  Grid.Column="2"
+                                                  IsChecked="{Binding Config.EnableCameraBarcodeQrCode}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+
                                     <Grid Style="{StaticResource SettingRowStyle}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>

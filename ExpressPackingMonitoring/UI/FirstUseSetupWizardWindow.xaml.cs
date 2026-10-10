@@ -73,7 +73,9 @@ public partial class FirstUseSetupWizardWindow : Window
                 _config,
                 _recognitionFrameWidth,
                 _recognitionFrameHeight),
-            confirmationHitsProvider: () => _config.CameraSameBarcodeConfirmationHits);
+            confirmationHitsProvider: () => _config.CameraSameBarcodeConfirmationHits,
+            // 向导与主界面共用同一份识别服务，二维码开关跟随设置，不另做一套
+            qrCodeEnabledProvider: () => _config.EnableCameraBarcodeQrCode);
         _cameraBarcodeRecognition.StatusChanged += CameraBarcodeRecognition_StatusChanged;
         _stepTexts = new List<TextBlock>
         {

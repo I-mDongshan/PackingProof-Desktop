@@ -331,7 +331,8 @@ namespace ExpressPackingMonitoring.ViewModels
                         ? GetOverlayGuideGeometry(barcodeChannel.Number)
                         // 主摄这条路与绘制同源：配置里存的是原生坐标，识别吃的是旋转后的帧坐标。
                         : MainCameraBarcodeGuideGeometry,
-                confirmationHitsProvider: () => Config.CameraSameBarcodeConfirmationHits);
+                confirmationHitsProvider: () => Config.CameraSameBarcodeConfirmationHits,
+                qrCodeEnabledProvider: () => Config.EnableCameraBarcodeQrCode);
             _cameraBarcodeRecognition.StatusChanged += OnCameraBarcodeStatusChanged;
             _cameraBarcodeRecognition.BarcodeConfirmedWithGeometry += OnCameraBarcodeConfirmedWithGeometry;
             _cameraBarcodeRecognition.BarcodeConfirmed += OnCameraBarcodeConfirmed;
