@@ -2034,7 +2034,7 @@
                                         </StackPanel>
                                         <Button x:Name="BtnAdjustZoomGuide"
                                                 Grid.Column="2"
-                                                Content="调整放大位置…"
+                                                Content="调整大小与位置…"
                                                 HorizontalAlignment="Left"
                                                 Click="BtnAdjustZoomGuide_Click"
                                                 Style="{StaticResource SecondaryButtonStyle}"/>

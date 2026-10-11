@@ -334,7 +334,7 @@ public sealed class ZoomGuideEditingTests
     {
         string xaml = ReadProjectFile(Path.Combine("UI", "SettingsWindow.xaml"));
         Assert.Contains("x:Name=\"ZoomTabItem\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("调整放大位置…", xaml, StringComparison.Ordinal);
+        Assert.Contains("调整大小与位置…", xaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ShowZoomGuideBoxCheckBox\"", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding Config.ShowZoomGuideBox}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding CanAdjustZoomGuide", xaml, StringComparison.Ordinal);

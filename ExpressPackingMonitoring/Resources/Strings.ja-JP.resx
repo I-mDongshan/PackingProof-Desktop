@@ -1100,7 +1100,7 @@
   <data name="回到主画面框选要放大的区域，点完成或按 Esc 退出" xml:space="preserve"><value>メイン画面に戻り、拡大する範囲をドラッグで指定してください。完了または Esc で終了します</value></data>
   <data name="显示放大取景框" xml:space="preserve"><value>拡大枠を表示</value></data>
   <data name="平时也在主画面上画出放大区域，方便随时确认" xml:space="preserve"><value>通常時もメイン画面に拡大範囲を表示して、いつでも確認できるようにします</value></data>
-  <data name="调整放大位置…" xml:space="preserve"><value>拡大位置を調整…</value></data>
+  <data name="调整大小与位置…" xml:space="preserve"><value>大きさと位置を調整…</value></data>
   <data name="粘贴单号，自动去掉首尾多余字符" xml:space="preserve"><value>注文番号を貼り付け（前後の余分な文字を除去）</value></data>
   <data name="要，作为保存主机（支持 NAS）" xml:space="preserve"><value>はい、保存ホストとして使う（NAS 対応）</value></data>
   <data name="主机就是负责长期保存录像的电脑，可配置 NAS／网络共享备份，也可接收手机和其他电脑的录像" xml:space="preserve"><value>ホストは録画を長期保存するパソコンです。NAS／ネットワーク共有へのバックアップを設定でき、スマートフォンや他のパソコンの録画も受信できます</value></data>

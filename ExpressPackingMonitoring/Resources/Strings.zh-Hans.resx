@@ -1077,7 +1077,7 @@
   <data name="回到主画面框选要放大的区域，点完成或按 Esc 退出" xml:space="preserve"><value>回到主画面框选要放大的区域，点完成或按 Esc 退出</value></data>
   <data name="显示放大取景框" xml:space="preserve"><value>显示放大取景框</value></data>
   <data name="平时也在主画面上画出放大区域，方便随时确认" xml:space="preserve"><value>平时也在主画面上画出放大区域，方便随时确认</value></data>
-  <data name="调整放大位置…" xml:space="preserve"><value>调整放大位置…</value></data>
+  <data name="调整大小与位置…" xml:space="preserve"><value>调整大小与位置…</value></data>
   <data name="粘贴单号，自动去掉首尾多余字符" xml:space="preserve"><value>粘贴单号，自动去掉首尾多余字符</value></data>
   <data name="要，作为保存主机（支持 NAS）" xml:space="preserve"><value>要，作为保存主机（支持 NAS）</value></data>
   <data name="主机就是负责长期保存录像的电脑，可配置 NAS／网络共享备份，也可接收手机和其他电脑的录像" xml:space="preserve"><value>主机就是负责长期保存录像的电脑，可配置 NAS／网络共享备份，也可接收手机和其他电脑的录像</value></data>
