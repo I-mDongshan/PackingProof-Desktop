@@ -307,7 +307,7 @@ test('Web UI follows browser language and persists an explicit override', { skip
       if (!localStorage.getItem('expressWebLanguage')) localStorage.setItem('expressWebLanguage', 'en-US');
     });
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await assert.doesNotReject(() => page.getByRole('heading', { name: 'Packing Monitor Recordings' }).waitFor());
+    await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof package evidence' }).waitFor());
     assert.equal(await page.locator('html').getAttribute('lang'), 'en');
     // 本次新增的筛选与导出文案必须有英文，英文界面不能残留中文
     assert.equal(await page.locator('#keyword').getAttribute('placeholder'), 'Search by order number');
@@ -381,7 +381,7 @@ test('Web UI loads the recording list in Japanese', { skip: !baseUrl }, async ()
       if (!localStorage.getItem('expressWebLanguage')) localStorage.setItem('expressWebLanguage', 'ja-JP');
     });
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await assert.doesNotReject(() => page.getByRole('heading', { name: '梱包モニターの録画再生' }).waitFor());
+    await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof 荷物の証跡' }).waitFor());
     assert.equal(await page.locator('html').getAttribute('lang'), 'ja');
 
     const search = page.getByPlaceholder('注文番号またはファイル名で検索');
