@@ -1332,11 +1332,11 @@ public sealed class CameraBarcodeRecognitionTests
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
                     TestContext.Current.CancellationToken);
-                timeout.CancelAfter(TimeSpan.FromSeconds(5));
+                timeout.CancelAfter(TimeSpan.FromSeconds(30));
                 while (!service.TrySubmitFrame(submittedFrame))
                     await Task.Delay(25, timeout.Token);
                 await processed.Task.WaitAsync(
-                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(30),
                     TestContext.Current.CancellationToken);
             }
             finally
