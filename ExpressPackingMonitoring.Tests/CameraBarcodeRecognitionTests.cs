@@ -1193,9 +1193,9 @@ public sealed class CameraBarcodeRecognitionTests
         int confirmedCount = 0;
         service.BarcodeConfirmed += _ => Interlocked.Increment(ref confirmedCount);
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, Volatile.Read(ref confirmedCount));
@@ -1214,16 +1214,16 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.BarcodeRecognized += recognized.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Single(recognized);
 
-        service.TrySubmitFrame(blank);
+        service.TrySubmitFrame(blank, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, recognized.Count);
@@ -1240,9 +1240,9 @@ public sealed class CameraBarcodeRecognitionTests
             qrCodeEnabledProvider: () => true);
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal("YT123456789012", Assert.Single(confirmed));
@@ -1257,9 +1257,9 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Empty(confirmed);
@@ -1280,9 +1280,9 @@ public sealed class CameraBarcodeRecognitionTests
         service.InvalidCandidate += invalid.Add;
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Empty(confirmed);
@@ -1333,7 +1333,7 @@ public sealed class CameraBarcodeRecognitionTests
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
                     TestContext.Current.CancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(30));
-                while (!service.TrySubmitFrame(submittedFrame))
+                while (!service.TrySubmitFrame(submittedFrame, forceDecode: true))
                     await Task.Delay(25, timeout.Token);
                 await processed.Task.WaitAsync(
                     TimeSpan.FromSeconds(30),
@@ -1371,9 +1371,9 @@ public sealed class CameraBarcodeRecognitionTests
         service.BarcodeRecognized += recognized.Add;
         service.BarcodeConfirmed += _ => Interlocked.Increment(ref confirmedCount);
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Contains(command, recognized);
@@ -1394,7 +1394,7 @@ public sealed class CameraBarcodeRecognitionTests
             utcNowProvider: () => now);
         service.InvalidCandidate += received.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(400, TestContext.Current.CancellationToken);
         Assert.Single(received);
 
@@ -1417,7 +1417,7 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValidForWorkScan(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.InvalidCandidate += received.Add;
 
-        service.TrySubmitFrame(frame);
+        service.TrySubmitFrame(frame, forceDecode: true);
         await Task.Delay(600, TestContext.Current.CancellationToken);
 
         Assert.Contains("6901234567892", received);
