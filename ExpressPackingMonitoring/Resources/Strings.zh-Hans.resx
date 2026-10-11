@@ -1117,6 +1117,7 @@
   <data name="麦克风已切换为 {0}" xml:space="preserve"><value>麦克风已切换为 {0}</value></data>
   <data name="麦克风已切换为 {0}，下一单录制生效" xml:space="preserve"><value>麦克风已切换为 {0}，下一单录制生效</value></data>
   <data name="复制单号" xml:space="preserve"><value>复制单号</value></data>
+  <data name="单击复制单号" xml:space="preserve"><value>单击复制单号</value></data>
   <data name="复制文件路径" xml:space="preserve"><value>复制文件路径</value></data>
   <data name="单号已复制" xml:space="preserve"><value>单号已复制</value></data>
   <data name="文件路径已复制" xml:space="preserve"><value>文件路径已复制</value></data>

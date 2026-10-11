@@ -29,6 +29,16 @@
             <Separator Style="{StaticResource AppSeparatorStyle}"/>
             <MenuItem Header="打开指令条码所在位置" Style="{StaticResource AppMenuItemStyle}" Click="OpenBarcodeImageFolder_Click"/>
         </ContextMenu>
+        <!--
+            本机录制动态的行右键菜单：50 行共用一个实例，不在模板里逐行 new 一个，
+            否则首次右键会明显卡顿（与回放列表同一套做法）。
+        -->
+        <ContextMenu x:Key="RecentRecordingContextMenu" Style="{StaticResource AppContextMenuStyle}">
+            <MenuItem Header="复制单号"
+                      Style="{StaticResource AppMenuItemStyle}"
+                      Click="CopyRecentOrderId_Click"
+                      DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+        </ContextMenu>
         <!-- 画中画拖动框：平时完全透明，鼠标移上来才显示一圈描边 -->
         <Style x:Key="OverlayBoxDragThumbStyle" TargetType="Thumb">
             <Setter Property="Background" Value="{StaticResource TransparentBrush}"/>
@@ -924,7 +934,8 @@
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <!-- 容器 Border -->
-                                <Border x:Name="ItemBorder" Background="{DynamicResource ControlBackground}" CornerRadius="6" Margin="2,2,2,6" Padding="10,8" ClipToBounds="True">
+                                <Border x:Name="ItemBorder" Background="{DynamicResource ControlBackground}" CornerRadius="6" Margin="2,2,2,6" Padding="10,8" ClipToBounds="True"
+                                        ContextMenu="{StaticResource RecentRecordingContextMenu}">
                                     
                                     <Grid>
                                         <!-- 1. 优化后的流光背景层：增加对比度，使用平移变换 -->
@@ -958,7 +969,14 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding OrderId}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                <!-- 单号是现场最常要复制的东西：单击即复制，右键也有同一个菜单项 -->
+                                                <Border Grid.Column="0"
+                                                        Background="{StaticResource TransparentBrush}"
+                                                        Cursor="Hand"
+                                                        ToolTip="单击复制单号"
+                                                        MouseLeftButtonUp="CopyRecentOrderId_Click">
+                                                    <TextBlock Text="{Binding OrderId}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                </Border>
                                                 <Border Grid.Column="1" x:Name="ActiveStatusBorder" Background="{DynamicResource BadgeErrorBg}" CornerRadius="4" Padding="6,2" Margin="8,0" Visibility="Collapsed">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentRed}" Margin="0,0,5,0" VerticalAlignment="Center"/>

@@ -721,6 +721,38 @@ namespace ExpressPackingMonitoring.UI
         }
 
         /// <summary>
+        /// 本机录制动态：单击单号、或右键菜单里的"复制单号"，都把单号送进剪贴板。
+        /// 两个入口共用这一个处理器，行为不会各写一套。
+        /// </summary>
+        private void CopyRecentOrderId_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is not ScanRecord record)
+                return;
+
+            string orderId = record.OrderId?.Trim() ?? "";
+            if (orderId.Length == 0)
+            {
+                (DataContext as MainViewModel)?.ShowToast(
+                    AppLanguage.Get("这条录像没有记录单号"),
+                    ToastSeverity.Warning);
+                return;
+            }
+
+            if (!ClipboardHelper.TrySetDataObject(orderId, out Exception error))
+            {
+                RuntimeLog.Warn("ScanHistory", $"复制单号失败：{error.Message}");
+                (DataContext as MainViewModel)?.ShowToast(
+                    $"复制单号失败: {error.Message}",
+                    ToastSeverity.Error);
+                return;
+            }
+
+            (DataContext as MainViewModel)?.ShowToast(
+                AppLanguage.Get("单号已复制"),
+                ToastSeverity.Information);
+        }
+
+        /// <summary>
         /// 条码右键菜单：现场常把指令条码打印出来贴墙给摄像头扫，这里提供
         /// "打印这一条 / 打印整套 / 打开条码图片位置"；条码冷却隐藏时对应项置灰。
         /// </summary>
