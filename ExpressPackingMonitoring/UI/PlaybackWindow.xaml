@@ -443,7 +443,9 @@
                                                 ToolTipService.BetweenShowDelay="0"
                                                 ToolTipService.ShowDuration="60000">
                                             <Border.ToolTip>
+                                                <!-- 内容按手机版卡片的排版生成（短信息并排、长文本单独一行），见 PlaybackTooltipPresenter -->
                                                 <ToolTip MaxWidth="560"
+                                                         Content="{Binding ToolTipContent}"
                                                          Background="{DynamicResource PanelBackground}"
                                                          BorderBrush="{DynamicResource BorderDefault}"
                                                          BorderThickness="1"
@@ -451,10 +453,6 @@
                                                     <ToolTip.Effect>
                                                         <DropShadowEffect BlurRadius="10" Opacity="0.1"/>
                                                     </ToolTip.Effect>
-                                                    <TextBlock Text="{Binding ToolTipText}"
-                                                               TextWrapping="Wrap"
-                                                               FontSize="12"
-                                                               Foreground="{DynamicResource TextPrimary}"/>
                                                 </ToolTip>
                                             </Border.ToolTip>
                                             <Border.Effect>

@@ -73,7 +73,8 @@ namespace ExpressPackingMonitoring.UI
         /// <summary>这条录像在备份位置上还有归档副本：删除会保留它，确认框要说明。</summary>
         public bool HasArchiveCopy { get; set; }
 
-        public string ToolTipText => PlaybackTooltipBuilder.Build(this);
+        /// <summary>悬浮提示内容：短信息并排一行、长文本单独一行（Web 端同款排版）。</summary>
+        public FrameworkElement ToolTipContent => PlaybackTooltipPresenter.Build(this);
 
         public string EncoderDisplay
         {
