@@ -1302,6 +1302,152 @@
                             </ItemsControl>
 
 
+                            <Border Style="{StaticResource SectionCardStyle}"
+                                    Visibility="{Binding Capabilities.CanRecordPcVideo, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <!--
+                                        预览资源类的行为集中在一张卡里：关掉预览、预览降帧都是"这台机器的画面怎么输出"，
+                                        摄像头休眠、免休眠时段则是"没人操作时怎么表现"；散在别处用户根本找不到，
+                                        也不知道它们其实是同一类事。
+                                    -->
+                                    <Grid Style="{StaticResource SettingRowStyle}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="关闭实时预览" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="只停预览画面，录像与扫码识别照常，可省 GPU"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="DisableLivePreviewCheckBox"
+                                                  Grid.Column="2"
+                                                  IsChecked="{Binding Config.DisableLivePreview}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+
+                                    <Grid Style="{StaticResource SettingRowStyle}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="空闲时降低预览帧率" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="没操作时预览降到 10 帧，录像不受影响"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="PreviewIdleThrottleCheckBox"
+                                                  Grid.Column="2"
+                                                  IsChecked="{Binding Config.EnablePreviewIdleThrottle}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+
+                                    <Grid Style="{StaticResource SettingRowStyle}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="长时间不用时关闭摄像头" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="空闲时省资源，有操作时再恢复"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="CameraIdleCheckBox"
+                                                  Grid.Column="2"
+                                                  IsChecked="{Binding Config.EnableCameraIdle}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  Style="{StaticResource ToggleSwitchStyle}"/>
+                                    </Grid>
+
+                                    <Grid Style="{StaticResource SettingRowStyle}"
+                                          IsEnabled="{Binding IsChecked, ElementName=CameraIdleCheckBox, TargetNullValue=False}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="空闲超时" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="空闲超过这个时间后关闭摄像头"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <Grid>
+                                                <TextBlock Text="更快休眠" Style="{StaticResource SliderEndLabelStyle}" HorizontalAlignment="Left"/>
+                                                <TextBlock Text="{Binding ElementName=CameraIdleSlider, Path=Value, StringFormat={}{0:F0} 分钟}"
+                                                           Style="{StaticResource SliderValueTextStyle}"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="更久在线" Style="{StaticResource SliderEndLabelStyle}" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            <Slider x:Name="CameraIdleSlider"
+                                                    Style="{StaticResource SettingsSliderStyle}"
+                                                    Minimum="1"
+                                                    Maximum="480"
+                                                    TickFrequency="5"
+                                            Value="{Binding Config.CameraIdleMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Style="{StaticResource AdvancedSettingRowStyle}"
+                                          IsEnabled="{Binding IsChecked, ElementName=CameraIdleCheckBox, TargetNullValue=False}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="260"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="高峰时段不休眠" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="达到空闲超时时才检查，两个时段默认留空"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="52"/>
+                                                    <ColumnDefinition Width="82"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                    <ColumnDefinition Width="82"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="时段 1" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Config.CameraIdleNoSleepStart1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
+                                                <TextBlock Grid.Column="2" Text="至" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding Config.CameraIdleNoSleepEnd1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="52"/>
+                                                    <ColumnDefinition Width="82"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                    <ColumnDefinition Width="82"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="时段 2" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Config.CameraIdleNoSleepStart2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
+                                                <TextBlock Grid.Column="2" Text="至" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding Config.CameraIdleNoSleepEnd2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
                             <Border Style="{StaticResource SectionCardStyle}" Visibility="{Binding Capabilities.CanRecordAudio, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
                                     <Grid Style="{StaticResource SettingRowStyle}"
@@ -1416,25 +1562,6 @@
                                             </Grid>
                                             <Slider x:Name="SameCodePostRecordSecondsSlider" Style="{StaticResource SettingsSliderStyle}" Minimum="0" Maximum="5" TickFrequency="0.5" Value="{Binding Config.SameCodePostRecordSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
-                                    </Grid>
-
-                                    <Grid Style="{StaticResource SettingRowStyle}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="关闭实时预览" Style="{StaticResource FieldLabelStyle}"/>
-                                            <TextBlock Text="只停预览画面，录像与扫码识别照常，可省 GPU"
-                                                       Style="{StaticResource FieldHintStyle}"/>
-                                        </StackPanel>
-                                        <CheckBox x:Name="DisableLivePreviewCheckBox"
-                                                  Grid.Column="2"
-                                                  IsChecked="{Binding Config.DisableLivePreview}"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalAlignment="Left"
-                                                  Style="{StaticResource ToggleSwitchStyle}"/>
                                     </Grid>
 
                                 </StackPanel>
@@ -2781,130 +2908,7 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource SectionCardStyle}">
-                                <StackPanel>
-                                    <!--
-                                        空闲相关的行为集中在一张卡里：预览降帧、摄像头休眠、免休眠时段都是
-                                        "没人操作时这台机器怎么表现"，散在别处用户根本找不到，也不知道它们是同一类事。
-                                    -->
-                                    <Grid Style="{StaticResource SettingRowStyle}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="空闲时降低预览帧率" Style="{StaticResource FieldLabelStyle}"/>
-                                            <TextBlock Text="没操作时预览降到 10 帧，录像不受影响"
-                                                       Style="{StaticResource FieldHintStyle}"/>
-                                        </StackPanel>
-                                        <CheckBox x:Name="PreviewIdleThrottleCheckBox"
-                                                  Grid.Column="2"
-                                                  IsChecked="{Binding Config.EnablePreviewIdleThrottle}"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalAlignment="Left"
-                                                  Style="{StaticResource ToggleSwitchStyle}"/>
-                                    </Grid>
 
-                                    <Grid Style="{StaticResource SettingRowStyle}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="长时间不用时关闭摄像头" Style="{StaticResource FieldLabelStyle}"/>
-                                            <TextBlock Text="空闲时省资源，有操作时再恢复"
-                                                       Style="{StaticResource FieldHintStyle}"/>
-                                        </StackPanel>
-                                        <CheckBox x:Name="CameraIdleCheckBox"
-                                                  Grid.Column="2"
-                                                  IsChecked="{Binding Config.EnableCameraIdle}"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalAlignment="Left"
-                                                  Style="{StaticResource ToggleSwitchStyle}"/>
-                                    </Grid>
-
-                                    <Grid Style="{StaticResource SettingRowStyle}"
-                                          IsEnabled="{Binding IsChecked, ElementName=CameraIdleCheckBox, TargetNullValue=False}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="空闲超时" Style="{StaticResource FieldLabelStyle}"/>
-                                            <TextBlock Text="空闲超过这个时间后关闭摄像头"
-                                                       Style="{StaticResource FieldHintStyle}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <Grid>
-                                                <TextBlock Text="更快休眠" Style="{StaticResource SliderEndLabelStyle}" HorizontalAlignment="Left"/>
-                                                <TextBlock Text="{Binding ElementName=CameraIdleSlider, Path=Value, StringFormat={}{0:F0} 分钟}"
-                                                           Style="{StaticResource SliderValueTextStyle}"
-                                                           HorizontalAlignment="Center"/>
-                                                <TextBlock Text="更久在线" Style="{StaticResource SliderEndLabelStyle}" HorizontalAlignment="Right"/>
-                                            </Grid>
-                                            <Slider x:Name="CameraIdleSlider"
-                                                    Style="{StaticResource SettingsSliderStyle}"
-                                                    Minimum="1"
-                                                    Maximum="480"
-                                                    TickFrequency="5"
-                                            Value="{Binding Config.CameraIdleMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <Grid Style="{StaticResource AdvancedSettingRowStyle}"
-                                          IsEnabled="{Binding IsChecked, ElementName=CameraIdleCheckBox, TargetNullValue=False}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="高峰时段不休眠" Style="{StaticResource FieldLabelStyle}"/>
-                                            <TextBlock Text="达到空闲超时时才检查，两个时段默认留空"
-                                                       Style="{StaticResource FieldHintStyle}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <Grid Margin="0,0,0,8">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="52"/>
-                                                    <ColumnDefinition Width="82"/>
-                                                    <ColumnDefinition Width="28"/>
-                                                    <ColumnDefinition Width="82"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="时段 1" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                                                <TextBox Grid.Column="1"
-                                                         Text="{Binding Config.CameraIdleNoSleepStart1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
-                                                <TextBlock Grid.Column="2" Text="至" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource TextSecondary}"/>
-                                                <TextBox Grid.Column="3"
-                                                         Text="{Binding Config.CameraIdleNoSleepEnd1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
-                                            </Grid>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="52"/>
-                                                    <ColumnDefinition Width="82"/>
-                                                    <ColumnDefinition Width="28"/>
-                                                    <ColumnDefinition Width="82"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="时段 2" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
-                                                <TextBox Grid.Column="1"
-                                                         Text="{Binding Config.CameraIdleNoSleepStart2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
-                                                <TextBlock Grid.Column="2" Text="至" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource TextSecondary}"/>
-                                                <TextBox Grid.Column="3"
-                                                         Text="{Binding Config.CameraIdleNoSleepEnd2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                         MaxLength="5" TextAlignment="Center" ToolTip="时间格式为 HH:mm"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
 </StackPanel>
                     </ScrollViewer>
                 </Border>
