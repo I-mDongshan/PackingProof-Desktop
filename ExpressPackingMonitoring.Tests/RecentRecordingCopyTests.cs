@@ -39,7 +39,7 @@ public sealed class RecentRecordingCopyTests
         // 单击与右键菜单项指向同一个处理器，行为不会各写一套
         int handlerReferences = xaml.Split("CopyRecentOrderId_Click").Length - 1;
         Assert.Equal(2, handlerReferences);
-        Assert.Contains("ClipboardHelper.TrySetDataObject", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClipboardHelper.TryCopyText", codeBehind, StringComparison.Ordinal);
         Assert.Contains("AppLanguage.Get(\"单号已复制\")", codeBehind, StringComparison.Ordinal);
     }
 

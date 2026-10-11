@@ -118,38 +118,41 @@ public partial class MobileConnectionWindow : Window
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)
-    {
-        if (!ClipboardHelper.TrySetDataObject(_url, out Exception error))
-        {
-            AppDialog.Error(this, $"复制网址失败：{error.Message}", "手机/电脑连接");
-            return;
-        }
-
-        CopyButton.Content = _containsAccessKey ? "已复制 · 请勿转发" : "已复制";
-    }
+        => CopyWithClipboardRetry(_url, CopyButton, _containsAccessKey ? "已复制 · 请勿转发" : "已复制");
 
     private void CopyMobileAppUrl_Click(object sender, RoutedEventArgs e)
-    {
-        if (!ClipboardHelper.TrySetDataObject(_mobileAppDownloadUrl, out Exception error))
-        {
-            AppDialog.Error(this, $"复制网址失败：{error.Message}", "手机/电脑连接");
-            return;
-        }
-
-        CopyMobileAppUrlButton.Content = "已复制";
-    }
+        => CopyWithClipboardRetry(_mobileAppDownloadUrl, CopyMobileAppUrlButton, "已复制");
 
     private void CopyTestFlightUrl_Click(object sender, RoutedEventArgs e)
+        => CopyWithClipboardRetry(
+            MobileAppUpdatePolicyProvider.TestFlightJoinUrl,
+            CopyTestFlightUrlButton,
+            "已复制");
+
+    /// <summary>
+    /// 复制并在成功后回写按钮文案。剪贴板被别的程序占着时不在界面线程上死等
+    /// （那会整页卡住），交给 ClipboardHelper 后台重试，成功后再回写。
+    /// </summary>
+    private void CopyWithClipboardRetry(string text, Button button, string copiedText)
     {
-        if (!ClipboardHelper.TrySetDataObject(
-                MobileAppUpdatePolicyProvider.TestFlightJoinUrl,
-                out Exception error))
+        ClipboardHelper.TryCopyText(
+            text,
+            onCopied: () => RunOnUiThread(() => button.Content = copiedText),
+            onFailed: error => RunOnUiThread(() =>
+                AppDialog.Error(this, $"复制网址失败：{error.Message}", "手机/电脑连接")));
+    }
+
+    private void RunOnUiThread(Action action)
+    {
+        if (Dispatcher.CheckAccess())
         {
-            AppDialog.Error(this, $"复制网址失败：{error.Message}", "手机/电脑连接");
+            action();
             return;
         }
 
-        CopyTestFlightUrlButton.Content = "已复制";
+        if (Dispatcher.HasShutdownStarted)
+            return;
+        Dispatcher.BeginInvoke(action);
     }
 
     private void Open_Click(object sender, RoutedEventArgs e)

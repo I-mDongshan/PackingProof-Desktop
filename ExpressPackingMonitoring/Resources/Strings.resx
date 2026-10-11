@@ -1142,6 +1142,7 @@
   <data name="麦克风已切换为 {0}，下一单录制生效" xml:space="preserve"><value>Microphone switched to {0}; takes effect on the next recording</value></data>
   <data name="复制单号" xml:space="preserve"><value>Copy order number</value></data>
   <data name="单击复制单号" xml:space="preserve"><value>Click to copy the order number</value></data>
+  <data name="剪贴板被占用，正在重试复制" xml:space="preserve"><value>The clipboard is in use; retrying the copy</value></data>
   <data name="复制文件路径" xml:space="preserve"><value>Copy file path</value></data>
   <data name="单号已复制" xml:space="preserve"><value>Order number copied</value></data>
   <data name="文件路径已复制" xml:space="preserve"><value>File path copied</value></data>

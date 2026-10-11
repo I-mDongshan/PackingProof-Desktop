@@ -449,35 +449,37 @@ namespace ExpressPackingMonitoring.UI
 
         /// <summary>剪贴板是全局独占资源，输入法、剪贴板管理器或其它程序正占用时
         /// OpenClipboard 会直接失败（CLIPBRD_E_CANT_OPEN）。这是常见的瞬时冲突，
-        /// 重试几次基本都能成功，不该一次失败就弹错误框。
+        /// 不该一次失败就弹错误框；但也不能在本线程上反复重试 —— OLE 每次失败要花约 1 秒，
+        /// 10 次就是 10 秒假死。交给 ClipboardHelper：本线程只做一次瞬时尝试，
+        /// 失败转后台重试，成功后再提示。
         /// </summary>
         private void CopyToClipboard(string text, string successMessage)
         {
-            const int maxAttempts = 10;
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
+            ClipboardHelper.TryCopyText(
+                text,
+                onCopied: () => RunOnUiThread(() => ShowPlaybackToast(successMessage)),
+                onFailed: error =>
                 {
-                    // copy: true 让内容在本程序退出后仍留在剪贴板里。
-                    Clipboard.SetDataObject(text, copy: true);
-                    ShowPlaybackToast(successMessage);
-                    return;
-                }
-                catch (Exception ex) when (attempt < maxAttempts)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Playback] 复制到剪贴板第 {attempt} 次失败，稍后重试：{ex.Message}");
-                    Thread.Sleep(60);
-                }
-                catch (Exception ex)
-                {
-                    RuntimeLog.Warn("Playback", $"复制到剪贴板失败：{ex.Message}");
-                    AppDialog.Error(
+                    RuntimeLog.Warn("Playback", $"复制到剪贴板失败：{error.Message}");
+                    RunOnUiThread(() => AppDialog.Error(
                         this,
                         "剪贴板被其它程序占用，复制失败。请稍后重试，或关闭输入法、剪贴板管理器等占用剪贴板的程序",
-                        "复制失败");
-                    return;
-                }
+                        "复制失败"));
+                });
+        }
+
+        /// <summary>复制结果可能在后台线程回调（后台重试成功/失败），统一切回 UI 线程。</summary>
+        private void RunOnUiThread(Action action)
+        {
+            if (Dispatcher.CheckAccess())
+            {
+                action();
+                return;
             }
+
+            if (Dispatcher.HasShutdownStarted)
+                return;
+            Dispatcher.BeginInvoke(action);
         }
 
         /// <summary>复制类操作的轻提示，2 秒后自动收起，不打断当前操作。</summary>

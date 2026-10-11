@@ -653,15 +653,30 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
             }
 
-            if (!ClipboardHelper.TrySetDataObject(url, out Exception error))
+            // 剪贴板被别的程序占着时不在界面线程上死等（那会整页卡住），转后台重试
+            bool copiedNow = ClipboardHelper.TryCopyText(
+                url,
+                onCopied: () => ShowToastFromAnyThread(MobileConnectionService.ContainsAccessKey(url)
+                    ? "连接网址已复制，包含访问密钥，请勿发送给无关人员"
+                    : "连接网址已复制"),
+                onFailed: error => ShowToastFromAnyThread($"复制网址失败: {error.Message}", ToastSeverity.Error));
+            if (!copiedNow)
+                ShowToast(AppLanguage.Get("剪贴板被占用，正在重试复制"), ToastSeverity.Information);
+        }
+
+        /// <summary>复制结果可能在后台线程回调，提示统一切回 UI 线程。</summary>
+        private void ShowToastFromAnyThread(string message, ToastSeverity severity = ToastSeverity.Success)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || dispatcher.CheckAccess())
             {
-                ShowToast($"复制网址失败: {error.Message}", ToastSeverity.Error);
+                ShowToast(message, severity);
                 return;
             }
 
-            ShowToast(MobileConnectionService.ContainsAccessKey(url)
-                ? "连接网址已复制，包含访问密钥，请勿发送给无关人员"
-                : "连接网址已复制");
+            if (dispatcher.HasShutdownStarted)
+                return;
+            dispatcher.BeginInvoke(() => ShowToast(message, severity));
         }
 
         private void ShowMobileConnectionWindow(System.Windows.Window owner, string url)

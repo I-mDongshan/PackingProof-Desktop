@@ -1,0 +1,117 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Windows;
+using ExpressPackingMonitoring.Services;
+using Xunit;
+
+namespace ExpressPackingMonitoring.Tests;
+
+/// <summary>
+/// 剪贴板被别的程序占着时的行为：调用线程必须立刻返回（不能像 OLE 那样每次失败耗约 1 秒、
+/// 把界面卡住），并且要转到后台继续重试，等占用方放开后把内容写进去。
+/// </summary>
+[Collection("WPF render tests")]
+public sealed class ClipboardHelperTests
+{
+    private static Exception ClipboardBusyError() =>
+        new COMException("OpenClipboard 失败 (0x800401D0)", unchecked((int)0x800401D0));
+
+    /// <summary>
+    /// 占用期间调用要立刻返回（不阻塞界面），随后后台重试要把内容真正写进去。
+    /// 真实占用来自别的进程（远程桌面/串流客户端），同进程内 OpenClipboard 是可重入的，
+    /// 所以这里注入前几次失败来覆盖同一条重试链路。
+    /// </summary>
+    [Fact]
+    public void TryCopyText_WhenClipboardBusy_ReturnsImmediatelyAndCopiesLater()
+    {
+        int attempts = 0;
+        ClipboardHelper.WriteAttemptForTests = _ =>
+            Interlocked.Increment(ref attempts) < 3 ? ClipboardBusyError() : null;
+        try
+        {
+            var copied = new ManualResetEventSlim();
+            Exception? failure = null;
+
+            var stopwatch = Stopwatch.StartNew();
+            bool copiedNow = ClipboardHelper.TryCopyText(
+                "EPM-CLIPBOARD-TEST",
+                onCopied: copied.Set,
+                onFailed: error => failure = error);
+            stopwatch.Stop();
+
+            Assert.False(copiedNow, "剪贴板被占用时不该报告同步成功");
+            Assert.True(
+                stopwatch.ElapsedMilliseconds < 500,
+                $"调用线程被重试拖住了：{stopwatch.ElapsedMilliseconds}ms");
+
+            Assert.True(
+                copied.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken),
+                "后台重试没有把内容写进去");
+            Assert.Null(failure);
+            Assert.True(attempts >= 3);
+        }
+        finally
+        {
+            ClipboardHelper.WriteAttemptForTests = null;
+        }
+    }
+
+    /// <summary>一直占用时：调用线程立刻返回，最终失败由回调告知，全程不阻塞界面。</summary>
+    [Fact]
+    public void TryCopyText_WhenClipboardStaysBusy_ReportsFailureWithoutBlocking()
+    {
+        ClipboardHelper.WriteAttemptForTests = _ => ClipboardBusyError();
+        try
+        {
+            var failed = new ManualResetEventSlim();
+
+            var stopwatch = Stopwatch.StartNew();
+            bool copiedNow = ClipboardHelper.TryCopyText(
+                "EPM-CLIPBOARD-TEST",
+                onCopied: () => { },
+                onFailed: _ => failed.Set());
+            stopwatch.Stop();
+
+            Assert.False(copiedNow);
+            Assert.True(
+                stopwatch.ElapsedMilliseconds < 500,
+                $"调用线程被重试拖住了：{stopwatch.ElapsedMilliseconds}ms");
+            Assert.True(
+                failed.Wait(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken),
+                "放弃复制时没有回调告知");
+        }
+        finally
+        {
+            ClipboardHelper.WriteAttemptForTests = null;
+        }
+    }
+
+    [Fact]
+    public void TryCopyText_WhenClipboardFree_CopiesOnTheCallingThread()
+    {
+        string text = "EPM-CLIPBOARD-" + Guid.NewGuid().ToString("N")[..8];
+        bool copiedInline = false;
+
+        bool copiedNow = ClipboardHelper.TryCopyText(text, onCopied: () => copiedInline = true);
+
+        Assert.True(copiedNow);
+        Assert.True(copiedInline);
+        Assert.Equal(text, ReadClipboardText());
+    }
+
+    /// <summary>WPF 读剪贴板要求 STA：这里自己起一个 STA 线程读回来。</summary>
+    private static string ReadClipboardText()
+    {
+        string result = "";
+        var thread = new Thread(() =>
+        {
+            if (Application.Current == null)
+                _ = new Application();
+            result = Clipboard.ContainsText() ? Clipboard.GetText() : "";
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(10)), "读取剪贴板超时");
+        return result;
+    }
+}

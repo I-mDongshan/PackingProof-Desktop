@@ -723,6 +723,8 @@ namespace ExpressPackingMonitoring.UI
         /// <summary>
         /// 本机录制动态：单击单号、或右键菜单里的"复制单号"，都把单号送进剪贴板。
         /// 两个入口共用这一个处理器，行为不会各写一套。
+        /// 剪贴板被别的程序（远程桌面/串流客户端的剪贴板同步、输入法等）占着时，
+        /// 不在界面线程上死等 —— 那会整页卡住 —— 转后台重试，成功后再提示。
         /// </summary>
         private void CopyRecentOrderId_Click(object sender, RoutedEventArgs e)
         {
@@ -732,24 +734,34 @@ namespace ExpressPackingMonitoring.UI
             string orderId = record.OrderId?.Trim() ?? "";
             if (orderId.Length == 0)
             {
-                (DataContext as MainViewModel)?.ShowToast(
-                    AppLanguage.Get("这条录像没有记录单号"),
-                    ToastSeverity.Warning);
+                ShowRecentCopyToast(AppLanguage.Get("这条录像没有记录单号"), ToastSeverity.Warning);
                 return;
             }
 
-            if (!ClipboardHelper.TrySetDataObject(orderId, out Exception error))
+            bool copiedNow = ClipboardHelper.TryCopyText(
+                orderId,
+                onCopied: () => ShowRecentCopyToast(AppLanguage.Get("单号已复制"), ToastSeverity.Information),
+                onFailed: error =>
+                {
+                    RuntimeLog.Warn("ScanHistory", $"复制单号失败：{error.Message}");
+                    ShowRecentCopyToast($"复制单号失败: {error.Message}", ToastSeverity.Error);
+                });
+            if (!copiedNow)
+                ShowRecentCopyToast(AppLanguage.Get("剪贴板被占用，正在重试复制"), ToastSeverity.Information);
+        }
+
+        /// <summary>复制结果的提示统一切回 UI 线程：后台重试成功/失败时回调来自后台线程。</summary>
+        private void ShowRecentCopyToast(string message, ToastSeverity severity)
+        {
+            if (Dispatcher.CheckAccess())
             {
-                RuntimeLog.Warn("ScanHistory", $"复制单号失败：{error.Message}");
-                (DataContext as MainViewModel)?.ShowToast(
-                    $"复制单号失败: {error.Message}",
-                    ToastSeverity.Error);
+                (DataContext as MainViewModel)?.ShowToast(message, severity);
                 return;
             }
 
-            (DataContext as MainViewModel)?.ShowToast(
-                AppLanguage.Get("单号已复制"),
-                ToastSeverity.Information);
+            if (Dispatcher.HasShutdownStarted)
+                return;
+            Dispatcher.BeginInvoke(() => (DataContext as MainViewModel)?.ShowToast(message, severity));
         }
 
         /// <summary>

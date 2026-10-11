@@ -1141,6 +1141,7 @@
   <data name="麦克风已切换为 {0}，下一单录制生效" xml:space="preserve"><value>マイクを {0} に切り替えました。次の録画から反映されます</value></data>
   <data name="复制单号" xml:space="preserve"><value>送り状番号をコピー</value></data>
   <data name="单击复制单号" xml:space="preserve"><value>クリックで送り状番号をコピー</value></data>
+  <data name="剪贴板被占用，正在重试复制" xml:space="preserve"><value>クリップボードが使用中のため、コピーを再試行します</value></data>
   <data name="复制文件路径" xml:space="preserve"><value>ファイルパスをコピー</value></data>
   <data name="单号已复制" xml:space="preserve"><value>送り状番号をコピーしました</value></data>
   <data name="文件路径已复制" xml:space="preserve"><value>ファイルパスをコピーしました</value></data>
