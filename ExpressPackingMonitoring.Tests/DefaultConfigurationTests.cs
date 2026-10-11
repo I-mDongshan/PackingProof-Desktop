@@ -105,8 +105,8 @@ public sealed class DefaultConfigurationTests
     }
 
     /// <summary>
-    /// 老版本把智能特写停留时间的默认值写成 3 秒、中间版本写成 1 秒，并会被保存进用户配置；
-    /// 加载时要迁到现在的默认 2.5 秒，用户自己调过的其他值保持不动。
+    /// 升级后第一次加载按旧默认值强制迁移：老版本的 3 秒 / 1 秒收敛到现在的 2.5 秒，
+    /// 其他值（用户自己调过的）不动，并把迁移标记写上。
     /// </summary>
     [Theory]
     [InlineData(3.0, 2.5)]
@@ -115,13 +115,80 @@ public sealed class DefaultConfigurationTests
     [InlineData(2.0, 2.0)]
     [InlineData(0.5, 0.5)]
     [InlineData(4.0, 4.0)]
-    public void LegacyZoomDwellDefaultsAreMigratedToCurrentDefaultOnLoad(double stored, double expected)
+    public void LegacyZoomDwellDefaultsAreMigratedToCurrentDefaultOnFirstLoad(
+        double stored,
+        double expected)
     {
         var config = JsonSerializer.Deserialize<AppConfig>($$"""{"ZoomDurationSeconds": {{stored}}}""")!;
 
         AppConfig.NormalizeAfterLoad(config);
 
         Assert.Equal(expected, config.ZoomDurationSeconds);
+        Assert.Equal(AppConfig.CurrentZoomDwellSetupVersion, config.ZoomDwellSetupVersion);
+    }
+
+    /// <summary>
+    /// 迁移之后只做范围夹紧：滑块按 0.5 秒步进，用户选的 1 秒 / 3 秒必须保留
+    /// （反馈：点击保存后设置仍是默认 2.5 秒）。
+    /// </summary>
+    [Theory]
+    [InlineData(3.0, 3.0)]
+    [InlineData(1.0, 1.0)]
+    [InlineData(2.5, 2.5)]
+    [InlineData(-1.0, 0.0)]
+    [InlineData(9.0, 5.0)]
+    public void ZoomDwellAfterMigrationOnlyClampsRange(double stored, double expected)
+    {
+        var config = JsonSerializer.Deserialize<AppConfig>($$"""{"ZoomDurationSeconds": {{stored}}}""")!;
+        config.ZoomDwellSetupVersion = AppConfig.CurrentZoomDwellSetupVersion;
+
+        AppConfig.NormalizeAfterLoad(config);
+
+        Assert.Equal(expected, config.ZoomDurationSeconds);
+    }
+
+    /// <summary>迁移只在第一次加载改写旧默认值，之后用户再选 1 秒 / 3 秒都不许被改回默认。</summary>
+    [Fact]
+    public void ZoomDwellMigrationRunsOnceAndPreservesLaterUserChoice()
+    {
+        var config = JsonSerializer.Deserialize<AppConfig>("""{"ZoomDurationSeconds": 3.0}""")!;
+
+        Assert.True(AppConfig.NormalizeAfterLoad(config));
+        Assert.Equal(2.5, config.ZoomDurationSeconds);
+        Assert.Equal(AppConfig.CurrentZoomDwellSetupVersion, config.ZoomDwellSetupVersion);
+
+        config.ZoomDurationSeconds = 1.0;
+        AppConfig.NormalizeAfterLoad(config);
+
+        Assert.Equal(1.0, config.ZoomDurationSeconds);
+    }
+
+    /// <summary>
+    /// 设置页保存路径（克隆配置 + 归一化）与重启后的重新加载，
+    /// 都不能把用户选的 1 秒 / 3 秒改回默认值。
+    /// </summary>
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(3.0)]
+    public void SavingUserChosenZoomDwellKeepsTheValue(double chosen)
+    {
+        // 先模拟一次升级：旧默认值被强制迁移，迁移标记随之写上
+        var upgraded = JsonSerializer.Deserialize<AppConfig>("""{"ZoomDurationSeconds": 3.0}""")!;
+        AppConfig.NormalizeAfterLoad(upgraded);
+        Assert.Equal(2.5, upgraded.ZoomDurationSeconds);
+
+        // MainViewModel.ApplySettingsAsync：拿到克隆配置后先归一化再保存
+        var cloned = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(upgraded))!;
+        cloned.ZoomDurationSeconds = chosen;
+        AppConfig.NormalizeAfterLoad(cloned);
+
+        Assert.Equal(chosen, cloned.ZoomDurationSeconds);
+
+        // 重启后重新加载也不能被改回去
+        var reloaded = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(cloned))!;
+        AppConfig.NormalizeAfterLoad(reloaded);
+
+        Assert.Equal(chosen, reloaded.ZoomDurationSeconds);
     }
 
     [Fact]

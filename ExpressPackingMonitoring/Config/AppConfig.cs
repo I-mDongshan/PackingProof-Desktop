@@ -141,6 +141,7 @@ namespace ExpressPackingMonitoring.Config
         public const int CurrentWebProtectionSetupVersion = 1;
         public const int CurrentDeletedVideoVisibilitySetupVersion = 1;
         public const int CurrentStorageReserveSchemaVersion = 1;
+        public const int CurrentZoomDwellSetupVersion = 1;
 
         /// <summary>放大停留时间的当前默认值（秒）</summary>
         public const double DefaultZoomDurationSeconds = 2.5;
@@ -250,6 +251,10 @@ namespace ExpressPackingMonitoring.Config
         public int DeletedVideoVisibilitySetupVersion { get; set; }
         /// <summary>磁盘预留口径版本：1 起不再沿用历史"容量上限"反推出来的预留值</summary>
         public int StorageReserveSchemaVersion { get; set; }
+
+        // 放大停留时间的旧默认值迁移版本：只在升级后的第一次加载按旧默认值改写，
+        // 之后用户自己选的 1 秒 / 3 秒要保留。
+        public int ZoomDwellSetupVersion { get; set; } = 0;
 
         // 录像方式："CameraMonitor"=使用电脑摄像头录像，"PrintStation"=不使用电脑摄像头（兼容旧配置），空值表示首次启动需要选择。
         public string WorkstationRole { get; set; } = "";
@@ -1048,16 +1053,22 @@ namespace ExpressPackingMonitoring.Config
                 0.3,
                 1.0);
             double normalizedZoomDurationSeconds = System.Math.Clamp(config.ZoomDurationSeconds, 0.0, 5.0);
-            // 旧默认值（3 秒 / 1 秒）会被写进用户配置，统一迁到现在的 2 秒；用户自己调过的其他值保持不动。
-            foreach (double legacyDuration in LegacyZoomDurationSeconds)
+            // 旧默认值（3 秒 / 1 秒）会被老版本写进用户配置：升级后第一次加载强制迁到现在的 2.5 秒，
+            // 只做这一次。滑块按 0.5 秒步进，1 秒和 3 秒都是用户能选到的合法值，
+            // 迁移之后用户自己选的值必须保留，不能每次加载都重写。
+            if (config.ZoomDwellSetupVersion < CurrentZoomDwellSetupVersion)
             {
-                if (System.Math.Abs(config.ZoomDurationSeconds - legacyDuration) > 0.001)
-                    continue;
+                foreach (double legacyDuration in LegacyZoomDurationSeconds)
+                {
+                    if (System.Math.Abs(config.ZoomDurationSeconds - legacyDuration) > 0.001)
+                        continue;
 
-                config.ZoomDurationSeconds = DefaultZoomDurationSeconds;
-                normalizedZoomDurationSeconds = DefaultZoomDurationSeconds;
+                    config.ZoomDurationSeconds = DefaultZoomDurationSeconds;
+                    normalizedZoomDurationSeconds = DefaultZoomDurationSeconds;
+                    break;
+                }
+                config.ZoomDwellSetupVersion = CurrentZoomDwellSetupVersion;
                 changed = true;
-                break;
             }
             if (System.Math.Abs(config.ZoomDurationSeconds - normalizedZoomDurationSeconds) > 0.001)
             {
