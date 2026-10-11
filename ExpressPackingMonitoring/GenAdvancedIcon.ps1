@@ -44,6 +44,76 @@ public class AdvancedIconGenerator {
         return dib;
     }
 
+    /// <summary>
+    /// 按尺寸画一张图标：白色圆角方块 + 蓝色"打包监控"（48 以下只画"包"）。
+    /// app.ico 与网页头部用的 Web/logo.png 共用这一份画法，样式不会走偏。
+    /// </summary>
+    public static Bitmap CreateIconBitmap(int size) {
+        var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+        using (Graphics g = Graphics.FromImage(bmp)) {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            g.Clear(Color.Transparent);
+
+            int r = Math.Max(2, size / 5);
+            int margin = Math.Max(1, size / 32);
+            if (size <= 16) { margin = 0; r = 3; }
+
+            using (GraphicsPath path = new GraphicsPath()) {
+                int wPath = size - 2 * margin;
+                int hPath = size - 2 * margin;
+                path.AddArc(margin, margin, r*2, r*2, 180, 90);
+                path.AddArc(margin+wPath-r*2, margin, r*2, r*2, 270, 90);
+                path.AddArc(margin+wPath-r*2, margin+hPath-r*2, r*2, r*2, 0, 90);
+                path.AddArc(margin, margin+hPath-r*2, r*2, r*2, 90, 90);
+                path.CloseFigure();
+
+                g.FillPath(Brushes.White, path);
+                using (Pen pen = new Pen(Color.FromArgb(200, 210, 220), Math.Max(1, size/48))) {
+                    g.DrawPath(pen, path);
+                }
+            }
+
+            using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(26, 115, 232)))
+            using (StringFormat format = new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
+                // 256, 64, 48 show "打包\n监控", 32 and 16 show "包"
+                if (size >= 48) {
+                    float fontSize = size * 0.25f + (size == 48 ? 1f : 0f);
+                    float opticalOffsetY = size * 0.025f + (size == 48 ? 1f : 0f);
+                    using (Font font = new Font("Microsoft YaHei", fontSize, FontStyle.Bold)) {
+                        RectangleF r1 = new RectangleF(0, margin + size * 0.05f + opticalOffsetY, size, size * 0.45f);
+                        RectangleF r2 = new RectangleF(0, margin + size * 0.40f + opticalOffsetY, size, size * 0.45f);
+                        g.DrawString("打包", font, textBrush, r1, format);
+                        g.DrawString("监控", font, textBrush, r2, format);
+                    }
+                } else {
+                    float fontSize = size <= 16 ? 11.5f : size * 0.60f;
+                    using (Font font = new Font("Microsoft YaHei", fontSize, FontStyle.Bold)) {
+                        using (GraphicsPath textPath = new GraphicsPath()) {
+                            textPath.AddString("包", font.FontFamily, (int)font.Style, font.Size, PointF.Empty, StringFormat.GenericTypographic);
+                            RectangleF bounds = textPath.GetBounds();
+                            using (Matrix transform = new Matrix()) {
+                                transform.Translate(
+                                    (size - bounds.Width) / 2f - bounds.X,
+                                    (size - bounds.Height) / 2f - bounds.Y);
+                                textPath.Transform(transform);
+                            }
+                            g.FillPath(textBrush, textPath);
+                        }
+                    }
+                }
+            }
+        }
+        return bmp;
+    }
+
+    /// <summary>网页头部用的图标：与 app.ico 同一份画法，只是单独存一张 PNG。</summary>
+    public static void SaveWebLogo(string outputPath, int size) {
+        using (Bitmap bmp = CreateIconBitmap(size)) {
+            bmp.Save(outputPath, ImageFormat.Png);
+        }
+    }
+
     public static void BuildIcon(string outputPath) {
         int[] sizes = { 256, 64, 48, 32, 16 };
         
@@ -59,61 +129,7 @@ public class AdvancedIconGenerator {
 
             for (int i = 0; i < sizes.Length; i++) {
                 int size = sizes[i];
-                using (Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb))
-                using (Graphics g = Graphics.FromImage(bmp)) {
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-                    g.Clear(Color.Transparent);
-
-                    int r = Math.Max(2, size / 5);
-                    int margin = Math.Max(1, size / 32);
-                    if (size <= 16) { margin = 0; r = 3; }
-
-                    using (GraphicsPath path = new GraphicsPath()) {
-                        int wPath = size - 2 * margin;
-                        int hPath = size - 2 * margin;
-                        path.AddArc(margin, margin, r*2, r*2, 180, 90);
-                        path.AddArc(margin+wPath-r*2, margin, r*2, r*2, 270, 90);
-                        path.AddArc(margin+wPath-r*2, margin+hPath-r*2, r*2, r*2, 0, 90);
-                        path.AddArc(margin, margin+hPath-r*2, r*2, r*2, 90, 90);
-                        path.CloseFigure();
-                        
-                        g.FillPath(Brushes.White, path);
-                        using (Pen pen = new Pen(Color.FromArgb(200, 210, 220), Math.Max(1, size/48))) {
-                            g.DrawPath(pen, path);
-                        }
-                    }
-
-                    using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(26, 115, 232)))
-                    using (StringFormat format = new StringFormat() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center }) {
-                        // 256, 64, 48 show "打包\n监控", 32 and 16 show "包"
-                        if (size >= 48) {
-                            float fontSize = size * 0.25f + (size == 48 ? 1f : 0f);
-                            float opticalOffsetY = size * 0.025f + (size == 48 ? 1f : 0f);
-                            using (Font font = new Font("Microsoft YaHei", fontSize, FontStyle.Bold)) {
-                                RectangleF r1 = new RectangleF(0, margin + size * 0.05f + opticalOffsetY, size, size * 0.45f);
-                                RectangleF r2 = new RectangleF(0, margin + size * 0.40f + opticalOffsetY, size, size * 0.45f);
-                                g.DrawString("打包", font, textBrush, r1, format);
-                                g.DrawString("监控", font, textBrush, r2, format);
-                            }
-                        } else {
-                            float fontSize = size <= 16 ? 11.5f : size * 0.60f;
-                            using (Font font = new Font("Microsoft YaHei", fontSize, FontStyle.Bold)) {
-                                using (GraphicsPath textPath = new GraphicsPath()) {
-                                    textPath.AddString("包", font.FontFamily, (int)font.Style, font.Size, PointF.Empty, StringFormat.GenericTypographic);
-                                    RectangleF bounds = textPath.GetBounds();
-                                    using (Matrix transform = new Matrix()) {
-                                        transform.Translate(
-                                            (size - bounds.Width) / 2f - bounds.X,
-                                            (size - bounds.Height) / 2f - bounds.Y);
-                                        textPath.Transform(transform);
-                                    }
-                                    g.FillPath(textBrush, textPath);
-                                }
-                            }
-                        }
-                    }
-
+                using (Bitmap bmp = CreateIconBitmap(size)) {
                     // Windows compiler explicitly requires DIB format for <= 64 icons
                     if (size >= 256) {
                         using (MemoryStream ms = new MemoryStream()) {
@@ -161,3 +177,8 @@ Add-Type -TypeDefinition $source -ReferencedAssemblies $drawingReferences -Error
 $outputPath = Join-Path $PSScriptRoot "app.ico"
 [AdvancedIconGenerator]::BuildIcon($outputPath)
 Write-Host "Multi-resolution icon generated successfully."
+
+# 网页头部（Web/index.html）直接引用这张图，尺寸按显示大小出图，浏览器不用缩放。
+$webLogoPath = Join-Path $PSScriptRoot "Web\logo.png"
+[AdvancedIconGenerator]::SaveWebLogo($webLogoPath, 96)
+Write-Host "Web logo generated: $webLogoPath"

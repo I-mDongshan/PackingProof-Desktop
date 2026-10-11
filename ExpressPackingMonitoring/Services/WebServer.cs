@@ -1397,6 +1397,9 @@ namespace ExpressPackingMonitoring.Services
                     case "/kuaidizs-install-guide":
                         ServeInstallGuidePage(ctx);
                         break;
+                    case "/logo.png":
+                        ServeWebLogo(ctx);
+                        break;
                     case var p when method == "GET"
                         && OfficialUserscriptMigrationService.TryParseDownloadPath(p, out string scriptId):
                         ServeUserscript(ctx, scriptId);
@@ -5916,6 +5919,29 @@ namespace ExpressPackingMonitoring.Services
             // 前端页面每次请求实时读取，禁止浏览器缓存，避免修改后仍显示旧页面。
             ctx.Response.Headers["Cache-Control"] = "no-store";
             byte[] bytes = Encoding.UTF8.GetBytes(html);
+            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+            ctx.Response.OutputStream.Close();
+        }
+
+        /// <summary>
+        /// 网页头部用的品牌图标：与 app.ico 同源（都来自 GenAdvancedIcon.ps1），
+        /// 随程序目录发布在 Web/logo.png，页面用相对路径 /logo.png 引用。
+        /// </summary>
+        private static void ServeWebLogo(HttpListenerContext ctx)
+        {
+            string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Web", "logo.png");
+            if (!File.Exists(logoPath))
+            {
+                ctx.Response.StatusCode = 404;
+                ctx.Response.Close();
+                return;
+            }
+
+            byte[] bytes = File.ReadAllBytes(logoPath);
+            ctx.Response.StatusCode = 200;
+            ctx.Response.ContentType = "image/png";
+            ctx.Response.Headers["Cache-Control"] = "no-store";
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
             ctx.Response.OutputStream.Close();

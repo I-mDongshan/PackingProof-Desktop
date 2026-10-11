@@ -31,7 +31,7 @@ test('isolated Web server supports search, playback and clip editor entry', { sk
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(String(error)));
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
-    await assert.doesNotReject(() => page.getByRole('heading', { name: '快递打包录像回放' }).waitFor());
+    await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof 包裹留证' }).waitFor());
     await page.waitForFunction(() => /^第 \d+ \/ \d+ 页$/.test(
       document.querySelector('#resultsInfo')?.textContent?.trim() || ''));
 
@@ -359,7 +359,7 @@ test('Web UI follows browser language and persists an explicit override', { skip
       page.waitForNavigation({ waitUntil: 'networkidle' }),
       simplifiedChinese.click()
     ]);
-    await assert.doesNotReject(() => page.getByRole('heading', { name: '快递打包录像回放' }).waitFor());
+    await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof 包裹留证' }).waitFor());
     assert.equal(await page.evaluate(() => localStorage.getItem('expressWebLanguage')), 'zh-Hans');
     assert.deepEqual(pageErrors, [], '页面不应有未捕获的脚本异常');
   } finally {
