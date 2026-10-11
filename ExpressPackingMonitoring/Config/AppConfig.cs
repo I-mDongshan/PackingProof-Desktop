@@ -1020,7 +1020,7 @@ namespace ExpressPackingMonitoring.Config
 
             foreach (var location in config.StorageLocations)
             {
-                double normalizedReserveGB = StorageSpacePolicy.MigrateLegacyReserveGB(location.Path, location.ReserveGB);
+                double normalizedReserveGB = StorageSpacePolicy.NormalizeReserveGB(location.Path, location.ReserveGB);
                 if (System.Math.Abs(location.ReserveGB - normalizedReserveGB) > 0.001)
                 {
                     location.ReserveGB = normalizedReserveGB;

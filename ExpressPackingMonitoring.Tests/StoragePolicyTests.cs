@@ -661,59 +661,26 @@ public sealed class StoragePolicyTests
         Assert.Equal(5, StorageSpacePolicy.GetDefaultReserveGB(@"\\NAS\share\快递打包视频"));
     }
 
+    /// <summary>
+    /// 预留只做底线收口，用户填多少就是多少：不再按"旧版自动值"判定改写，
+    /// 否则 20GB（旧规则在 ≤400GB 数据盘上的自动值）这类正常取值会被悄悄改回默认 5GB。
+    /// </summary>
     [Fact]
-    public void MigrateLegacyReserveGB_ReplacesLegacyPercentValueWithNewDefault()
+    public void NormalizeReserveGB_KeepsUserValue()
     {
-        // 旧规则是系统盘 max(30GB, 容量 10%)：960GiB 的盘会写入 96GB，
-        // 这正是"剩 90 多 GB 仍被判空间不足"的根因。
-        long totalBytes = 960L * StorageSpacePolicy.BytesPerGiB;
-
+        // 20GB / 30GB / 96GB 都曾经是旧规则的自动值，现在用户填这些值必须原样保留
+        Assert.Equal(
+            20,
+            StorageSpacePolicy.NormalizeReserveGB(20, StorageReserveKind.LocalOtherDrive));
+        Assert.Equal(
+            30,
+            StorageSpacePolicy.NormalizeReserveGB(30, StorageReserveKind.LocalSystemDrive));
         Assert.Equal(
             96,
-            StorageSpacePolicy.CalculateLegacyAutoReserveBytes(
-                totalBytes,
-                StorageReserveKind.LocalSystemDrive)
-            / (double)StorageSpacePolicy.BytesPerGiB);
-        Assert.Equal(
-            10,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
-                96,
-                totalBytes,
-                StorageReserveKind.LocalSystemDrive));
-        Assert.Equal(
-            10,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
-                96.5,
-                totalBytes,
-                StorageReserveKind.LocalSystemDrive));
-    }
-
-    [Fact]
-    public void MigrateLegacyReserveGB_KeepsUserConfiguredCapacityLimit()
-    {
-        // 上限设成 200GB 时预留是 760GB，这是用户显式选择，迁移不能把它改成默认值。
-        long totalBytes = 960L * StorageSpacePolicy.BytesPerGiB;
-
-        Assert.Equal(
-            760,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
-                760,
-                totalBytes,
-                StorageReserveKind.LocalSystemDrive));
-
-        // 旧规则在其他本地盘上是 max(20GB, 容量 5%)：1000GiB 会写入 50GB，迁移后应为新默认 5GB。
-        Assert.Equal(
-            5,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
-                50,
-                1000L * StorageSpacePolicy.BytesPerGiB,
-                StorageReserveKind.LocalOtherDrive));
+            StorageSpacePolicy.NormalizeReserveGB(96, StorageReserveKind.LocalSystemDrive));
         Assert.Equal(
             400,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
-                400,
-                1000L * StorageSpacePolicy.BytesPerGiB,
-                StorageReserveKind.LocalOtherDrive));
+            StorageSpacePolicy.NormalizeReserveGB(400, StorageReserveKind.LocalOtherDrive));
     }
 
     [Theory]
@@ -721,32 +688,27 @@ public sealed class StoragePolicyTests
     [InlineData(-5)]
     [InlineData(double.NaN)]
     [InlineData(double.PositiveInfinity)]
-    public void MigrateLegacyReserveGB_UnsetOrInvalidStaysUnset(double reserveGB)
+    public void NormalizeReserveGB_UnsetOrInvalidStaysUnset(double reserveGB)
     {
         Assert.Equal(
             0,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
+            StorageSpacePolicy.NormalizeReserveGB(
                 reserveGB,
-                960L * StorageSpacePolicy.BytesPerGiB,
                 StorageReserveKind.LocalSystemDrive));
     }
 
     [Fact]
-    public void MigrateLegacyReserveGB_ClampsSmallValuesToFloor()
+    public void NormalizeReserveGB_ClampsSmallValuesToFloor()
     {
-        long totalBytes = 960L * StorageSpacePolicy.BytesPerGiB;
-
         Assert.Equal(
             2,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
+            StorageSpacePolicy.NormalizeReserveGB(
                 1,
-                totalBytes,
                 StorageReserveKind.LocalSystemDrive));
         Assert.Equal(
             1,
-            StorageSpacePolicy.MigrateLegacyReserveGB(
+            StorageSpacePolicy.NormalizeReserveGB(
                 0.5,
-                totalBytes,
                 StorageReserveKind.LocalOtherDrive));
     }
 }

@@ -448,10 +448,17 @@ public sealed class DefaultConfigurationTests
         Assert.All(config.StorageLocations, location => Assert.Equal(0, location.ReserveGB));
     }
 
-    [Fact]
-    public void NormalizeAfterLoad_KeepsReserveSetAfterMigration()
+    /// <summary>
+    /// 迁移只清历史值一次；迁移之后用户在右键里设过的预留要原样保留，
+    /// 包括恰好等于旧版自动值的整数（20GB/30GB 这类取值以前会被悄悄改成默认 5GB）。
+    /// </summary>
+    [Theory]
+    [InlineData(12)]
+    [InlineData(20)]
+    [InlineData(30)]
+    [InlineData(50)]
+    public void NormalizeAfterLoad_KeepsReserveSetAfterMigration(double configuredReserveGB)
     {
-        // 迁移只清历史值一次；迁移之后用户（或支持）在右键里设过的预留要保留
         string directory = Path.Combine(Path.GetTempPath(), "epm-reserve-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -461,13 +468,13 @@ public sealed class DefaultConfigurationTests
                 StorageReserveSchemaVersion = AppConfig.CurrentStorageReserveSchemaVersion,
                 StorageLocations =
                 [
-                    new StorageLocation { Path = directory, ReserveGB = 12, Priority = 0 }
+                    new StorageLocation { Path = directory, ReserveGB = configuredReserveGB, Priority = 0 }
                 ]
             };
 
             AppConfig.NormalizeAfterLoad(config);
 
-            Assert.Equal(12, config.StorageLocations[0].ReserveGB);
+            Assert.Equal(configuredReserveGB, config.StorageLocations[0].ReserveGB);
         }
         finally
         {

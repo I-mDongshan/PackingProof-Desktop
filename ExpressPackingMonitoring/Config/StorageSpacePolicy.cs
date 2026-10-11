@@ -63,88 +63,6 @@ namespace ExpressPackingMonitoring.Config
         public static double GetDefaultReserveGB(string path) =>
             GetDefaultReserveBytes(ResolveKind(path)) / (double)BytesPerGiB;
 
-        /// <summary>
-        /// 旧版本（0.0.67 及更早）按容量百分比自动算出的预留：
-        /// 系统盘 max(30GB, 10%)、其他本地盘 max(20GB, 5%)、网络位置 max(10GB, 2%)。
-        /// 只用于识别升级前的陈旧配置，不再是现行规则。
-        /// </summary>
-        internal static long CalculateLegacyAutoReserveBytes(
-            long totalSize,
-            StorageReserveKind kind)
-        {
-            long minimumBytes = kind switch
-            {
-                StorageReserveKind.LocalSystemDrive => 30L * BytesPerGiB,
-                StorageReserveKind.NetworkLocation => 10L * BytesPerGiB,
-                _ => 20L * BytesPerGiB
-            };
-            double percent = kind switch
-            {
-                StorageReserveKind.LocalSystemDrive => 0.10,
-                StorageReserveKind.NetworkLocation => 0.02,
-                _ => 0.05
-            };
-            long percentBytes = (long)Math.Ceiling(
-                Math.Max(0, totalSize) * percent
-                / (double)BytesPerGiB) * BytesPerGiB;
-            return Math.Max(minimumBytes, percentBytes);
-        }
-
-        /// <summary>
-        /// 升级迁移：只有与旧版自动值一致（容差 1GB）的预留才判定为旧规则自动写入，
-        /// 收敛到新的默认预留；用户自己调过的值原样保留，只做底线收口，
-        /// 避免把用户刻意留出的容量上限（上限越小，预留越大）改成默认值。
-        /// </summary>
-        public static double MigrateLegacyReserveGB(string path, double reserveGB)
-        {
-            if (double.IsNaN(reserveGB) || double.IsInfinity(reserveGB) || reserveGB <= 0)
-                return 0;
-
-            if (TryGetLocalDriveTotalBytes(path, out long totalSize))
-            {
-                return MigrateLegacyReserveGB(reserveGB, totalSize, ResolveKind(path));
-            }
-            return NormalizeReserveGB(path, reserveGB);
-        }
-
-        internal static double MigrateLegacyReserveGB(
-            double reserveGB,
-            long totalSize,
-            StorageReserveKind kind)
-        {
-            if (double.IsNaN(reserveGB) || double.IsInfinity(reserveGB) || reserveGB <= 0)
-                return 0;
-
-            double legacyAutoGB =
-                CalculateLegacyAutoReserveBytes(totalSize, kind) / (double)BytesPerGiB;
-            if (Math.Abs(reserveGB - legacyAutoGB) <= 1.0)
-                return GetDefaultReserveBytes(kind) / (double)BytesPerGiB;
-
-            double floorGB = GetFloorReserveBytes(kind) / (double)BytesPerGiB;
-            return Math.Ceiling(Math.Max(floorGB, reserveGB));
-        }
-
-        private static bool TryGetLocalDriveTotalBytes(string path, out long totalSize)
-        {
-            totalSize = 0;
-            try
-            {
-                if (string.IsNullOrWhiteSpace(path)) return false;
-                string root = Path.GetPathRoot(Path.GetFullPath(path)) ?? "";
-                if (root.Length == 0 || root.StartsWith(@"\\", StringComparison.Ordinal))
-                    return false;
-
-                var drive = new DriveInfo(root);
-                if (!drive.IsReady || drive.DriveType != DriveType.Fixed) return false;
-                totalSize = drive.TotalSize;
-                return totalSize > 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         private static long CalculateMinimumReserveBytes(string rootPath, long totalSize)
         {
             StorageReserveKind kind = StorageVolumeInfo.IsBackupTargetPath(rootPath)
@@ -180,12 +98,20 @@ namespace ExpressPackingMonitoring.Config
         }
 
         public static double NormalizeReserveGB(string path, double reserveGB)
+            => NormalizeReserveGB(reserveGB, ResolveKind(path));
+
+        /// <summary>
+        /// 预留只做底线收口：0 表示"用户没有单独设置"，保留 0 让默认值生效；其余原样保留。
+        /// 这里不再按"旧版自动值"改写 —— 那样的兼容判定每次加载都会重跑，
+        /// 会把用户手填的、恰好等于旧自动值的预留（例如 20GB）悄悄改成默认值。
+        /// 升级前的陈旧值由一次性的 StorageReserveSchemaVersion 迁移清理。
+        /// </summary>
+        internal static double NormalizeReserveGB(double reserveGB, StorageReserveKind kind)
         {
-            // 0 表示"用户没有单独设置"，保留 0 让默认值生效；其余按底线收口
             if (double.IsNaN(reserveGB) || double.IsInfinity(reserveGB) || reserveGB <= 0)
                 return 0;
 
-            double floorGB = GetFloorReserveBytes(ResolveKind(path)) / (double)BytesPerGiB;
+            double floorGB = GetFloorReserveBytes(kind) / (double)BytesPerGiB;
             return Math.Ceiling(Math.Max(floorGB, reserveGB));
         }
 
