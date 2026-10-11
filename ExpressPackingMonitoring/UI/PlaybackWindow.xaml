@@ -432,7 +432,31 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListViewItem">
-                                        <Border CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                        <!--
+                                            右键菜单与悬浮提示都挂在整张卡片（行容器的边框）上：
+                                            挂在 DataTemplate 里的内容元素上时，只有正好点在文字上才弹菜单，
+                                            卡片内边距、左侧色条都会没反应。菜单仍是窗口级共用一个实例。
+                                        -->
+                                        <Border CornerRadius="8" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                                ContextMenu="{StaticResource VideoRowContextMenu}"
+                                                ToolTipService.InitialShowDelay="0"
+                                                ToolTipService.BetweenShowDelay="0"
+                                                ToolTipService.ShowDuration="60000">
+                                            <Border.ToolTip>
+                                                <ToolTip MaxWidth="560"
+                                                         Background="{DynamicResource PanelBackground}"
+                                                         BorderBrush="{DynamicResource BorderDefault}"
+                                                         BorderThickness="1"
+                                                         Padding="10">
+                                                    <ToolTip.Effect>
+                                                        <DropShadowEffect BlurRadius="10" Opacity="0.1"/>
+                                                    </ToolTip.Effect>
+                                                    <TextBlock Text="{Binding ToolTipText}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextPrimary}"/>
+                                                </ToolTip>
+                                            </Border.ToolTip>
                                             <Border.Effect>
                                                 <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.05" Direction="270"/>
                                             </Border.Effect>
@@ -468,31 +492,8 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate>
-                            <!--
-                                右键菜单用窗口级的同一个实例（VideoRowContextMenu），
-                                不在模板里逐行 new 一个；50 行各建一份会让首次右键明显卡顿。
-                                提示同理只放一个 TextBlock，靠绑定取当前行文案。
-                            -->
-                            <Grid ContextMenu="{StaticResource VideoRowContextMenu}"
-                                  ToolTipService.InitialShowDelay="0"
-                                  ToolTipService.BetweenShowDelay="0"
-                                  ToolTipService.ShowDuration="60000">
-                                <!-- 外观与统计页的悬浮卡片一致：面板底色、描边、投影 -->
-                                <Grid.ToolTip>
-                                    <ToolTip MaxWidth="560"
-                                             Background="{DynamicResource PanelBackground}"
-                                             BorderBrush="{DynamicResource BorderDefault}"
-                                             BorderThickness="1"
-                                             Padding="10">
-                                        <ToolTip.Effect>
-                                            <DropShadowEffect BlurRadius="10" Opacity="0.1"/>
-                                        </ToolTip.Effect>
-                                        <TextBlock Text="{Binding ToolTipText}"
-                                                   TextWrapping="Wrap"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource TextPrimary}"/>
-                                    </ToolTip>
-                                </Grid.ToolTip>
+                            <!-- 右键菜单与悬浮提示在行容器的模板上，见上面的 ItemContainerStyle -->
+                            <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>

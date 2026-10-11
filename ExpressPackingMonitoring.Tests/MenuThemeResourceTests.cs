@@ -81,6 +81,33 @@ public sealed class MenuThemeResourceTests
         Assert.DoesNotContain("<Grid.ContextMenu>", template, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 回放行的右键菜单必须挂在行容器（整张卡片）上，提示也挂在同一处。
+    /// 挂在 DataTemplate 的内容元素上时，只有正好点在文字上才弹菜单，
+    /// 卡片内边距、左侧色条都会没反应；提示分开挂则会在弹菜单时盖住菜单。
+    /// </summary>
+    [Fact]
+    public void PlaybackRowMenu_IsAttachedToTheWholeRow()
+    {
+        string xaml = ReadProjectFile(Path.Combine("UI", "PlaybackWindow.xaml"));
+
+        int containerStyleStart = xaml.IndexOf("<ListView.ItemContainerStyle>", StringComparison.Ordinal);
+        int templateStart = xaml.IndexOf("<ListView.ItemTemplate>", StringComparison.Ordinal);
+        Assert.True(containerStyleStart >= 0, "未找到回放列表的 ItemContainerStyle");
+        Assert.True(templateStart > containerStyleStart, "ItemContainerStyle 应在 ItemTemplate 之前");
+
+        string containerStyle = xaml[containerStyleStart..templateStart];
+        Assert.Contains(
+            "ContextMenu=\"{StaticResource VideoRowContextMenu}\"",
+            containerStyle,
+            StringComparison.Ordinal);
+        Assert.Contains("ToolTipService.InitialShowDelay", containerStyle, StringComparison.Ordinal);
+
+        string itemTemplate = xaml[templateStart..];
+        Assert.DoesNotContain("ContextMenu=", itemTemplate, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToolTipService.InitialShowDelay", itemTemplate, StringComparison.Ordinal);
+    }
+
     /// <summary>右键菜单与悬浮小窗的设备菜单必须共用同一套外观。</summary>
     [Fact]
     public void PlaybackAndFloatingMenusShareOneStyle()
