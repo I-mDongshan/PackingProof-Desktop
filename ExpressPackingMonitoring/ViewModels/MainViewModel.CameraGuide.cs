@@ -34,13 +34,13 @@ namespace ExpressPackingMonitoring.ViewModels
             : AppLanguage.CameraBarcodeGuideUnlockedTipText;
 
         /// <summary>
-        /// 扫码放大当前是否可用。解锁识别框调整取景范围时不放大：预览被裁切后框对不准，
-        /// 拖动也会摆错；锁回识别框后立即恢复。
+        /// 扫码放大当前是否可用：只看「面单放大」总开关，外加"调放大位置"那一屏让位
+        /// （那屏在摆放大取景框，预览被裁切会摆不准）。
+        /// 识别框锁没锁不参与：放大位置只认放大取景框，解锁识别框只是允许拖动它。
         /// </summary>
         private bool CanApplyZoom =>
             ZoomCropPolicy.ShouldApplyZoom(
                 Config?.EnableSmartZoom == true,
-                IsCameraBarcodeGuideLocked,
                 IsEditingZoomGuide);
 
         /// <summary>
@@ -162,14 +162,7 @@ namespace ExpressPackingMonitoring.ViewModels
         }
 
         /// <summary>把放大阶段复位成"没在放大"，预览立刻回到整帧。</summary>
-        private void StopZoomForGuideEditing()
-        {
-            _isScanning = false;
-            _delayBeforeZooming = false;
-            _zoomPhase = ZoomPhase.None;
-            LastZoomRect = System.Windows.Rect.Empty;
-            IsZoomingActive = false;
-        }
+        private void StopZoomForGuideEditing() => ResetZoomState();
 
         /// <summary>
         /// 识别框当前能否拖动。摄像头休眠时识别框本来就不显示，扫码放大期间

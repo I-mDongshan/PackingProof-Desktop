@@ -325,8 +325,6 @@ namespace ExpressPackingMonitoring.ViewModels
 
         private double _diskUsagePercent;
         private string _diskUsageText = "0.0 / 0.0 GB";
-        private bool _isScanning = false;
-        private DateTime _lastScanTime;
         private DateTime _lastMotionTime;
         private DateTime _recordStartTime;
         private double _activePreRecordSeconds;
@@ -344,10 +342,13 @@ namespace ExpressPackingMonitoring.ViewModels
         // 预录帧回灌中：这段时间实时帧先不入队（队列要留给预录帧），但处理循环照常跑，预览不会冻住。
         private int _preRecordFlushInProgress;
         private DateTime _recordingGracePeriodStartTime;
-        private enum ZoomPhase { None, ZoomingIn, Holding, ZoomingOut }
+        /// <summary>
+        /// 扫码放大的唯一步进：Waiting = "放大前等待"还没到点，None = 没在放大（预览整帧）。
+        /// <see cref="IsZoomingActive"/> 与画中画淡出都从它派生，别再单开一个布尔字段。
+        /// </summary>
+        private enum ZoomPhase { None, Waiting, ZoomingIn, Holding, ZoomingOut }
         private ZoomPhase _zoomPhase = ZoomPhase.None;
         private DateTime _zoomPhaseStartTime;
-        private bool _delayBeforeZooming = false;
         /// <summary>
         /// 当前放大特写时画中画的淡出系数（0~100）。处理循环按缩放阶段逐帧更新，
         /// 预录回灌那条线程也要读，所以用 volatile int 保证读到的是完整的一份。
@@ -535,9 +536,6 @@ namespace ExpressPackingMonitoring.ViewModels
         private ObservableCollection<ScanRecord> _allLogs = new ObservableCollection<ScanRecord>();
         public ObservableCollection<ScanRecord> FilteredLogs { get; } = new ObservableCollection<ScanRecord>();
 
-        private System.Windows.Rect _lastZoomRect;
-        public System.Windows.Rect LastZoomRect { get => _lastZoomRect; private set => SetProperty(ref _lastZoomRect, value); }
-
         private System.Windows.Size _cameraFrameSize;
         /// <summary>
         /// 当前画面尺寸。编辑副摄取景时返回副摄帧的尺寸 —— 界面算取景矩形用的是它，
@@ -552,16 +550,12 @@ namespace ExpressPackingMonitoring.ViewModels
             private set => SetProperty(ref _cameraFrameSize, value);
         }
 
-        private bool _isZoomingActive;
-        public bool IsZoomingActive
-        {
-            get => _isZoomingActive;
-            private set
-            {
-                if (SetProperty(ref _isZoomingActive, value))
-                    OnPropertyChanged(nameof(IsCameraBarcodeGuideEditable));
-            }
-        }
+        /// <summary>
+        /// 是否正在放大特写。由放大的相位派生（"放大前等待"不算），
+        /// 界面按它收起识别框与放大取景框，并停掉识别框拖动。
+        /// </summary>
+        public bool IsZoomingActive =>
+            _zoomPhase is ZoomPhase.ZoomingIn or ZoomPhase.Holding or ZoomPhase.ZoomingOut;
 
         private volatile bool _suppressVideoPreviewUpdates;
         public bool SuppressVideoPreviewUpdates { get => _suppressVideoPreviewUpdates; set => _suppressVideoPreviewUpdates = value; }

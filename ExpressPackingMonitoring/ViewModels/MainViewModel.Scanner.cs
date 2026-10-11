@@ -823,19 +823,8 @@ namespace ExpressPackingMonitoring.ViewModels
                         CurrentOrderId = input;
                     }
 
-                    // 手动触发录制时也开启缩放逻辑
-                    _lastScanTime = DateTime.Now;
-                    _isScanning = true;
-                    _delayBeforeZooming = Config.ZoomDelaySeconds > 0;
-                    if (!_delayBeforeZooming && CanApplyZoom)
-                    {
-                        _zoomPhase = ZoomPhase.ZoomingIn;
-                        _zoomPhaseStartTime = DateTime.Now;
-                        LastZoomRect = System.Windows.Rect.Empty;
-                        IsZoomingActive = true;
-                    }
-
-                    Debug.WriteLine($"[Zoom] 手动开启录制触发缩放: ID={CurrentOrderId}, Delay={Config.ZoomDelaySeconds}");
+                    // 手动触发录制时也起一次放大
+                    StartZoomForScan();
 
                     if (Config.EnableEventRecordingBuffer)
                     {
@@ -1049,7 +1038,6 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
             }
 
-            Debug.WriteLine($"[Zoom] 扫码事件触发: ID={upperResult}, ZoomEnabled={Config.EnableSmartZoom}, Delay={Config.ZoomDelaySeconds}");
             StartInputCooldown();
 
             CurrentOrderId = upperResult;
@@ -1082,17 +1070,8 @@ namespace ExpressPackingMonitoring.ViewModels
                 _pendingPreRecordStartTime = pendingPreRecordStartTime;
                 await InternalStartRecordingAsync();
 
-                // 在录制停止/启动之后设置缩放状态（InternalStopRecordingAsync 会重置缩放状态）
-                _lastScanTime = DateTime.Now;
-                _isScanning = true;
-                _delayBeforeZooming = Config.ZoomDelaySeconds > 0;
-                if (!_delayBeforeZooming && CanApplyZoom)
-                {
-                    _zoomPhase = ZoomPhase.ZoomingIn;
-                    _zoomPhaseStartTime = DateTime.Now;
-                    LastZoomRect = System.Windows.Rect.Empty;
-                    IsZoomingActive = true;
-                }
+                // 在录制停止/启动之后起一次放大（停录会把上一轮放大收干净）
+                StartZoomForScan();
 
                 // 语音播报完成后再暂停，避免"开始录制"和订单信息被延迟
                 if (IsRecording)

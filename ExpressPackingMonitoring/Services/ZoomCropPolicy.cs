@@ -13,11 +13,14 @@ namespace ExpressPackingMonitoring.Services;
 internal static class ZoomCropPolicy
 {
     /// <summary>
-    /// 是否执行扫码放大。解锁识别框是在调整取景范围、进放大框编辑是在摆放大位置，
-    /// 这两种状态下预览必须保持整帧，放大让位。
+    /// 是否执行扫码放大：只看「面单放大」总开关，另外在进放大框编辑（摆放大位置）
+    /// 那一屏让位 —— 那屏要拖动放大取景框，预览被裁切会摆不准。
+    ///
+    /// 识别框锁没锁不参与：放大位置只认放大取景框，解锁识别框只是允许拖动它，
+    /// 不该把放大一起停掉（否则用户忘记锁回去，放大就一直不生效）。
     /// </summary>
-    internal static bool ShouldApplyZoom(bool zoomEnabled, bool guideLocked, bool editingZoomGuide) =>
-        zoomEnabled && guideLocked && !editingZoomGuide;
+    internal static bool ShouldApplyZoom(bool zoomEnabled, bool editingZoomGuide) =>
+        zoomEnabled && !editingZoomGuide;
 
     /// <summary>
     /// 本次放大的实际倍率：完全由放大取景框决定，框越小放大越近，最小 1 倍（不缩小）。

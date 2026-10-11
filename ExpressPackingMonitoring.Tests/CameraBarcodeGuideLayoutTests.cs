@@ -309,7 +309,7 @@ public sealed class CameraBarcodeGuideLayoutTests
     }
 
     [Fact]
-    public void UnlockedGuideSuspendsZoomUntilItIsLockedAgain()
+    public void ZoomIsNotGatedByTheRecognitionGuideLock()
     {
         string source = RepositorySource.ReadMainViewModel();
 
@@ -319,8 +319,15 @@ public sealed class CameraBarcodeGuideLayoutTests
             "if (!CanApplyZoom)",
             source,
             StringComparison.Ordinal);
-        // 解锁时要能中途停掉已经在跑的放大，否则取景框会一直没法拖动
-        Assert.Contains("GuideLocked={IsCameraBarcodeGuideLocked}", source, StringComparison.Ordinal);
+
+        // 放大位置只认放大取景框，识别框锁没锁不参与：
+        // 否则用户解锁识别框调完位置忘记锁回去，放大就一直不触发。
+        int propertyIndex = source.IndexOf("private bool CanApplyZoom", StringComparison.Ordinal);
+        Assert.True(propertyIndex > 0, "没找到 CanApplyZoom");
+        string canApplyZoom = source[propertyIndex..Math.Min(source.Length, propertyIndex + 220)];
+        Assert.Contains("Config?.EnableSmartZoom == true", canApplyZoom, StringComparison.Ordinal);
+        Assert.Contains("IsEditingZoomGuide", canApplyZoom, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsCameraBarcodeGuideLocked", canApplyZoom, StringComparison.Ordinal);
     }
 
     [Fact]

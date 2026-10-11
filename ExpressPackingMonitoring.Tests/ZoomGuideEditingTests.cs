@@ -68,6 +68,75 @@ public sealed class ZoomGuideEditingTests
         Assert.Contains("nameof(IsCameraBarcodeGuideEditable)", guide, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 放大状态只有一个来源（相位），界面用的"正在放大"由它派生；起放大只有一个入口，
+    /// 打断放大（停录、进"调放大位置"）都走统一复位 —— 否则界面两层框会被残留状态一直藏住。
+    /// </summary>
+    [Fact]
+    public void ZoomStateHasOneSourceAndEveryAbortPathResetsIt()
+    {
+        string viewModel = ReadProjectFile(Path.Combine("ViewModels", "MainViewModel.cs"));
+        string zoom = ReadProjectFile(Path.Combine("ViewModels", "MainViewModel.Zoom.cs"));
+        string scanner = ReadProjectFile(Path.Combine("ViewModels", "MainViewModel.Scanner.cs"));
+        string recording = ReadProjectFile(Path.Combine("ViewModels", "MainViewModel.Recording.cs"));
+        string guide = ReadProjectFile(Path.Combine("ViewModels", "MainViewModel.CameraGuide.cs"));
+
+        // 唯一状态源：相位。界面标志由它派生，历史包袱字段不许再回来
+        Assert.Contains(
+            "private enum ZoomPhase { None, Waiting, ZoomingIn, Holding, ZoomingOut }",
+            viewModel,
+            StringComparison.Ordinal);
+        Assert.Contains("public bool IsZoomingActive =>", viewModel, StringComparison.Ordinal);
+        foreach (string legacyField in new[]
+                 {
+                     "_isScanning", "_delayBeforeZooming", "_lastScanTime", "_isZoomingActive", "LastZoomRect"
+                 })
+        {
+            Assert.DoesNotContain(legacyField, viewModel, StringComparison.Ordinal);
+        }
+
+        // 相位步进只走一个出口：值真的翻转时才通知界面
+        int setter = zoom.IndexOf("private void SetZoomPhase(ZoomPhase phase)", StringComparison.Ordinal);
+        Assert.True(setter > 0, "没找到 SetZoomPhase");
+        string setterBody = zoom[setter..Math.Min(zoom.Length, setter + 500)];
+        Assert.Contains("_zoomPhase = phase;", setterBody, StringComparison.Ordinal);
+        Assert.Contains("nameof(IsZoomingActive)", setterBody, StringComparison.Ordinal);
+        Assert.Contains("nameof(IsCameraBarcodeGuideEditable)", setterBody, StringComparison.Ordinal);
+
+        // 起放大只在扫码与手动开录两处，且都走同一个入口，不再各自写一遍状态
+        Assert.Equal(2, CountOccurrences(scanner, "StartZoomForScan();"));
+        Assert.DoesNotContain("_zoomPhase", scanner, StringComparison.Ordinal);
+
+        // 停录会打断正在跑的放大：这里必须走同一个复位
+        int stop = recording.IndexOf("private async Task InternalStopRecordingAsync()", StringComparison.Ordinal);
+        Assert.True(stop > 0, "没找到 InternalStopRecordingAsync");
+        Assert.Contains(
+            "ResetZoomState();",
+            recording[stop..Math.Min(recording.Length, stop + 1000)],
+            StringComparison.Ordinal);
+
+        // 进"调放大位置"也走同一个复位
+        int editing = guide.IndexOf("private void StopZoomForGuideEditing()", StringComparison.Ordinal);
+        Assert.True(editing > 0, "没找到 StopZoomForGuideEditing");
+        Assert.Contains(
+            "ResetZoomState();",
+            guide[editing..Math.Min(guide.Length, editing + 200)],
+            StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        int count = 0;
+        for (int index = source.IndexOf(value, StringComparison.Ordinal);
+             index >= 0;
+             index = source.IndexOf(value, index + value.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
     [Fact]
     public void ZoomAnimation_PansWithTheSameEasedProgressAsTheScale()
     {

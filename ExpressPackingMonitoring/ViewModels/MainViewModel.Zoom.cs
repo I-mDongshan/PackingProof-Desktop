@@ -8,12 +8,53 @@ namespace ExpressPackingMonitoring.ViewModels
     /// <summary>
     /// 「面单放大」这一步：按主画面上的放大取景框把这一帧裁成特写。
     ///
-    /// 相位机（放大 → 停留 → 还原）、平移/缩放缓动、以及放大时画中画的淡出都在这里，
+    /// 相位机（等待 → 放大 → 停留 → 还原）、平移/缩放缓动、以及放大时画中画的淡出都在这里，
     /// 和采集/预览主循环分开：主循环只问"这一帧该用哪份画面"，不用管动画细节。
-    /// 放大位置只认放大取景框，识别结果与识别来源都不参与。
+    /// 放大状态只有一个来源 —— 相位加相位开始时刻，别的字段都别记"放大到哪一步了"。
+    /// 放大位置只认放大取景框，识别结果、识别来源、识别框锁定状态都不参与。
     /// </summary>
     public partial class MainViewModel
     {
+        /// <summary>
+        /// 扫码或手动开录后起一次放大。面单放大没开、或正在"调放大位置"那一屏
+        /// （那一屏要拖动放大取景框）时不放大；"放大前等待"到点在处理循环里再步进。
+        /// </summary>
+        private void StartZoomForScan()
+        {
+            if (!CanApplyZoom)
+                return;
+
+            SetZoomPhase(Config.ZoomDelaySeconds > 0 ? ZoomPhase.Waiting : ZoomPhase.ZoomingIn);
+            Debug.WriteLine($"[Zoom] 触发放大: ID={CurrentOrderId}, Delay={Config.ZoomDelaySeconds}s");
+        }
+
+        /// <summary>
+        /// 把放大收干净：相位复位，预览回到整帧，识别框与放大取景框重新显示。
+        /// 停录与进"调放大位置"都会中途打断放大，两条路径都走这里 ——
+        /// 只复位相位而不发通知，界面那两层框会被残留状态一直藏住。
+        /// </summary>
+        private void ResetZoomState()
+        {
+            SetZoomPhase(ZoomPhase.None);
+            _overlayZoomFadePercent = 100;
+        }
+
+        /// <summary>
+        /// 步进放大相位，并在"是否正在放大"翻转时通知界面
+        /// （识别框与放大取景框都按它隐藏/恢复，拖动识别框也要据此放开/关掉）。
+        /// </summary>
+        private void SetZoomPhase(ZoomPhase phase)
+        {
+            bool wasZooming = IsZoomingActive;
+            _zoomPhase = phase;
+            _zoomPhaseStartTime = DateTime.Now;
+            if (wasZooming == IsZoomingActive)
+                return;
+
+            OnPropertyChanged(nameof(IsZoomingActive));
+            OnPropertyChanged(nameof(IsCameraBarcodeGuideEditable));
+        }
+
         /// <summary>
         /// 按放大取景框处理这一帧：可放大时返回裁好的特写帧（含平移与缩放动画），
         /// 否则复位放大相位并原样返回整帧。
@@ -32,24 +73,31 @@ namespace ExpressPackingMonitoring.ViewModels
 
             if (!CanApplyZoom)
             {
-                if (LastZoomRect != System.Windows.Rect.Empty) LastZoomRect = System.Windows.Rect.Empty;
-                if (_zoomPhase != ZoomPhase.None)
-                {
-                    // 解锁识别框调整取景范围时中途停掉放大，预览回到整帧后拖动才准
-                    _zoomPhase = ZoomPhase.None;
-                    IsZoomingActive = false;
-                }
-                if (_isScanning)
-                {
-                    _isScanning = false;
-                    Debug.WriteLine($"[Zoom] 扫码已触发但未执行缩放: ZoomEnabled={Config.EnableSmartZoom}, GuideLocked={IsCameraBarcodeGuideLocked}");
-                }
-
-                _overlayZoomFadePercent = 100;
+                // 面单放大关了、或进了"调放大位置"那一屏：把放大收干净，预览回到整帧。
+                ResetZoomState();
                 return currentFrame;
             }
 
             MarkRecordingFramePipelineStage(RecordingFramePipelineStage.Zoom, frameSequence);
+
+            if (_zoomPhase == ZoomPhase.Waiting)
+            {
+                // "放大前等待"还没到点：预览保持整帧。
+                if ((DateTime.Now - _zoomPhaseStartTime).TotalMilliseconds < Config.ZoomDelaySeconds * 1000.0)
+                {
+                    _overlayZoomFadePercent = 100;
+                    return currentFrame;
+                }
+
+                SetZoomPhase(ZoomPhase.ZoomingIn);
+            }
+
+            if (_zoomPhase == ZoomPhase.None)
+            {
+                _overlayZoomFadePercent = 100;
+                return currentFrame;
+            }
+
             // 放大位置只认主画面上的放大取景框：识别结果不参与，
             // 所以识别来源选副画面时也不会把副摄坐标系里的数值套到主画面上。
             System.Windows.Rect zoomBox = CameraBarcodeGuideLayout.ToDisplayRect(
@@ -67,34 +115,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     $"Applying zoom-box centered zoom scale={zoomScale:F2}, box=({zoomBox.X:F1},{zoomBox.Y:F1},{zoomBox.Width:F1},{zoomBox.Height:F1})");
             }
 
-            var currentZoomRect = ToCvRect(ZoomCropPolicy.CreateCropRect(
-                    currentFrame.Width,
-                    currentFrame.Height,
-                    zoomScale,
-                    zoomBox))
-                .Intersect(new OpenCvSharp.Rect(0, 0, currentFrame.Width, currentFrame.Height));
-
-            if (currentZoomRect.Width > 0 && currentZoomRect.Height > 0 && _zoomPhase == ZoomPhase.None)
-            {
-                LastZoomRect = new System.Windows.Rect(currentZoomRect.X, currentZoomRect.Y, currentZoomRect.Width, currentZoomRect.Height);
-            }
-
             Mat processedFrame = currentFrame;
-            if (!_isScanning)
-            {
-                _overlayZoomFadePercent = (int)Math.Round(overlayFadePercent);
-                return processedFrame;
-            }
-
-            if (_delayBeforeZooming && (DateTime.Now - _lastScanTime).TotalMilliseconds >= Config.ZoomDelaySeconds * 1000.0)
-            {
-                _delayBeforeZooming = false;
-                _zoomPhase = ZoomPhase.ZoomingIn;
-                _zoomPhaseStartTime = DateTime.Now;
-                LastZoomRect = System.Windows.Rect.Empty;
-                IsZoomingActive = true;
-                Debug.WriteLine($"[Zoom] 缩放触发: Delay={Config.ZoomDelaySeconds}s, Scale={zoomScale:F2}");
-            }
 
             // 根据缩放阶段计算动画倍率
             double animDuration = Config.EnableZoomAnimation ? Config.ZoomAnimationDurationMs : 0;
@@ -116,10 +137,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     overlayFadePercent = 100.0 * (1.0 - eased);
                 applyZoom = true;
                 if (t >= 1.0)
-                {
-                    _zoomPhase = ZoomPhase.Holding;
-                    _zoomPhaseStartTime = DateTime.Now;
-                }
+                    SetZoomPhase(ZoomPhase.Holding);
             }
             else if (_zoomPhase == ZoomPhase.Holding)
             {
@@ -129,10 +147,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     overlayFadePercent = 0.0;
                 applyZoom = true;
                 if ((DateTime.Now - _zoomPhaseStartTime).TotalMilliseconds >= Config.ZoomDurationSeconds * 1000.0)
-                {
-                    _zoomPhase = ZoomPhase.ZoomingOut;
-                    _zoomPhaseStartTime = DateTime.Now;
-                }
+                    SetZoomPhase(ZoomPhase.ZoomingOut);
             }
             else if (_zoomPhase == ZoomPhase.ZoomingOut)
             {
@@ -147,9 +162,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 applyZoom = true;
                 if (t >= 1.0)
                 {
-                    _zoomPhase = ZoomPhase.None;
-                    _isScanning = false;
-                    IsZoomingActive = false;
+                    SetZoomPhase(ZoomPhase.None);
                     Debug.WriteLine("[Zoom] 缩放动画结束，恢复原样");
                 }
             }

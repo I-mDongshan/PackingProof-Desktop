@@ -96,9 +96,9 @@ namespace ExpressPackingMonitoring.ViewModels
             BusyText = _shutdownRequested ? "正在关闭程序..." : "正在停止";
             IsRecording = false; // 1. 立即改变 UI 状态
             PublishPreRecordBufferStatus(force: true);
-            _isScanning = false;
-            _delayBeforeZooming = false;
-            _zoomPhase = ZoomPhase.None;
+            // 停录会打断正在跑的扫码放大：走统一复位。只清相位而漏掉 IsZoomingActive，
+            // 识别框与放大取景框会被残留的放大状态一直藏住。
+            ResetZoomState();
             _autoStopWarned = false;
             _maxDurationWarned = false;
 

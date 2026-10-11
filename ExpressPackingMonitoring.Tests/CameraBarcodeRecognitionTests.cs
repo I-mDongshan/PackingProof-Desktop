@@ -163,18 +163,16 @@ public sealed class CameraBarcodeRecognitionTests
     }
 
     [Theory]
-    [InlineData(true, true, false, true)]
-    [InlineData(true, true, true, false)]
-    [InlineData(true, false, false, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(false, false, false, false)]
-    public void ZoomCropPolicyOnlyZoomsWhileGuideIsLocked(
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    public void ZoomCropPolicyZoomsWheneverEnabledAndNotEditingTheZoomGuide(
         bool zoomEnabled,
-        bool guideLocked,
         bool editingZoomGuide,
         bool expected)
     {
-        Assert.Equal(expected, ZoomCropPolicy.ShouldApplyZoom(zoomEnabled, guideLocked, editingZoomGuide));
+        Assert.Equal(expected, ZoomCropPolicy.ShouldApplyZoom(zoomEnabled, editingZoomGuide));
     }
 
     [Fact]
