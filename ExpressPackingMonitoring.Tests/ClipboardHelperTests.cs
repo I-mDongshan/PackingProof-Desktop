@@ -16,6 +16,31 @@ public sealed class ClipboardHelperTests
     private static Exception ClipboardBusyError() =>
         new COMException("OpenClipboard 失败 (0x800401D0)", unchecked((int)0x800401D0));
 
+    /// <summary>粘贴按钮用的是这条读取路径：写进去什么，读出来就该是什么。</summary>
+    [Fact]
+    public void TryReadText_ReturnsTheTextThatWasCopied()
+    {
+        string text = "中通快递  45564646464646464";
+        using var clipboardReady = new ManualResetEventSlim(false);
+        if (!ClipboardHelper.TryCopyText(text, clipboardReady.Set))
+            Assert.True(
+                clipboardReady.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
+                "剪贴板一直被占用，测试文本没写进去");
+
+        // 同类里"占用后后台重试"的用例可能仍在后台写剪贴板，正好撞上就会读到瞬时失败；
+        // 这里重试到读到为止，不能把真实的瞬时占用算成读取功能坏了。
+        string read = "";
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            if (ClipboardHelper.TryReadText(out read) && read == text)
+                return;
+
+            Thread.Sleep(50);
+        }
+
+        Assert.Fail($"剪贴板读取没有得到刚写入的文本：[{read}]");
+    }
+
     /// <summary>
     /// 占用期间调用要立刻返回（不阻塞界面），随后后台重试要把内容真正写进去。
     /// 真实占用来自别的进程（远程桌面/串流客户端），同进程内 OpenClipboard 是可重入的，

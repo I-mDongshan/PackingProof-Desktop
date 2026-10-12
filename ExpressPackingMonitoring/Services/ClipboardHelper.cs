@@ -68,6 +68,67 @@ internal static class ClipboardHelper
         return false;
     }
 
+    /// <summary>
+    /// 读一次剪贴板文本：被别的程序占着时立刻失败返回 false，绝不在 UI 线程上等 ——
+    /// 与写入同一条原则，粘贴按钮宁可什么都不做也不能让界面卡住。
+    /// </summary>
+    internal static bool TryReadText(out string text)
+    {
+        text = string.Empty;
+        if (!OpenClipboard(IntPtr.Zero))
+            return false;
+
+        try
+        {
+            IntPtr handle = GetClipboardData(CF_UNICODETEXT);
+            if (handle == IntPtr.Zero)
+                return TryReadAnsiText(out text);
+
+            IntPtr pointer = GlobalLock(handle);
+            if (pointer == IntPtr.Zero)
+                return false;
+
+            try
+            {
+                text = Marshal.PtrToStringUni(pointer) ?? string.Empty;
+            }
+            finally
+            {
+                _ = GlobalUnlock(handle);
+            }
+
+            return true;
+        }
+        finally
+        {
+            _ = CloseClipboard();
+        }
+    }
+
+    /// <summary>没有 Unicode 文本时退回 ANSI（少数老工具只放 CF_TEXT）。</summary>
+    private static bool TryReadAnsiText(out string text)
+    {
+        text = string.Empty;
+        IntPtr handle = GetClipboardData(CF_TEXT);
+        if (handle == IntPtr.Zero)
+            return false;
+
+        IntPtr pointer = GlobalLock(handle);
+        if (pointer == IntPtr.Zero)
+            return false;
+
+        try
+        {
+            text = Marshal.PtrToStringAnsi(pointer) ?? string.Empty;
+        }
+        finally
+        {
+            _ = GlobalUnlock(handle);
+        }
+
+        return true;
+    }
+
     /// <summary>空闲时的快路径：一次 Win32 写入；被占用时失败也是瞬时，不会像 OLE 那样耗掉约 1 秒。</summary>
     private static bool TryWriteText(string text, out Exception error)
     {
@@ -299,6 +360,9 @@ internal static class ClipboardHelper
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr GetClipboardData(uint uFormat);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr GetOpenClipboardWindow();

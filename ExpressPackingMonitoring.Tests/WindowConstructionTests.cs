@@ -172,6 +172,9 @@ public sealed class WindowConstructionTests
             "ExpressPackingMonitoring.UI.Controls.InputClearButton",
             () => new InputClearButton());
         yield return (
+            "ExpressPackingMonitoring.UI.Controls.InputPasteButton",
+            () => new InputPasteButton());
+        yield return (
             "ExpressPackingMonitoring.UI.Controls.StatusCard",
             () => new StatusCard());
         yield return (

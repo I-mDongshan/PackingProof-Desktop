@@ -131,6 +131,7 @@
     <Compile Include="Services\ZoomCropPolicy.cs" />
     <Compile Include="Services\CameraFrameOrientation.cs" />
     <Compile Include="Services\ClipboardHelper.cs" />
+    <Compile Include="Services\PastedTextNormalizer.cs" />
     <Compile Include="UI\PlaybackTooltipPresenter.cs" />
     <Compile Include="Services\NoCameraWorkstationHost.cs" />
     <Compile Include="Services\MediaFoundation\MfInterop.cs" />
@@ -245,6 +246,7 @@
     <Compile Include="UI\StorageReserveDialog.xaml.cs" />
     <Compile Include="UI\StoragePathSelectionDialog.xaml.cs" />
     <Compile Include="UI\Controls\InputClearButton.xaml.cs" />
+    <Compile Include="UI\Controls\InputPasteButton.xaml.cs" />
     <Compile Include="UI\Controls\StatusCard.xaml.cs" />
     <Compile Include="UI\Controls\SmoothProgressBar.cs" />
     <Compile Include="UI\UpdateAvailableDialog.xaml.cs" />
