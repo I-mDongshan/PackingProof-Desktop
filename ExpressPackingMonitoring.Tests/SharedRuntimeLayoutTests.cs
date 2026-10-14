@@ -130,6 +130,39 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
             Assert.True(File.Exists(Path.Combine(_installRoot, "app", name)), $"{name} 应被回滚回 app");
     }
 
+    [Fact]
+    public void GetDotNetRootForChildProcess_PrefersEnvironmentThenInstallRoot()
+    {
+        WriteLayout(usable: true, appOwnedFiles: []);
+        string layoutDirectory = SharedRuntimeLayout.GetLayoutDirectory(_installRoot);
+
+        // 启动器交给桌面端的 DOTNET_ROOT 优先。
+        Assert.Equal(layoutDirectory, SharedRuntimeLayout.GetDotNetRootForChildProcess(
+            appBaseDirectory: Path.Combine(_installRoot, "app"),
+            environmentDotNetRoot: layoutDirectory));
+
+        // 没有环境变量时按“桌面端跑在 <安装目录>\app\”推导。
+        Assert.Equal(layoutDirectory, SharedRuntimeLayout.GetDotNetRootForChildProcess(
+            appBaseDirectory: Path.Combine(_installRoot, "app") + Path.DirectorySeparatorChar,
+            environmentDotNetRoot: null));
+
+        // 环境变量指向别处（比如另一个安装）时不采信，退回按安装目录推导。
+        Assert.Equal(layoutDirectory, SharedRuntimeLayout.GetDotNetRootForChildProcess(
+            appBaseDirectory: Path.Combine(_installRoot, "app"),
+            environmentDotNetRoot: Path.Combine(_installRoot, "missing-runtime")));
+    }
+
+    [Fact]
+    public void GetDotNetRootForChildProcess_WithoutLayout_ReturnsEmpty()
+    {
+        Directory.CreateDirectory(Path.Combine(_installRoot, "app"));
+
+        Assert.Equal("", SharedRuntimeLayout.GetDotNetRootForChildProcess(
+            appBaseDirectory: Path.Combine(_installRoot, "app"),
+            environmentDotNetRoot: null));
+        Assert.Equal("", SharedRuntimeLayout.GetDotNetRootForChildProcess(null, null));
+    }
+
     private void WriteLayout(bool usable, string[] appOwnedFiles)
     {
         string layoutDirectory = SharedRuntimeLayout.GetLayoutDirectory(_installRoot);

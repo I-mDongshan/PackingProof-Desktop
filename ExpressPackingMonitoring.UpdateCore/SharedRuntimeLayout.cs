@@ -54,11 +54,15 @@ public static class SharedRuntimeLayout
         Path.Combine(installRoot, LayoutDirectoryName);
 
     /// <summary>读取 runtime\layout.json；缺失或格式不对都返回 null，不抛异常。</summary>
-    public static SharedRuntimeLayoutInfo? TryReadLayout(string installRoot)
-    {
-        if (string.IsNullOrWhiteSpace(installRoot)) return null;
+    public static SharedRuntimeLayoutInfo? TryReadLayout(string installRoot) =>
+        string.IsNullOrWhiteSpace(installRoot)
+            ? null
+            : TryReadLayoutDirectory(GetLayoutDirectory(installRoot));
 
-        string layoutDirectory = GetLayoutDirectory(installRoot);
+    /// <summary>按布局目录本身读取（例如启动器已经通过 DOTNET_ROOT 告诉过我们布局在哪）。</summary>
+    public static SharedRuntimeLayoutInfo? TryReadLayoutDirectory(string? layoutDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(layoutDirectory)) return null;
         string manifestPath = Path.Combine(layoutDirectory, ManifestFileName);
         if (!File.Exists(manifestPath)) return null;
 
@@ -112,6 +116,28 @@ public static class SharedRuntimeLayout
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 桌面端要交给子进程（市场里的扩展，例如 QQ 机器人）的 DOTNET_ROOT：
+    /// 优先用启动器传给桌面端自己的那个值，其次按“桌面端运行在 &lt;安装目录&gt;\app\，
+    /// 共享运行时在同级的 runtime\”推导。返回空串表示没有可用布局，子进程按系统 .NET 启动。
+    /// </summary>
+    public static string GetDotNetRootForChildProcess(string? appBaseDirectory, string? environmentDotNetRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(environmentDotNetRoot))
+        {
+            SharedRuntimeLayoutInfo? fromEnvironment = TryReadLayoutDirectory(environmentDotNetRoot);
+            if (IsUsable(fromEnvironment)) return fromEnvironment!.LayoutDirectory;
+        }
+
+        if (string.IsNullOrWhiteSpace(appBaseDirectory)) return "";
+        string trimmed = Path.GetFullPath(appBaseDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string? installRoot = Path.GetDirectoryName(trimmed);
+        if (string.IsNullOrEmpty(installRoot)) return "";
+
+        SharedRuntimeLayoutInfo? info = TryReadLayout(installRoot);
+        return IsUsable(info) ? info!.LayoutDirectory : "";
     }
 
     /// <summary>布局是否真的可用：hostfxr 与每个框架的 .deps.json / .runtimeconfig.json 都要在。</summary>

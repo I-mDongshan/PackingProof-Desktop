@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.UpdateCore;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -197,12 +198,11 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
         }
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = target,
-                WorkingDirectory = Path.GetDirectoryName(target)!,
-                UseShellExecute = true
-            });
+            Process.Start(CreateLaunchStartInfo(
+                target,
+                SharedRuntimeLayout.GetDotNetRootForChildProcess(
+                    AppContext.BaseDirectory,
+                    Environment.GetEnvironmentVariable("DOTNET_ROOT"))));
             return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
@@ -210,6 +210,31 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             error = ex.Message;
             return false;
         }
+    }
+
+    /// <summary>
+    /// 扩展进程的启动信息。桌面端把自己的共享运行时（DOTNET_ROOT）交给扩展，市场里那些框架依赖的
+    /// .NET 扩展就不用自带运行时；没有布局时不给这个变量，扩展按系统 .NET 启动。
+    /// .cmd/.bat 启动器经 cmd.exe 走，环境变量同样能传进去。
+    /// </summary>
+    internal static ProcessStartInfo CreateLaunchStartInfo(string target, string dotNetRoot)
+    {
+        string extension = Path.GetExtension(target);
+        bool shellScript = extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".bat", StringComparison.OrdinalIgnoreCase);
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = shellScript ? "cmd.exe" : target,
+            WorkingDirectory = Path.GetDirectoryName(target) ?? "",
+            UseShellExecute = false
+        };
+        if (shellScript)
+        {
+            startInfo.ArgumentList.Add("/c");
+            startInfo.ArgumentList.Add(target);
+        }
+        if (!string.IsNullOrWhiteSpace(dotNetRoot)) startInfo.Environment["DOTNET_ROOT"] = dotNetRoot;
+        return startInfo;
     }
 
     private static void ValidateExpected(
