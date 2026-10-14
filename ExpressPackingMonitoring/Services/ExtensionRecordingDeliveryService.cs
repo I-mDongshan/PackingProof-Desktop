@@ -40,6 +40,8 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
 {
     private const int MinimumSizeMb = 1;
     private const int MaximumSizeMb = 200;
+    private const string X265Encoder = "libx265";
+    private const string X265StatsFileName = "x265_2pass.log";
     private readonly ExtensionRecordingQueryService _queries;
     private readonly string _transcodeCacheDirectory;
     private readonly string _directory;
@@ -264,11 +266,13 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         {
             TryDelete(outputPath + ".pass-0.log");
             TryDelete(outputPath + ".pass-0.log.mbtree");
+            TryDelete(Path.Combine(outputDirectory, X265StatsFileName));
+            TryDelete(Path.Combine(outputDirectory, X265StatsFileName + ".cutree"));
         }
         await Task.CompletedTask;
     }
 
-    private static bool RunTwoPass(
+    internal static bool RunTwoPass(
         string ffmpegPath,
         string sourcePath,
         string outputPath,
@@ -276,19 +280,46 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         string encoder,
         ExtensionRecordingDeliveryBitrate bitrate)
     {
-        string common = $"-loglevel warning -y -i \"{sourcePath}\" -map 0:v:0 -map 0:a? -c:v {encoder} -b:v {bitrate.VideoBitsPerSecond} -maxrate {bitrate.VideoBitsPerSecond} -bufsize {bitrate.VideoBitsPerSecond * 2L} -passlogfile \"{passLogPath}\"";
-        if (!RunFfmpeg(ffmpegPath, common + " -pass 1 -an -f null NUL")) return false;
+        string? workingDirectory = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrEmpty(workingDirectory)) return false;
+
+        string common = $"-loglevel warning -y -i \"{sourcePath}\" -map 0:v:0 -map 0:a? -c:v {encoder} -b:v {bitrate.VideoBitsPerSecond} -maxrate {bitrate.VideoBitsPerSecond} -bufsize {bitrate.VideoBitsPerSecond * 2L}";
+        if (!RunFfmpeg(ffmpegPath, common + BuildTwoPassArguments(encoder, passLogPath, 1) + " -an -f null NUL", workingDirectory))
+            return false;
         return RunFfmpeg(
             ffmpegPath,
-            common + $" -pass 2 -c:a aac -b:a {bitrate.AudioBitsPerSecond} -movflags +faststart -f mp4 \"{outputPath}\"");
+            common + BuildTwoPassArguments(encoder, passLogPath, 2)
+                + $" -c:a aac -b:a {bitrate.AudioBitsPerSecond} -movflags +faststart -f mp4 \"{outputPath}\"",
+            workingDirectory);
     }
 
-    private static bool RunFfmpeg(string ffmpegPath, string arguments)
+    /// <summary>
+    /// 两遍编码各自的 pass 参数。ffmpeg 的 <c>-pass</c> 对 libx265 不生效：它不会产出任何 x265
+    /// 统计文件，第二遍的成品与单遍几乎逐字节一致，等于用两倍时间换一次编码；这种情况必须改用
+    /// x265 自己的统计文件。libx264 用 ffmpeg 原生的 <c>-pass</c>/<c>-passlogfile</c> 即可。
+    /// </summary>
+    internal static string BuildTwoPassArguments(string encoder, string passLogPath, int pass)
+    {
+        if (encoder == X265Encoder)
+        {
+            // -x265-params 的值以 ":" 分隔，统计文件只能给相对文件名（相对 ffmpeg 的工作目录，
+            // 由 RunTwoPass 设成输出目录）；写绝对路径会因盘符冒号被解析拆坏而初始化失败。
+            // cutree=0：第二遍需要读第一遍的 CU-tree 统计，遇到时间戳不规整的源会以
+            // "Incomplete CU-tree stats file" 失败（ffmpeg 退出码非 0，交付会被判成失败），
+            // 关掉它同时省掉一个几十 MB 的临时文件，两遍的码率控制不受影响。
+            return $" -x265-params \"pass={pass}:stats={X265StatsFileName}:cutree=0\"";
+        }
+
+        return $" -passlogfile \"{passLogPath}\" -pass {pass}";
+    }
+
+    private static bool RunFfmpeg(string ffmpegPath, string arguments, string workingDirectory)
     {
         var startInfo = new ProcessStartInfo
         {
             FileName = ffmpegPath,
             Arguments = arguments,
+            WorkingDirectory = workingDirectory,
             UseShellExecute = false,
             RedirectStandardError = true,
             CreateNoWindow = true

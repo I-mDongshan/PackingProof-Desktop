@@ -136,3 +136,37 @@ public sealed class ExtensionRecordingDeliveryBitrateTests
         Assert.False(ExtensionRecordingDeliveryBitrate.TryCalculate(3600, 1024 * 1024, out _));
     }
 }
+
+public sealed class ExtensionRecordingDeliveryPassArgumentTests
+{
+    [Fact]
+    public void X265Pass_UsesX265StatsFileInsteadOfFfmpegPassOption()
+    {
+        string passOne = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx265", @"C:\cache\out.mp4.pass", 1);
+        string passTwo = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx265", @"C:\cache\out.mp4.pass", 2);
+
+        Assert.Contains("-x265-params \"pass=1:stats=x265_2pass.log:cutree=0\"", passOne);
+        Assert.Contains("-x265-params \"pass=2:stats=x265_2pass.log:cutree=0\"", passTwo);
+        Assert.DoesNotContain("-passlogfile", passOne);
+        Assert.DoesNotContain("-passlogfile", passTwo);
+    }
+
+    [Fact]
+    public void X265Pass_KeepsStatsFileRelative()
+    {
+        string passOne = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx265", @"C:\cache\out.mp4.pass", 1);
+
+        int index = passOne.IndexOf("stats=", StringComparison.Ordinal) + "stats=".Length;
+        Assert.Equal("x265_2pass.log", passOne[index..].TrimEnd('"').Split(':')[0]);
+    }
+
+    [Fact]
+    public void X264Pass_KeepsNativeFfmpegPassOptions()
+    {
+        string passTwo = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx264", @"C:\cache\out.mp4.pass", 2);
+
+        Assert.Contains("-passlogfile \"C:\\cache\\out.mp4.pass\"", passTwo);
+        Assert.Contains("-pass 2", passTwo);
+        Assert.DoesNotContain("-x265-params", passTwo);
+    }
+}
