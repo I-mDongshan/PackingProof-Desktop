@@ -42,6 +42,9 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
     private const int MaximumSizeMb = 200;
     private const string X265Encoder = "libx265";
     private const string X265StatsFileName = "x265_2pass.log";
+    // 预估系数：本机实测软编两遍约 2.0 × 录像时长（1080p58），这里留出余量；门店机器 CPU 更弱，宁可估长。
+    private const double X265SecondsPerSourceSecond = 2.4;
+    private const double X264SecondsPerSourceSecond = 0.8;
     private readonly ExtensionRecordingQueryService _queries;
     private readonly string _transcodeCacheDirectory;
     private readonly string _directory;
@@ -85,6 +88,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             throw new FileNotFoundException("录像不存在、尚未准备完成或已过期");
         ExtensionPreparedRecording preparedSource = source!;
 
+        string encoder = ResolveEncoder(profile, preparedSource.VideoCodec);
         var state = new DeliveryState
         {
             DeliveryId = Guid.NewGuid().ToString("N"),
@@ -95,6 +99,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             MaxFileSizeBytes = maxFileSizeMb * 1024L * 1024L,
             Source = preparedSource,
             FileName = BuildDeliveryFileName(preparedSource.FileName),
+            EstimatedSeconds = EstimateTranscodeSeconds(preparedSource.DurationSeconds, encoder, 1),
             CreatedAtUtc = DateTimeOffset.UtcNow,
             ExpiresAtUtc = preparedSource.ExpiresAt
         };
@@ -247,7 +252,12 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
                 long retryTarget = (long)Math.Floor(state.MaxFileSizeBytes * state.MaxFileSizeBytes / (double)size * 0.96d);
                 if (!ExtensionRecordingDeliveryBitrate.TryCalculate(state.Source.DurationSeconds, retryTarget, out ExtensionRecordingDeliveryBitrate? retryBitrate)) break;
                 bitrate = retryBitrate!;
-                lock (state.Gate) state.Progress = 55;
+                lock (state.Gate)
+                {
+                    state.Attempt = 2;
+                    state.EstimatedSeconds = EstimateTranscodeSeconds(state.Source.DurationSeconds, encoder, 2);
+                    state.Progress = 55;
+                }
             }
             TryDelete(partialPath);
             Fail(state, "delivery_size_limit_unreachable");
@@ -291,6 +301,17 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             common + BuildTwoPassArguments(encoder, passLogPath, 2)
                 + $" -c:a aac -b:a {bitrate.AudioBitsPerSecond} -movflags +faststart -f mp4 \"{outputPath}\"",
             workingDirectory);
+    }
+
+    /// <summary>
+    /// 按编码器和轮次估算转码耗时。用于告诉用户「约需 X 分钟」，是预估不是承诺；
+    /// 轮次 2 表示第一轮没压够、要按更低码率再压一遍，耗时翻倍。
+    /// </summary>
+    internal static double EstimateTranscodeSeconds(double durationSeconds, string encoder, int attempt)
+    {
+        if (durationSeconds <= 0 || double.IsNaN(durationSeconds) || double.IsInfinity(durationSeconds)) return 0;
+        double perSourceSecond = encoder == X265Encoder ? X265SecondsPerSourceSecond : X264SecondsPerSourceSecond;
+        return durationSeconds * perSourceSecond * Math.Max(1, attempt);
     }
 
     /// <summary>
@@ -374,7 +395,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
     }
 
     private static ExtensionRecordingDeliverySnapshot Snapshot(DeliveryState state) => new(
-        state.DeliveryId, state.QueryId, state.RecordingId, state.Status, state.Progress,
+        state.DeliveryId, state.QueryId, state.RecordingId, state.Status, state.Progress, state.EstimatedSeconds, state.Attempt,
         state.Profile, state.MaxFileSizeBytes, state.FileSizeBytes, state.Source.DurationSeconds,
         state.VideoCodec, state.FileName,
         state.Status is "ready" or "completed"
@@ -415,6 +436,8 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         internal string OutputPath { get; set; } = "";
         internal string Status { get; set; } = "queued";
         internal int Progress { get; set; }
+        internal int Attempt { get; set; } = 1;
+        internal double EstimatedSeconds { get; set; }
         internal long FileSizeBytes { get; set; }
         internal string VideoCodec { get; set; } = "";
         internal string ErrorCode { get; set; } = "";
@@ -429,6 +452,8 @@ internal sealed record ExtensionRecordingDeliverySnapshot(
     long RecordingId,
     string Status,
     int Progress,
+    double EstimatedSeconds,
+    int Attempt,
     string Profile,
     long MaxFileSizeBytes,
     long FileSizeBytes,

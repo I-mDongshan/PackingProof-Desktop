@@ -472,6 +472,8 @@ GET /api/extensions/v1/recording-queries/{queryId}/recordings/{recordingId}/deli
 
 状态为 `queued`、`transcoding`、`ready`、`downloading`、`completed`、`failed` 或 `expired`。`ready` 响应包含最终 `fileSizeBytes`、`durationSeconds`、`videoCodec`、`fileName` 和 `downloadUrl`。下载仍需签名：
 
+`transcoding` 期间的响应会带上 `progress`（0–100 的百分比）、`attempt`（第一轮为 1，第一轮没压够、正在按更低码率重压时为 2）和 `estimatedSeconds`（按录像时长与编码器估算的耗时，用于提示「约需 X 分钟」；这是预估不是承诺）。创建接口的 `202` 响应里也已带上 `estimatedSeconds`，机器人可以在开始等待时就把估算合并进提示。
+
 ```http
 GET /api/extensions/v1/recording-queries/{queryId}/recordings/{recordingId}/deliveries/{deliveryId}/download
 ```

@@ -140,6 +140,20 @@ public sealed class ExtensionRecordingDeliveryBitrateTests
 public sealed class ExtensionRecordingDeliveryPassArgumentTests
 {
     [Fact]
+    public void EstimateTranscodeSeconds_UsesEncoderAndRetryFactor()
+    {
+        double x265First = ExtensionRecordingDeliveryService.EstimateTranscodeSeconds(150, "libx265", 1);
+        double x265Second = ExtensionRecordingDeliveryService.EstimateTranscodeSeconds(150, "libx265", 2);
+        double x264First = ExtensionRecordingDeliveryService.EstimateTranscodeSeconds(150, "libx264", 1);
+
+        Assert.True(x265First > 150, "软编 h265 两遍应比录像本身长");
+        Assert.Equal(x265First * 2, x265Second);
+        Assert.True(x264First < x265First, "h264 源比 h265 源快");
+        Assert.Equal(0, ExtensionRecordingDeliveryService.EstimateTranscodeSeconds(0, "libx265", 1));
+        Assert.Equal(0, ExtensionRecordingDeliveryService.EstimateTranscodeSeconds(double.NaN, "libx265", 1));
+    }
+
+    [Fact]
     public void X265Pass_UsesX265StatsFileInsteadOfFfmpegPassOption()
     {
         string passOne = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx265", @"C:\cache\out.mp4.pass", 1);
