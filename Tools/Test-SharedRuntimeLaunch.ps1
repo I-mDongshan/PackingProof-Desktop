@@ -41,6 +41,21 @@ function Stop-LeftoverAppProcesses {
     }
 }
 
+# 没有共享布局时，框架依赖的探针只能靠机器上装的 .NET Desktop Runtime；
+# 机器上也没有的话，.NET 宿主会弹“请安装 .NET”的系统对话框（测试不该在用户屏幕上弹窗），
+# 这种情况直接跳过该场景并说明。
+function Test-SystemDesktopRuntimeAvailable {
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if ([string]::IsNullOrWhiteSpace($root)) { continue }
+        $shared = Join-Path $root "dotnet\shared\Microsoft.WindowsDesktop.App"
+        if (-not (Test-Path -LiteralPath $shared -PathType Container)) { continue }
+        if (@(Get-ChildItem -LiteralPath $shared -Directory | Where-Object { $_.Name -match '^8\.' }).Count -gt 0) {
+            return $true
+        }
+    }
+    return $false
+}
+
 # 真实发布里根启动器是 AOT 单文件，这里按同样形态发布，既贴合现场也顺带验证新代码能过 AOT。
 if ([string]::IsNullOrWhiteSpace($LauncherPath)) {
     $launcherPublishDirectory = Join-Path $workspace "launcher-out"
@@ -130,7 +145,12 @@ return 0;
     $launcher | Wait-Process -Timeout 90 -ErrorAction SilentlyContinue
     if (-not $launcher.HasExited) { $launcher.Kill() }
     Stop-LeftoverAppProcesses -InstallRoot $installRoot
-    Assert-True (Test-Path -LiteralPath $stubOutput) "没有布局时主程序仍能启动"
+    if (Test-SystemDesktopRuntimeAvailable) {
+        Assert-True (Test-Path -LiteralPath $stubOutput) "没有布局时主程序仍能启动"
+    }
+    else {
+        Write-Host "[SKIP] 机器上没有系统 .NET Desktop Runtime，跳过“没有布局时启动主程序”这一步，避免弹宿主对话框"
+    }
     Assert-True ((Get-ChildItem -LiteralPath $appDirectory -File | Measure-Object).Count -eq $baselineSnapshot) "没有布局时不得搬动任何文件"
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $installRoot "runtime"))) "没有布局时不得凭空创建 runtime\"
 
