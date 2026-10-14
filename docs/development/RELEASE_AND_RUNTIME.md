@@ -6,7 +6,8 @@
 
 - 发布脚本默认只生成目录包和 Setup；完整 7z 与完整 ZIP 仅在分别传入 `-IncludeSevenZip`、`-IncludeFullZip` 时作为本地产物生成，都不上传到 Release。清爽包根目录主要包含 `ExpressPackingMonitoring.exe` 与 `app\`；应用负载、依赖、Web 文件、LibVLC 和 `tools\ffmpeg.exe` 位于 `app\`。
 - 运行时数据统一存放在 `%LOCALAPPDATA%\ExpressPackingMonitoring\`。发布包不得包含 `config.json`、`videos.db`、缓存、日志、录像或其他本机状态。
-- 共享运行时布局（安装目录下的 `runtime\`）用来让桌面端与 QQ 机器人共用同一份 .NET 运行时：`runtime\dotnet.exe` + `runtime\host\fxr\<版本>\hostfxr.dll` + `runtime\shared\Microsoft.NETCore.App|<WindowsDesktop.App>\<版本>\`，外加记录框架版本、逐文件 SHA256 与老布局迁移映射的 `runtime\layout.json`。自包含应用里的运行时是私有的，别的程序借不到；只有共享框架布局能被多个程序复用。用 `Tools\Build-SharedRuntimeLayout.ps1` 生成并自检，`Tools\Test-SharedRuntimeLayout.ps1` 可单独复核；打包脚本默认不生成（`-BuildSharedRuntimeLayout` 打开），要等启动器的 `DOTNET_ROOT` 与老装机迁移一起上线后再默认带上。
+- 共享运行时布局（安装目录下的 `runtime\`）用来让桌面端与 QQ 机器人共用同一份 .NET 运行时：`runtime\dotnet.exe` + `runtime\host\fxr\<版本>\hostfxr.dll` + `runtime\shared\Microsoft.NETCore.App|<WindowsDesktop.App>\<版本>\`，外加记录框架版本、逐文件 SHA256 与老布局迁移映射的 `runtime\layout.json`。自包含应用里的运行时是私有的，别的程序借不到；只有共享框架布局能被多个程序复用。用 `Tools\Build-SharedRuntimeLayout.ps1` 生成并自检，`Tools\Test-SharedRuntimeLayout.ps1` 可单独复核。
+- 应用本身是**框架依赖发布**（`app\` 里不再有 `coreclr.dll` / `hostfxr.dll`），运行时只有包根那一份 `runtime\`，打包时按 `app\` 的 `runtimeconfig.json` 自动定版本并强校验。AppPatch 只遍历 `app\`，所以增量包永远不会携带运行时；运行时要更新就换 `runtime\`（走完整安装包）。拿 `runtime\` 的第一版必须用 `-DisablePatch` 出包：老装机装的是自包含应用，只靠增量包拿不到 `runtime\`；启动器会因 `patch_supported=false` 提示用户下载完整安装包，装完由启动器把老装机的平铺运行时搬进 `runtime\.legacy\`。
 - `ffmpeg.exe` 可从 `app\tools\ffmpeg.exe`、应用运行目录或系统 `PATH` 解析。AppPatch 不携带 FFmpeg，因此应用逻辑必须兼容用户机器长期保留的旧版本。
 - LibVLC 收录播放所需的解码、解封装、字幕、滤镜和输出插件，只排除 `access_output`、`mux`、`services_discovery`、`stream_out`、`visualization`、`lua`；规则集中在 `ExpressPackingMonitoring.csproj`。发布时移除设计时程序集。
 - Edge TTS 是默认在线语音；Kokoro 模型和运行时默认不随包发布。完整包包含生成的默认 Edge TTS 缓存，AppPatch 必须排除 TTS 缓存。
@@ -78,7 +79,7 @@ pwsh -NoProfile -File Tools\Publish-CleanPackage.ps1 -Version <X.Y.Z> -PatchBase
 | --- | --- |
 | GitHub | Setup、update JSON、可选 `PackingProof_AppPatch`；仅新启动器基线时上传 LauncherPatch；macOS 包 `PackingProof-macOS-<版本>.dmg`（在 Mac 上用 `Tools/Publish-MacRelease.sh` 上传） |
 | Gitee `PackingProof/PackingProof-Desktop` | update JSON、可选 `PackingProof_AppPatch`；仅新启动器基线时上传 LauncherPatch，不上传 Setup；macOS 包 `PackingProof-macOS-<版本>.dmg` 同上 |
-| Gitee 专属（每次发布都要传） | `PackingProof_Setup_no-runtime_vX.Y.Z.exe`：不含 .NET 运行时的安装向导（约 60MB），Gitee 用户唯一的"双击安装"入口 —— Gitee 单附件上限 100MB，自包含 Setup 约 110MB 传不上去，漏掉它 Gitee 侧就只剩增量包。用 `pwsh -NoProfile -File Tools\Publish-NoRuntimePackage.ps1 -Tag vX.Y.Z -UploadGitee` 生成并上传；根启动器是 AOT 原生、直接复用正式包里的那一份，`app\` 用 `--self-contained false` 重新发布。运行时没变时 AppPatch 不含运行时文件，所以这类安装同样能正常自动更新。默认不上传 ZIP 免安装包（`PackingProof_no-runtime_vX.Y.Z.zip`），确有需要时加 `-IncludeZip` |
+| Gitee 专属（每次发布都要传） | `PackingProof_Setup_no-runtime_vX.Y.Z.exe`：不含 .NET 运行时的安装向导（约 60MB），Gitee 用户唯一的"双击安装"入口 —— Gitee 单附件上限 100MB，完整 Setup（框架依赖应用 + `runtime\`）约 110MB 传不上去，漏掉它 Gitee 侧就只剩增量包。用 `pwsh -NoProfile -File Tools\Publish-NoRuntimePackage.ps1 -Tag vX.Y.Z -UploadGitee` 生成并上传；根启动器是 AOT 原生、直接复用正式包里的那一份，`app\` 直接复用正式包的框架依赖产物且**不带** `runtime\`（这类安装靠机器上的 .NET 8 Desktop Runtime 跑，启动器检测不到 `runtime\` 就按系统运行时启动）。AppPatch 只遍历 `app\`，本来就不含 `runtime\`，所以这类安装同样能正常自动更新。默认不上传 ZIP 免安装包（`PackingProof_no-runtime_vX.Y.Z.zip`），确有需要时加 `-IncludeZip` |
 
 - 完整 7z 与完整 ZIP 都不再上传到任何 Release，默认也不生成，仅在本地确有需要时分别传入 `-IncludeSevenZip` 和 `-IncludeFullZip`。对外分发只有 Setup（Gitee 侧换成 no-runtime 安装向导）、AppPatch、update JSON 与 macOS DMG；普通用户通过启动器自动更新，无需手动下载清单。
 

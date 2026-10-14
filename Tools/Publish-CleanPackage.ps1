@@ -22,8 +22,7 @@ param(
     [switch]$SkipTtsCacheGeneration,
     [switch]$ConfirmManualCoreChecks,
     [switch]$ReuseExistingLauncherBaseline,
-    [switch]$DisablePatch,
-    [switch]$BuildSharedRuntimeLayout
+    [switch]$DisablePatch
 )
 
 $ErrorActionPreference = "Stop"
@@ -1110,7 +1109,8 @@ Invoke-DotNetPublish -Arguments @(
     $appProject,
     "-c", $Configuration,
     "-r", $Runtime,
-    "--self-contained", "true",
+    # 应用本身改为框架依赖发布：运行时统一放在包根的 runtime\，由启动器通过 DOTNET_ROOT 复用。
+    "--self-contained", "false",
     "-p:InformationalVersion=$informationalVersion",
     "-p:IncludeSourceRevisionInInformationalVersion=false",
     "-p:GitCommitId=$gitCommitId",
@@ -1195,15 +1195,17 @@ foreach ($runtimeFile in $requiredAppRuntimeFiles) {
     }
 }
 
-# 共享运行时布局（runtime\）默认不生成：它必须配合启动器的 DOTNET_ROOT 与老装机迁移一起上线，
-# 现在只让发布流程具备“产出 + 自检”能力，不改变现有安装行为。
-if ($BuildSharedRuntimeLayout) {
-    $sharedRuntimeLayoutPath = Join-Path $outputFullPath "runtime"
-    Write-Host "生成共享运行时布局：$sharedRuntimeLayoutPath"
-    $sharedRuntimeLayout = New-SharedRuntimeLayout -AppDir $appPublishDir -DestinationPath $sharedRuntimeLayoutPath
-    Test-SharedRuntimeLayout -LayoutPath $sharedRuntimeLayout.LayoutPath | Out-Null
-    Write-Host ("共享运行时布局自检通过：hostfxr {0}，文件 {1}，迁移映射 {2} 项" -f `
-            $sharedRuntimeLayout.HostFxrVersion, $sharedRuntimeLayout.FileCount, $sharedRuntimeLayout.LegacyMappedFiles)
+# 应用是框架依赖发布，运行时必须是包根这份共享布局；漏了它整包都起不来，所以这里强校验。
+$sharedRuntimeLayoutPath = Join-Path $outputFullPath "runtime"
+Write-Host "生成共享运行时布局：$sharedRuntimeLayoutPath"
+$sharedRuntimeLayout = New-SharedRuntimeLayout -AppDir $appPublishDir -DestinationPath $sharedRuntimeLayoutPath
+$verifiedLayout = Test-SharedRuntimeLayout -LayoutPath $sharedRuntimeLayout.LayoutPath
+Write-Host ("共享运行时布局自检通过：hostfxr {0}，文件 {1}，迁移映射 {2} 项" -f `
+        $sharedRuntimeLayout.HostFxrVersion, $sharedRuntimeLayout.FileCount, $sharedRuntimeLayout.LegacyMappedFiles)
+foreach ($runtimeOwnedFile in @("coreclr.dll", "hostfxr.dll", "System.Private.CoreLib.dll")) {
+    if (Test-Path -LiteralPath (Join-Path $appPublishDir $runtimeOwnedFile)) {
+        throw "Clean package validation failed: app\$runtimeOwnedFile 说明应用又变成自包含发布了，运行时必须只在 runtime\"
+    }
 }
 
 $packageRoot = $packageArtifactRoot

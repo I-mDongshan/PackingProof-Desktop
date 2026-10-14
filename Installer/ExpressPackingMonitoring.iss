@@ -69,6 +69,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 
+[UninstallDelete]
+; 共享运行时布局是安装包铺下的，但老装机迁移会把 app\ 里的平铺运行时副本搬进 runtime\.legacy\，
+; 这些文件不在 Inno 的安装日志路径上；不显式删除就会在卸载后留下约 160MB。
+Type: filesandordirs; Name: "{app}\runtime"
+Type: filesandordirs; Name: "{app}\app"
+
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "{#MyAppUserModelId}"
 Name: "{group}\{cm:UninstallShortcutName,{#MyAppName}}"; Filename: "{uninstallexe}"; Parameters: "/SILENT /EPMUNINSTALLOPTIONS"

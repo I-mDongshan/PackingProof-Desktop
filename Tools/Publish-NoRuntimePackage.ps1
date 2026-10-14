@@ -6,7 +6,8 @@
 # - 默认只生成并上传**安装向导**（Gitee 用户和 GitHub 用户一样双击安装）；ZIP 免安装包是可选本地产物，
 #   只有显式加 -IncludeZip 时才生成并上传。
 # - 根启动器是 AOT 原生程序，不需要运行时，直接复用已发布清爽包里的那一份（保证字节一致）；
-# - `app\` 用 `dotnet publish --self-contained false` 重新发布，只含程序自身与非运行时依赖；
+# - `app\` 直接复用正式包里的框架依赖产物（正式包从这一版起就是 `--self-contained false`），
+#   并**不带**包根的 `runtime\`：这一版就是给愿意自己装 .NET 8 Desktop Runtime 的用户准备的；
 # - 目标机器必须已安装 .NET 8 Desktop Runtime (x64)，包内附说明文件；
 # - 更新方式和标准包一致：增量包只包含与基线不同的应用文件，运行时没变时不含运行时，
 #   所以 no-runtime 安装目录同样能被启动器的 AppPatch 正常更新。
@@ -56,39 +57,23 @@ if (Test-Path -LiteralPath $workRoot) {
 }
 New-Item -ItemType Directory -Force -Path $publishDir, $packageDir | Out-Null
 
-Write-Host "==> 发布不带运行时的 app（--self-contained false）"
-& dotnet publish $appProject `
-    -c $Configuration `
-    -r $Runtime `
-    --self-contained false `
-    -p:InformationalVersion=$normalizedVersion `
-    -p:IncludeSourceRevisionInInformationalVersion=false `
-    -p:GitCommitId=$gitCommitId `
-    -p:PublishSingleFile=false `
-    --artifacts-path $buildArtifacts `
-    -o $publishDir
-if ($LASTEXITCODE -ne 0) {
-    throw "无运行时发布失败，退出码 $LASTEXITCODE"
+Write-Host "==> 复用正式包的应用文件（框架依赖，不含 runtime\）"
+if (-not (Test-Path -LiteralPath $sourceAppDir -PathType Container)) {
+    throw "找不到正式包里的 app 目录：$sourceAppDir（先生成正式包）"
 }
-if (Test-Path -LiteralPath $buildArtifacts) {
-    Remove-Item -LiteralPath $buildArtifacts -Recurse -Force
+foreach ($runtimeOnlyFile in @("coreclr.dll", "hostfxr.dll", "System.Private.CoreLib.dll")) {
+    if (Test-Path -LiteralPath (Join-Path $sourceAppDir $runtimeOnlyFile)) {
+        throw "正式包里的 app\$runtimeOnlyFile 说明它还是自包含发布；无运行时包必须复用框架依赖产物"
+    }
 }
-
-# FFmpeg 与可选的 TTS 缓存不在 publish 产物里，从正式清爽包复制，保证行为与标准包一致。
-$sourceFfmpeg = Join-Path $sourceAppDir "tools\ffmpeg.exe"
-if (Test-Path -LiteralPath $sourceFfmpeg -PathType Leaf) {
-    $targetTools = Join-Path $publishDir "tools"
-    New-Item -ItemType Directory -Force -Path $targetTools | Out-Null
-    Copy-Item -LiteralPath $sourceFfmpeg -Destination (Join-Path $targetTools "ffmpeg.exe") -Force
-}
-$sourceTtsCache = Join-Path $sourceAppDir "tts_cache"
-if (Test-Path -LiteralPath $sourceTtsCache -PathType Container) {
-    Copy-Item -LiteralPath $sourceTtsCache -Destination (Join-Path $publishDir "tts_cache") -Recurse -Force
-}
+Copy-Item -LiteralPath $sourceAppDir -Destination $publishDir -Recurse -Force
 
 Write-Host "==> 组装清爽包（根启动器 + app\）"
 Copy-Item -LiteralPath $launcherExe -Destination (Join-Path $packageDir "ExpressPackingMonitoring.exe") -Force
 Copy-Item -LiteralPath $publishDir -Destination (Join-Path $packageDir "app") -Recurse -Force
+if (Test-Path -LiteralPath (Join-Path $packageDir "runtime")) {
+    throw "无运行时包不得包含 runtime\：$packageDir"
+}
 Set-Content -LiteralPath (Join-Path $packageDir "使用前必读.txt") -Encoding UTF8 -Value @"
 本包不包含 .NET 运行时，运行前请先安装：
   .NET 8 Desktop Runtime (x64)  https://dotnet.microsoft.com/download/dotnet/8.0
