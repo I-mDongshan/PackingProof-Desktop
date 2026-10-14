@@ -52,14 +52,16 @@ public sealed class ExtensionRuntimeTests
         fixture.Runtime.ProcessAvailableResults();
 
         Assert.Equal(ExtensionScanResultSubmissionDisposition.Accepted, accepted.Disposition);
+        // 结果落库与回调都在后台线程上完成，正常情况下不到一秒；发布流程会在打包/哈希的同时并行跑测试，
+        // 3 秒的等待在那种负载下会被挤爆（曾出现过一次偶发失败），这里给足余量。
         Assert.True(SpinWait.SpinUntil(
             () => fixture.Database.GetRecordingExtensionFields(RuntimeFixture.SessionId).Count == 1,
-            TimeSpan.FromSeconds(3)));
+            TimeSpan.FromSeconds(30)));
         RecordingExtensionField field = Assert.Single(
             fixture.Database.GetRecordingExtensionFields(RuntimeFixture.SessionId));
         Assert.Equal("weight", field.FieldName);
         Assert.Equal("1.25 kg", field.Value);
-        Assert.True(SpinWait.SpinUntil(() => fixture.ChangedFields.Count == 1, TimeSpan.FromSeconds(1)));
+        Assert.True(SpinWait.SpinUntil(() => fixture.ChangedFields.Count == 1, TimeSpan.FromSeconds(30)));
         Assert.Equal("1.25 kg", fixture.ChangedFields[0].Value);
     }
 
