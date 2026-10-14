@@ -62,18 +62,31 @@ internal static class Program
 
         UpdateNotification? notification = appAlreadyRunning ? null : RunExclusivePendingInstall(baseDir);
 
+        // 共享运行时布局：主程序没在跑时才迁移老装机的平铺运行时副本（运行中搬文件会失败）。
+        SharedRuntimeLaunchContext runtimeContext = SharedRuntimeLayout.PrepareForLaunch(baseDir, allowMigration: !appAlreadyRunning);
+        if (runtimeContext.Error is not null)
+            WriteLog("共享运行时布局处理失败：" + runtimeContext.Error);
+        if (runtimeContext.UsedLayout)
+            WriteLog(
+                $"共享运行时布局可用：{runtimeContext.LayoutSummary}；本次迁移旧运行时文件 {runtimeContext.MigratedLegacyFiles} 个"
+                + (runtimeContext.RemovedLegacyBackup ? "，已清理回滚备份" : ""));
+        else if (runtimeContext.LayoutFound)
+            WriteLog("共享运行时布局存在但不完整，按系统 .NET 运行时启动");
+        else
+            WriteLog("未发现共享运行时布局，按系统 .NET 运行时启动");
+
         if (appAlreadyRunning)
         {
             if (!TryActivateExistingApp(appArgs))
             {
-                int startResult = StartApp(baseDir, appPath, appArgs);
+                int startResult = StartApp(baseDir, appPath, appArgs, runtimeContext.DotNetRoot);
                 if (startResult != 0)
                     return startResult;
             }
         }
         else
         {
-            int startResult = StartApp(baseDir, appPath, appArgs);
+            int startResult = StartApp(baseDir, appPath, appArgs, runtimeContext.DotNetRoot);
             if (startResult != 0)
                 return startResult;
         }
@@ -808,7 +821,7 @@ internal static class Program
         }
     }
 
-    private static int StartApp(string baseDir, string appPath, string[] args)
+    private static int StartApp(string baseDir, string appPath, string[] args, string? dotNetRoot = null)
     {
         if (!File.Exists(appPath))
         {
@@ -827,6 +840,11 @@ internal static class Program
                 WorkingDirectory = Path.GetDirectoryName(appPath) ?? baseDir,
                 UseShellExecute = false
             };
+            if (!string.IsNullOrWhiteSpace(dotNetRoot))
+            {
+                // 让 apphost 从安装目录里的 runtime\ 解析框架，不依赖机器上另外安装的 .NET。
+                startInfo.Environment["DOTNET_ROOT"] = dotNetRoot;
+            }
 
             startInfo.ArgumentList.Add(LaunchedByRootLauncherOption);
             foreach (string arg in args)
