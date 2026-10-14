@@ -154,6 +154,13 @@ public sealed class ExtensionRecordingDeliveryPassArgumentTests
     }
 
     [Fact]
+    public void GetTranscodeTimeout_UsesEstimateWithFloor()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(30), ExtensionRecordingDeliveryService.GetTranscodeTimeout(60));
+        Assert.Equal(TimeSpan.FromMinutes(60), ExtensionRecordingDeliveryService.GetTranscodeTimeout(1200));
+    }
+
+    [Fact]
     public void X265Pass_UsesX265StatsFileInsteadOfFfmpegPassOption()
     {
         string passOne = ExtensionRecordingDeliveryService.BuildTwoPassArguments("libx265", @"C:\cache\out.mp4.pass", 1);

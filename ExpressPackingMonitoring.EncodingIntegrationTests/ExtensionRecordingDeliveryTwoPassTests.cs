@@ -31,10 +31,17 @@ public sealed class ExtensionRecordingDeliveryTwoPassTests
             Assert.True(ExtensionRecordingDeliveryBitrate.TryCalculate(6, targetBytes, out ExtensionRecordingDeliveryBitrate? bitrate));
 
             string outputPath = Path.Combine(directory, "delivery.mp4");
+            var progressValues = new List<double>();
             bool completed = ExtensionRecordingDeliveryService.RunTwoPass(
-                ffmpegPath, sourcePath, outputPath, outputPath + ".pass", "libx265", bitrate!);
+                ffmpegPath, sourcePath, outputPath, outputPath + ".pass", "libx265", bitrate!, 6,
+                value => { lock (progressValues) progressValues.Add(value); },
+                out string failureCode);
 
+            Assert.Equal("", failureCode);
             Assert.True(completed);
+            Assert.NotEmpty(progressValues);
+            Assert.Equal(progressValues.OrderBy(value => value).ToList(), progressValues);
+            Assert.True(progressValues[^1] > 0.9d, "两遍跑完时进度应接近 1");
             Assert.True(new FileInfo(outputPath).Length > 0);
 
             // 只有真正把 pass 交给 x265 时才会留下统计文件；只传 ffmpeg 的 -pass 1/-pass 2 是不会产生的。

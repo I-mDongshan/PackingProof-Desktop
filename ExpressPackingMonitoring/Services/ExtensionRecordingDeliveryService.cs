@@ -45,6 +45,12 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
     // 预估系数：本机实测软编两遍约 2.0 × 录像时长（1080p58），这里留出余量；门店机器 CPU 更弱，宁可估长。
     private const double X265SecondsPerSourceSecond = 2.4;
     private const double X264SecondsPerSourceSecond = 0.8;
+    private const string TranscodeFailedErrorCode = "delivery_transcode_failed";
+    private const string TranscodeStalledErrorCode = "delivery_transcode_stalled";
+    // 进度长时间不推进就判卡死；单次 ffmpeg 的硬超时按预估耗时的倍数算，并保留一个下限。
+    private static readonly TimeSpan ProgressStallTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan MinimumTranscodeTimeout = TimeSpan.FromMinutes(30);
+    private const int TranscodeTimeoutFactor = 3;
     private readonly ExtensionRecordingQueryService _queries;
     private readonly string _transcodeCacheDirectory;
     private readonly string _directory;
@@ -168,9 +174,11 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             bool remove;
             lock (state.Gate)
             {
-                if (state.ExpiresAtUtc > now || state.Status is "transcoding" or "downloading") continue;
+                bool longExpired = now >= state.ExpiresAtUtc.AddMinutes(10);
+                // 卡在 transcoding/downloading 的条目过去会被永久跳过；超过有效期 10 分钟仍未收尾的按过期回收。
+                if (!longExpired && (state.ExpiresAtUtc > now || state.Status is "transcoding" or "downloading")) continue;
                 state.Status = "expired";
-                remove = now >= state.ExpiresAtUtc.AddMinutes(10);
+                remove = longExpired;
             }
             TryDeleteDirectory(Path.GetDirectoryName(state.OutputPath) ?? "");
             if (remove) _deliveries.TryRemove(id, out _);
@@ -230,9 +238,16 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 TryDelete(partialPath);
-                if (!RunTwoPass(ffmpegPath, state.Source.PreparedPath, partialPath, outputPath + ".pass", encoder, bitrate))
+                int progressBase = attempt == 0 ? 5 : 55;
+                int progressSpan = attempt == 0 ? 50 : 42;
+                if (!RunTwoPass(
+                        ffmpegPath, state.Source.PreparedPath, partialPath, outputPath + ".pass", encoder, bitrate,
+                        state.Source.DurationSeconds,
+                        fraction => SetProgress(state, (int)Math.Round(progressBase + fraction * progressSpan)),
+                        out string transcodeErrorCode))
                 {
-                    Fail(state, "delivery_transcode_failed");
+                    TryDeleteDirectory(outputDirectory);
+                    Fail(state, transcodeErrorCode);
                     return;
                 }
                 long size = new FileInfo(partialPath).Length;
@@ -260,17 +275,20 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
                 }
             }
             TryDelete(partialPath);
+            TryDeleteDirectory(outputDirectory);
             Fail(state, "delivery_size_limit_unreachable");
         }
         catch (OperationCanceledException)
         {
             TryDelete(partialPath);
+            TryDeleteDirectory(outputDirectory);
             Fail(state, "delivery_canceled");
         }
         catch
         {
             TryDelete(partialPath);
-            Fail(state, "delivery_transcode_failed");
+            TryDeleteDirectory(outputDirectory);
+            Fail(state, TranscodeFailedErrorCode);
         }
         finally
         {
@@ -288,19 +306,30 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         string outputPath,
         string passLogPath,
         string encoder,
-        ExtensionRecordingDeliveryBitrate bitrate)
+        ExtensionRecordingDeliveryBitrate bitrate,
+        double sourceSeconds,
+        Action<double>? reportProgress,
+        out string failureCode)
     {
+        failureCode = TranscodeFailedErrorCode;
         string? workingDirectory = Path.GetDirectoryName(outputPath);
         if (string.IsNullOrEmpty(workingDirectory)) return false;
 
-        string common = $"-loglevel warning -y -i \"{sourcePath}\" -map 0:v:0 -map 0:a? -c:v {encoder} -b:v {bitrate.VideoBitsPerSecond} -maxrate {bitrate.VideoBitsPerSecond} -bufsize {bitrate.VideoBitsPerSecond * 2L}";
-        if (!RunFfmpeg(ffmpegPath, common + BuildTwoPassArguments(encoder, passLogPath, 1) + " -an -f null NUL", workingDirectory))
-            return false;
-        return RunFfmpeg(
+        // 单遍的预估耗时：两遍的估算除以 2，用作硬超时基准。
+        double passSeconds = EstimateTranscodeSeconds(sourceSeconds, encoder, 1) / 2d;
+        string common = $"-loglevel warning -progress pipe:1 -nostats -y -i \"{sourcePath}\" -map 0:v:0 -map 0:a? -c:v {encoder} -b:v {bitrate.VideoBitsPerSecond} -maxrate {bitrate.VideoBitsPerSecond} -bufsize {bitrate.VideoBitsPerSecond * 2L}";
+        failureCode = RunFfmpeg(
+            ffmpegPath,
+            common + BuildTwoPassArguments(encoder, passLogPath, 1) + " -an -f null NUL",
+            workingDirectory, passSeconds, sourceSeconds, 0d, 0.5d, reportProgress);
+        if (failureCode.Length > 0) return false;
+
+        failureCode = RunFfmpeg(
             ffmpegPath,
             common + BuildTwoPassArguments(encoder, passLogPath, 2)
                 + $" -c:a aac -b:a {bitrate.AudioBitsPerSecond} -movflags +faststart -f mp4 \"{outputPath}\"",
-            workingDirectory);
+            workingDirectory, passSeconds, sourceSeconds, 0.5d, 0.5d, reportProgress);
+        return failureCode.Length == 0;
     }
 
     /// <summary>
@@ -334,7 +363,37 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         return $" -passlogfile \"{passLogPath}\" -pass {pass}";
     }
 
-    private static bool RunFfmpeg(string ffmpegPath, string arguments, string workingDirectory)
+    /// <summary>单次 ffmpeg 的硬超时：预估耗时的若干倍，并保留下限。</summary>
+    internal static TimeSpan GetTranscodeTimeout(double expectedSeconds)
+    {
+        TimeSpan estimated = TimeSpan.FromSeconds(Math.Max(0d, expectedSeconds) * TranscodeTimeoutFactor);
+        return estimated > MinimumTranscodeTimeout ? estimated : MinimumTranscodeTimeout;
+    }
+
+    /// <summary>只向前推进的进度写入，避免两遍之间来回跳。</summary>
+    private static void SetProgress(DeliveryState state, int progress)
+    {
+        lock (state.Gate)
+        {
+            if (progress <= state.Progress || progress > 99) return;
+            state.Progress = progress;
+        }
+    }
+
+    /// <summary>
+    /// 跑一次 ffmpeg。返回空串表示成功，否则返回对应的失败错误码。
+    /// 读取 <c>-progress pipe:1</c> 的输出上报进度，同时以“进度是否还在推进”判断卡死，
+    /// 再用预估耗时算出的硬超时兜底。
+    /// </summary>
+    private static string RunFfmpeg(
+        string ffmpegPath,
+        string arguments,
+        string workingDirectory,
+        double expectedSeconds,
+        double mediaSeconds,
+        double progressBase,
+        double progressSpan,
+        Action<double>? reportProgress)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -342,18 +401,74 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
             Arguments = arguments,
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
+            RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true
         };
         using Process? process = Process.Start(startInfo);
-        if (process == null) return false;
-        _ = process.StandardError.ReadToEnd();
-        if (!process.WaitForExit((int)TimeSpan.FromHours(2).TotalMilliseconds))
+        if (process == null) return TranscodeFailedErrorCode;
+
+        DateTimeOffset startedAt = DateTimeOffset.UtcNow;
+        long[] lastProgressTicks = [startedAt.UtcTicks];
+        TimeSpan timeout = GetTranscodeTimeout(expectedSeconds);
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        Task progressTask = Task.Run(() => ReadFfmpegProgress(
+            process.StandardOutput, progressBase, progressSpan, reportProgress, lastProgressTicks, mediaSeconds));
+
+        while (!process.WaitForExit(1000))
         {
-            try { process.Kill(); } catch { }
-            return false;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            bool stalled = now.UtcTicks - Interlocked.Read(ref lastProgressTicks[0]) > ProgressStallTimeout.Ticks;
+            if (stalled || now - startedAt > timeout)
+            {
+                TryKill(process);
+                return TranscodeStalledErrorCode;
+            }
         }
-        return process.ExitCode == 0;
+        try
+        {
+            progressTask.Wait(TimeSpan.FromSeconds(5));
+            errorTask.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException) { }
+        return process.ExitCode == 0 ? "" : TranscodeFailedErrorCode;
+    }
+
+    private static void TryKill(Process process)
+    {
+        try { process.Kill(entireProcessTree: true); } catch { }
+        try { process.WaitForExit(5000); } catch { }
+    }
+
+    /// <summary>
+    /// 读取 ffmpeg 的进度输出。只要读到进度就刷新停滞计时，看门狗据此判断是不是卡住了；
+    /// <c>out_time_ms</c> 与 <c>out_time_us</c> 在 ffmpeg 里都是微秒，两个键都认。
+    /// </summary>
+    private static void ReadFfmpegProgress(
+        StreamReader reader,
+        double progressBase,
+        double progressSpan,
+        Action<double>? reportProgress,
+        long[] lastProgressTicks,
+        double mediaSeconds)
+    {
+        while (true)
+        {
+            string? line;
+            try { line = reader.ReadLine(); }
+            catch { return; }
+            if (line == null) return;
+            if (!line.StartsWith("out_time_us=", StringComparison.Ordinal)
+                && !line.StartsWith("out_time_ms=", StringComparison.Ordinal)) continue;
+
+            string raw = line[(line.IndexOf('=') + 1)..];
+            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double microseconds)) continue;
+            lastProgressTicks[0] = DateTimeOffset.UtcNow.UtcTicks;
+            if (reportProgress == null || progressSpan <= 0 || mediaSeconds <= 0) continue;
+
+            double fraction = Math.Clamp(microseconds / 1_000_000d / mediaSeconds, 0d, 1d);
+            reportProgress(progressBase + fraction * progressSpan);
+        }
     }
 
     private bool HasCacheCapacity(long incomingBytes)
