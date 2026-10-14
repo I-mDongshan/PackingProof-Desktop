@@ -6,6 +6,7 @@
 
 - 发布脚本默认只生成目录包和 Setup；完整 7z 与完整 ZIP 仅在分别传入 `-IncludeSevenZip`、`-IncludeFullZip` 时作为本地产物生成，都不上传到 Release。清爽包根目录主要包含 `ExpressPackingMonitoring.exe` 与 `app\`；应用负载、依赖、Web 文件、LibVLC 和 `tools\ffmpeg.exe` 位于 `app\`。
 - 运行时数据统一存放在 `%LOCALAPPDATA%\ExpressPackingMonitoring\`。发布包不得包含 `config.json`、`videos.db`、缓存、日志、录像或其他本机状态。
+- 共享运行时布局（安装目录下的 `runtime\`）用来让桌面端与 QQ 机器人共用同一份 .NET 运行时：`runtime\dotnet.exe` + `runtime\host\fxr\<版本>\hostfxr.dll` + `runtime\shared\Microsoft.NETCore.App|<WindowsDesktop.App>\<版本>\`，外加记录框架版本、逐文件 SHA256 与老布局迁移映射的 `runtime\layout.json`。自包含应用里的运行时是私有的，别的程序借不到；只有共享框架布局能被多个程序复用。用 `Tools\Build-SharedRuntimeLayout.ps1` 生成并自检，`Tools\Test-SharedRuntimeLayout.ps1` 可单独复核；打包脚本默认不生成（`-BuildSharedRuntimeLayout` 打开），要等启动器的 `DOTNET_ROOT` 与老装机迁移一起上线后再默认带上。
 - `ffmpeg.exe` 可从 `app\tools\ffmpeg.exe`、应用运行目录或系统 `PATH` 解析。AppPatch 不携带 FFmpeg，因此应用逻辑必须兼容用户机器长期保留的旧版本。
 - LibVLC 收录播放所需的解码、解封装、字幕、滤镜和输出插件，只排除 `access_output`、`mux`、`services_discovery`、`stream_out`、`visualization`、`lua`；规则集中在 `ExpressPackingMonitoring.csproj`。发布时移除设计时程序集。
 - Edge TTS 是默认在线语音；Kokoro 模型和运行时默认不随包发布。完整包包含生成的默认 Edge TTS 缓存，AppPatch 必须排除 TTS 缓存。

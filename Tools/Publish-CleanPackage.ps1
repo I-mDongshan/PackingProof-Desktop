@@ -22,7 +22,8 @@ param(
     [switch]$SkipTtsCacheGeneration,
     [switch]$ConfirmManualCoreChecks,
     [switch]$ReuseExistingLauncherBaseline,
-    [switch]$DisablePatch
+    [switch]$DisablePatch,
+    [switch]$BuildSharedRuntimeLayout
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +34,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "LauncherBaseline.Common.ps1")
 . (Join-Path $PSScriptRoot "FFmpegBaseline.Common.ps1")
 . (Join-Path $PSScriptRoot "AppPatchRuntimeCompatibility.Common.ps1")
+. (Join-Path $PSScriptRoot "SharedRuntimeLayout.Common.ps1")
 $appProject = Join-Path $repoRoot "ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
 $releaseValidationScript = Join-Path $repoRoot "Tools\Test-Release.ps1"
 $installerBuildScript = Join-Path $repoRoot "Tools\Build-Installer.ps1"
@@ -1191,6 +1193,17 @@ foreach ($runtimeFile in $requiredAppRuntimeFiles) {
     if (-not (Test-Path (Join-Path $appPublishDir $runtimeFile))) {
         throw "Clean package validation failed: missing camera barcode runtime dependency app\$runtimeFile"
     }
+}
+
+# 共享运行时布局（runtime\）默认不生成：它必须配合启动器的 DOTNET_ROOT 与老装机迁移一起上线，
+# 现在只让发布流程具备“产出 + 自检”能力，不改变现有安装行为。
+if ($BuildSharedRuntimeLayout) {
+    $sharedRuntimeLayoutPath = Join-Path $outputFullPath "runtime"
+    Write-Host "生成共享运行时布局：$sharedRuntimeLayoutPath"
+    $sharedRuntimeLayout = New-SharedRuntimeLayout -AppDir $appPublishDir -DestinationPath $sharedRuntimeLayoutPath
+    Test-SharedRuntimeLayout -LayoutPath $sharedRuntimeLayout.LayoutPath | Out-Null
+    Write-Host ("共享运行时布局自检通过：hostfxr {0}，文件 {1}，迁移映射 {2} 项" -f `
+            $sharedRuntimeLayout.HostFxrVersion, $sharedRuntimeLayout.FileCount, $sharedRuntimeLayout.LegacyMappedFiles)
 }
 
 $packageRoot = $packageArtifactRoot
