@@ -6,6 +6,9 @@ using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
 
+// 清理逻辑要靠 StorageLocationResolver 读卷信息，会受 TestStorageVolumeProbe 的静态假卷影响，
+// 与设置假卷的用例串行执行才不会互相干扰。
+[Collection("Storage volume probe")]
 public sealed class ManualCleanupServiceTests : IDisposable
 {
     private readonly string _directory = Path.Combine(

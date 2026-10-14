@@ -6,6 +6,9 @@ using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
 
+// 这些用例共用 StorageLocationResolver.VolumeProbe 这个静态假卷（TestStorageVolumeProbe），
+// 并行执行会互相把对方的假卷清掉或覆盖掉，所以放进同一个 collection 串行跑。
+[Collection("Storage volume probe")]
 public sealed class StoragePlanTests : IDisposable
 {
     private readonly IDisposable _volumeProbe = TestStorageVolumeProbe.Use();

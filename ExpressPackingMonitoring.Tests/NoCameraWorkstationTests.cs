@@ -13,6 +13,7 @@ using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
 
+[Collection("Storage volume probe")]
 public sealed class NoCameraWorkstationTests : IDisposable
 {
     private readonly IDisposable _volumeProbe = TestStorageVolumeProbe.Use();
