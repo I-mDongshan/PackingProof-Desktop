@@ -57,6 +57,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
     private readonly long _maxCacheBytes;
     private readonly FfmpegWorkLimiter _ffmpegWorkLimiter;
     private readonly Action _requestCacheCleanup;
+    private readonly Func<string> _ffmpegPathResolver;
     private readonly ConcurrentDictionary<string, DeliveryState> _deliveries = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _cts = new();
     private readonly Timer _cleanupTimer;
@@ -66,7 +67,8 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         string transcodeCacheDirectory,
         long maxCacheBytes,
         FfmpegWorkLimiter ffmpegWorkLimiter,
-        Action requestCacheCleanup)
+        Action requestCacheCleanup,
+        Func<string>? ffmpegPathResolver = null)
     {
         _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         _transcodeCacheDirectory = transcodeCacheDirectory ?? throw new ArgumentNullException(nameof(transcodeCacheDirectory));
@@ -74,6 +76,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         _maxCacheBytes = Math.Max(64L * 1024 * 1024, maxCacheBytes);
         _ffmpegWorkLimiter = ffmpegWorkLimiter ?? throw new ArgumentNullException(nameof(ffmpegWorkLimiter));
         _requestCacheCleanup = requestCacheCleanup ?? throw new ArgumentNullException(nameof(requestCacheCleanup));
+        _ffmpegPathResolver = ffmpegPathResolver ?? AppPaths.FindFFmpeg;
         Directory.CreateDirectory(_directory);
         _cleanupTimer = new Timer(_ => CleanupExpired(), null, TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(10));
     }
@@ -218,7 +221,7 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
                 Fail(state, "delivery_cache_limit_exceeded");
                 return;
             }
-            string ffmpegPath = AppPaths.FindFFmpeg();
+            string ffmpegPath = _ffmpegPathResolver();
             if (string.IsNullOrWhiteSpace(ffmpegPath) || !File.Exists(ffmpegPath))
             {
                 Fail(state, "delivery_ffmpeg_unavailable");
