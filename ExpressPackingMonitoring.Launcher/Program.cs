@@ -80,6 +80,8 @@ internal static class Program
             WriteLog("共享运行时布局存在但不完整，按系统 .NET 运行时启动");
         else
             WriteLog("未发现共享运行时布局，按系统 .NET 运行时启动");
+        if (runtimeContext.RepairedMisplacedLayout)
+            WriteLog("运行时装在了 app\\runtime\\（老启动器应用过渡补丁的结果），已搬回安装根目录 runtime\\");
 
         if (appAlreadyRunning)
         {

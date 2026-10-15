@@ -220,6 +220,44 @@ return 0;
     Assert-True (-not (Test-Path -LiteralPath $backupDirectory)) "第二次启动后回滚备份被清理"
     $logText = if (Test-Path -LiteralPath $launcherLog) { Get-Content -Raw -LiteralPath $launcherLog -Encoding UTF8 } else { "" }
     Assert-True ($logText -like "*已清理回滚备份*") "启动器日志记录了回滚备份清理"
+
+    # 6. 场景三：过渡补丁被**老启动器**应用时的形态。老版本会按老清单把所有条目都放在 app\ 下，
+    #    于是整套运行时落在 app\runtime\、安装根目录没有 runtime\，框架依赖的主程序找不到运行时
+    #    （现场表现是"要求安装 .NET 运行时"、程序起不来）。新启动器必须把它搬回根目录并照常迁移，
+    #    用户重启一次即自愈，不必重装完整包。
+    #    补丁包里的 runtime\ 只有 layout.json 与运行时文件，没有 layout-state.json（那是启动后生成的），
+    #    所以这里也把它删掉，才是老装机打完过渡补丁的真实状态。
+    Write-Host "场景三：整套运行时装在 app\runtime\（老启动器应用过渡补丁的形态）"
+    Remove-Item -LiteralPath (Join-Path $layoutPath "layout-state.json") -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $backupDirectory) { [System.IO.Directory]::Delete($backupDirectory, $true) }
+    # 平铺副本的来源按当前布局目录重算：场景二已经把布局从 layout-source\ 搬进安装目录了。
+    $flatSources = @{}
+    foreach ($property in $layoutManifest.appFileMap.PSObject.Properties) {
+        $flatSources[$property.Name] = Join-Path $layoutPath (@($property.Value)[0] -replace '/', '\')
+    }
+    foreach ($name in $legacySources.Keys) {
+        Copy-Item -LiteralPath $flatSources[$name] -Destination (Join-Path $appDirectory $name) -Force
+    }
+    $misplacedLayoutPath = Join-Path $appDirectory "runtime"
+    Move-Item -LiteralPath $layoutPath -Destination $misplacedLayoutPath
+    [System.IO.File]::WriteAllText($stubOutput, "", [System.Text.UTF8Encoding]::new($false))
+
+    $launcher = Start-Process -FilePath (Join-Path $installRoot "ExpressPackingMonitoring.exe") -PassThru -WorkingDirectory $installRoot
+    $launcher | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue
+    if (-not $launcher.HasExited) { $launcher.Kill() }
+    Stop-LeftoverAppProcesses -InstallRoot $installRoot
+
+    Assert-True (-not (Test-Path -LiteralPath $misplacedLayoutPath)) "app\runtime\ 已被搬走"
+    Assert-True (Test-Path -LiteralPath (Join-Path $layoutPath "layout.json")) "布局回到安装根目录 runtime\"
+    $stubLines = @(Get-Content -LiteralPath $stubOutput -Encoding UTF8)
+    $rootLine = @($stubLines | Where-Object { $_ -like 'dotnet_root=*' }) -join ""
+    $runtimeLine = @($stubLines | Where-Object { $_ -like 'runtime_dir=*' }) -join ""
+    Assert-True ($rootLine -eq ("dotnet_root=" + $layoutPath)) "搬回后主程序收到的 DOTNET_ROOT 指向根目录 runtime\（实际：$rootLine）"
+    Assert-True ($runtimeLine.ToLowerInvariant().StartsWith(("runtime_dir=" + $layoutPath).ToLowerInvariant())) `
+        "搬回后主程序真的用上了布局里的运行时（实际：$runtimeLine）"
+    Assert-True (Test-Path -LiteralPath (Join-Path $backupDirectory "hostfxr.dll")) "搬回后照常把 app\ 里的平铺副本迁进 runtime\.legacy"
+    $logText = if (Test-Path -LiteralPath $launcherLog) { Get-Content -Raw -LiteralPath $launcherLog -Encoding UTF8 } else { "" }
+    Assert-True ($logText -like "*已搬回安装根目录 runtime*") "启动器日志记录了这次修补"
 }
 finally {
     Remove-Item Env:\SRL_STUB_OUTPUT -ErrorAction SilentlyContinue

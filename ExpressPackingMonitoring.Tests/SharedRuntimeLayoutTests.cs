@@ -96,6 +96,65 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
     }
 
     [Fact]
+    public void PrepareForLaunch_MovesMisplacedLayoutBackToTheInstallRoot()
+    {
+        string misplacedDirectory = Path.Combine(
+            _installRoot,
+            "app",
+            SharedRuntimeLayout.LayoutDirectoryName);
+        WriteLayout(usable: true, appOwnedFiles: [], layoutDirectory: misplacedDirectory);
+        WriteAppFile("hostfxr.dll");
+        WriteAppFile("System.Private.CoreLib.dll");
+
+        SharedRuntimeLaunchContext result = SharedRuntimeLayout.PrepareForLaunch(_installRoot);
+
+        Assert.True(result.RepairedMisplacedLayout);
+        Assert.True(result.UsedLayout);
+        Assert.Equal(SharedRuntimeLayout.GetLayoutDirectory(_installRoot), result.DotNetRoot);
+        Assert.False(Directory.Exists(misplacedDirectory));
+        Assert.True(File.Exists(Path.Combine(
+            SharedRuntimeLayout.GetLayoutDirectory(_installRoot),
+            SharedRuntimeLayout.ManifestFileName)));
+        // 搬回根目录之后照常走老装机迁移：app\ 里那套平铺副本进回滚备份。
+        Assert.Equal(2, result.MigratedLegacyFiles);
+        Assert.False(File.Exists(Path.Combine(_installRoot, "app", "hostfxr.dll")));
+    }
+
+    [Fact]
+    public void PrepareForLaunch_DoesNotRepairMisplacedLayoutWhileTheAppIsRunning()
+    {
+        string misplacedDirectory = Path.Combine(
+            _installRoot,
+            "app",
+            SharedRuntimeLayout.LayoutDirectoryName);
+        WriteLayout(usable: true, appOwnedFiles: [], layoutDirectory: misplacedDirectory);
+
+        SharedRuntimeLaunchContext result = SharedRuntimeLayout.PrepareForLaunch(
+            _installRoot,
+            allowMigration: false);
+
+        Assert.False(result.RepairedMisplacedLayout);
+        Assert.False(result.UsedLayout);
+        Assert.True(Directory.Exists(misplacedDirectory));
+    }
+
+    [Fact]
+    public void PrepareForLaunch_LeavesAnUnusableAppRuntimeFolderAlone()
+    {
+        string misplacedDirectory = Path.Combine(
+            _installRoot,
+            "app",
+            SharedRuntimeLayout.LayoutDirectoryName);
+        WriteLayout(usable: false, appOwnedFiles: [], layoutDirectory: misplacedDirectory);
+
+        SharedRuntimeLaunchContext result = SharedRuntimeLayout.PrepareForLaunch(_installRoot);
+
+        Assert.False(result.RepairedMisplacedLayout);
+        Assert.False(result.LayoutFound);
+        Assert.True(Directory.Exists(misplacedDirectory));
+    }
+
+    [Fact]
     public void PrepareForLaunch_WithRunningApp_ResolvesLayoutButSkipsMigration()
     {
         WriteLayout(usable: true, appOwnedFiles: []);
@@ -163,9 +222,9 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
         Assert.Equal("", SharedRuntimeLayout.GetDotNetRootForChildProcess(null, null));
     }
 
-    private void WriteLayout(bool usable, string[] appOwnedFiles)
+    private void WriteLayout(bool usable, string[] appOwnedFiles, string? layoutDirectory = null)
     {
-        string layoutDirectory = SharedRuntimeLayout.GetLayoutDirectory(_installRoot);
+        layoutDirectory ??= SharedRuntimeLayout.GetLayoutDirectory(_installRoot);
         Directory.CreateDirectory(layoutDirectory);
         Directory.CreateDirectory(Path.Combine(_installRoot, "app"));
 

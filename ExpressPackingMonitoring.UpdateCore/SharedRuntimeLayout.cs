@@ -24,7 +24,8 @@ public sealed record SharedRuntimeLaunchContext(
     string? DotNetRoot,
     int MigratedLegacyFiles,
     bool RemovedLegacyBackup,
-    string? Error)
+    string? Error,
+    bool RepairedMisplacedLayout = false)
 {
     public bool UsedLayout => DotNetRoot is not null;
 }
@@ -163,12 +164,18 @@ public static class SharedRuntimeLayout
     /// </summary>
     public static SharedRuntimeLaunchContext PrepareForLaunch(string installRoot, bool allowMigration = true)
     {
+        // 主程序没在跑时才动文件：布局正被加载时改名会失败，甚至留下半搬状态。
+        string? repairError = null;
+        bool repairedMisplacedLayout = false;
+        if (allowMigration)
+            repairedMisplacedLayout = TryRepairMisplacedLayout(installRoot, out repairError);
         SharedRuntimeLayoutInfo? info = TryReadLayout(installRoot);
         if (info is null)
         {
             return new SharedRuntimeLaunchContext(
                 LayoutFound: false, LayoutUsable: false, LayoutSummary: "",
-                DotNetRoot: null, MigratedLegacyFiles: 0, RemovedLegacyBackup: false, Error: null);
+                DotNetRoot: null, MigratedLegacyFiles: 0, RemovedLegacyBackup: false,
+                Error: repairError, RepairedMisplacedLayout: repairedMisplacedLayout);
         }
 
         if (!IsUsable(info))
@@ -176,12 +183,12 @@ public static class SharedRuntimeLayout
             return new SharedRuntimeLaunchContext(
                 LayoutFound: true, LayoutUsable: false, LayoutSummary: info.DisplayText,
                 DotNetRoot: null, MigratedLegacyFiles: 0, RemovedLegacyBackup: false,
-                Error: "共享运行时布局不完整");
+                Error: "共享运行时布局不完整", RepairedMisplacedLayout: repairedMisplacedLayout);
         }
 
         int migrated = 0;
         bool removedBackup = false;
-        string? error = null;
+        string? error = repairError;
         // 主程序正在运行时不做迁移：那时 app\ 里的文件多半正被占用，搬动既会失败也可能打扰运行中的进程。
         if (allowMigration)
         {
@@ -207,7 +214,39 @@ public static class SharedRuntimeLayout
         return new SharedRuntimeLaunchContext(
             LayoutFound: true, LayoutUsable: true, LayoutSummary: info.DisplayText,
             DotNetRoot: info.LayoutDirectory, MigratedLegacyFiles: migrated,
-            RemovedLegacyBackup: removedBackup, Error: error);
+            RemovedLegacyBackup: removedBackup, Error: error,
+            RepairedMisplacedLayout: repairedMisplacedLayout);
+    }
+
+    /// <summary>
+    /// 兼容修补：带 runtime 条目的过渡补丁如果被**老启动器**应用，老版本会把所有条目都按 app\ 解析，
+    /// 整套运行时会落在 app\runtime\ 而不是安装根目录的 runtime\。框架依赖的主程序找不到运行时，
+    /// 现场表现就是"要求安装 .NET 运行时"、程序起不来。这里在启动前把它搬回根目录：用户重启一次
+    /// 即可自愈，不必重装完整包；搬回来之后照常走老装机迁移，app\ 里那套平铺副本仍然进回滚备份。
+    ///
+    /// 只在"根目录还没有 runtime\、且 app\runtime\ 里确实是一份完整可用的布局"时才动，避免误搬。
+    /// </summary>
+    internal static bool TryRepairMisplacedLayout(string installRoot, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(installRoot)) return false;
+
+        string layoutDirectory = GetLayoutDirectory(installRoot);
+        if (Directory.Exists(layoutDirectory)) return false;
+
+        string misplacedDirectory = Path.Combine(installRoot, "app", LayoutDirectoryName);
+        if (!IsUsable(TryReadLayoutDirectory(misplacedDirectory))) return false;
+
+        try
+        {
+            Directory.Move(misplacedDirectory, layoutDirectory);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            error = exception.Message;
+            return false;
+        }
     }
 
     /// <summary>
