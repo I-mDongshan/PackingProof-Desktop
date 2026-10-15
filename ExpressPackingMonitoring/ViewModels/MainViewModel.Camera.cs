@@ -788,6 +788,46 @@ namespace ExpressPackingMonitoring.ViewModels
             SetActualCameraSize(e.Width, e.Height);
             _actualCameraFps = e.Fps;
             RuntimeLog.Info("Camera", $"Network camera stream ready {e.Width}x{e.Height}@{e.Fps}");
+            SyncNetworkCameraSizeToConfig(e.Width, e.Height, e.Fps);
+        }
+
+        /// <summary>
+        /// 网络摄像头的分辨率由摄像头自己决定，配置里那份只是向导或上一台摄像头留下的值。
+        /// 现场反馈"配置和画面分辨率对不上"（配置 2560x1440、真实主码流 2304x1296）：
+        /// 向导没跑完、换过摄像头、或配置回退到 .bak 都会留下旧值，而按配置算尺寸的地方
+        /// （预览几何、预录缓冲、录像兜底）就会跟着错。这里以真实流为准写回配置，让它自愈。
+        /// </summary>
+        private void SyncNetworkCameraSizeToConfig(int width, int height, int fps)
+        {
+            if (width <= 0 || height <= 0) return;
+
+            AppConfig config = Config;
+            if (config == null) return;
+            int targetFps = fps > 0 ? fps : config.Fps;
+            if (config.FrameWidth == width && config.FrameHeight == height && config.Fps == targetFps)
+                return;
+
+            RuntimeLog.Info(
+                "Camera",
+                $"网络摄像头分辨率与配置不一致（配置 {config.FrameWidth}x{config.FrameHeight}@{config.Fps}，"
+                + $"实际 {width}x{height}@{targetFps}），按实际流写回配置");
+            if (!WorkstationConfigStore.TryUpdate(
+                    saved =>
+                    {
+                        saved.FrameWidth = width;
+                        saved.FrameHeight = height;
+                        saved.Fps = targetFps;
+                    },
+                    out AppConfig savedConfig,
+                    out string error))
+            {
+                RuntimeLog.Warn("Camera", $"网络摄像头分辨率写回配置失败：{error}");
+                return;
+            }
+
+            config.FrameWidth = savedConfig.FrameWidth;
+            config.FrameHeight = savedConfig.FrameHeight;
+            config.Fps = savedConfig.Fps;
         }
 
         private void NetworkCameraSource_SourceError(object sender, NetworkCameraErrorEventArgs e)
