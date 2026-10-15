@@ -246,6 +246,18 @@ internal static class CameraWatchdogPolicy
     /// <summary>判断"多久没有新帧"的门限：唤醒后的第一次等待用更短的门限。</summary>
     public static TimeSpan ResolveFrameStaleThreshold(TimeSpan normal, bool recentlyWoken) =>
         recentlyWoken ? WakeFirstFrameThreshold : normal;
+
+    /// <summary>连续零帧重连到第几轮才做一次自检：太早会在摄像头刚启动时误判。</summary>
+    internal const int ZeroFrameSelfCheckStreak = 2;
+
+    /// <summary>
+    /// 连上但一帧都没来时，反复播报"信号丢失"只会让现场更慌、也更查不出原因：
+    /// 只在第一轮播报，后面只写日志。真正的断流不走这里（那种情况收到过帧）。
+    /// </summary>
+    public static bool ShouldAnnounceZeroFrameStreak(int zeroFrameStreak) => zeroFrameStreak <= 1;
+
+    public static bool ShouldRunZeroFrameSelfCheck(int zeroFrameStreak, bool alreadyRanForCurrentUrl) =>
+        !alreadyRanForCurrentUrl && zeroFrameStreak >= ZeroFrameSelfCheckStreak;
 }
 
 internal sealed class CameraFrameRateGate

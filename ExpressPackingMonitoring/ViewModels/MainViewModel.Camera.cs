@@ -409,6 +409,7 @@ namespace ExpressPackingMonitoring.ViewModels
         {
             // 启动窗口内看门狗不得判定掉线：设备还没就绪，判定只会把刚起来的摄像头再关掉
             _isCameraStarting = true;
+            Interlocked.Exchange(ref _framesSinceCameraSessionStart, 0);
             try
             {
                 if (_isSetupWizardActive || _isDisposed || _shutdownRequested)
@@ -789,45 +790,6 @@ namespace ExpressPackingMonitoring.ViewModels
             _actualCameraFps = e.Fps;
             RuntimeLog.Info("Camera", $"Network camera stream ready {e.Width}x{e.Height}@{e.Fps}");
             SyncNetworkCameraSizeToConfig(e.Width, e.Height, e.Fps);
-        }
-
-        /// <summary>
-        /// 网络摄像头的分辨率由摄像头自己决定，配置里那份只是向导或上一台摄像头留下的值。
-        /// 现场反馈"配置和画面分辨率对不上"（配置 2560x1440、真实主码流 2304x1296）：
-        /// 向导没跑完、换过摄像头、或配置回退到 .bak 都会留下旧值，而按配置算尺寸的地方
-        /// （预览几何、预录缓冲、录像兜底）就会跟着错。这里以真实流为准写回配置，让它自愈。
-        /// </summary>
-        private void SyncNetworkCameraSizeToConfig(int width, int height, int fps)
-        {
-            if (width <= 0 || height <= 0) return;
-
-            AppConfig config = Config;
-            if (config == null) return;
-            int targetFps = fps > 0 ? fps : config.Fps;
-            if (config.FrameWidth == width && config.FrameHeight == height && config.Fps == targetFps)
-                return;
-
-            RuntimeLog.Info(
-                "Camera",
-                $"网络摄像头分辨率与配置不一致（配置 {config.FrameWidth}x{config.FrameHeight}@{config.Fps}，"
-                + $"实际 {width}x{height}@{targetFps}），按实际流写回配置");
-            if (!WorkstationConfigStore.TryUpdate(
-                    saved =>
-                    {
-                        saved.FrameWidth = width;
-                        saved.FrameHeight = height;
-                        saved.Fps = targetFps;
-                    },
-                    out AppConfig savedConfig,
-                    out string error))
-            {
-                RuntimeLog.Warn("Camera", $"网络摄像头分辨率写回配置失败：{error}");
-                return;
-            }
-
-            config.FrameWidth = savedConfig.FrameWidth;
-            config.FrameHeight = savedConfig.FrameHeight;
-            config.Fps = savedConfig.Fps;
         }
 
         private void NetworkCameraSource_SourceError(object sender, NetworkCameraErrorEventArgs e)
@@ -1236,12 +1198,24 @@ namespace ExpressPackingMonitoring.ViewModels
                                                  CameraFrameStaleThreshold,
                                                  IsWithinCameraWakeGrace()).TotalSeconds)
                                 {
+                                    // "一帧都没来过"和"最近一帧很久以前"是两种毛病：
+                                    // 前者是连上但不出画面（相机侧码流/编码问题为主），后者是断流。
+                                    int zeroFrameStreak = Volatile.Read(ref _framesSinceCameraSessionStart) == 0
+                                        ? Interlocked.Increment(ref _zeroFrameRestartStreak)
+                                        : ResetZeroFrameRestartStreak();
                                     bool announce = CameraWatchdogPolicy.ShouldAnnounceCameraLost(
-                                        watchdogState);
+                                            watchdogState)
+                                        && CameraWatchdogPolicy.ShouldAnnounceZeroFrameStreak(zeroFrameStreak);
                                     RuntimeLog.Info(
                                         "Camera",
                                         $"信号丢失 {noFrameSeconds:F1}s，重连 (失败次数={_consecutiveRestartFailures},"
-                                        + $" 播报={announce})");
+                                        + $" 零帧重连={zeroFrameStreak}, 播报={announce})");
+                                    if (CameraWatchdogPolicy.ShouldRunZeroFrameSelfCheck(
+                                            zeroFrameStreak,
+                                            string.Equals(_zeroFrameSelfCheckUrl, Config.NetworkCameraUrl, StringComparison.Ordinal)))
+                                    {
+                                        QueueNetworkCameraSelfCheck();
+                                    }
                                     _ = Application.Current.Dispatcher.InvokeAsync(() =>
                                     {
                                         if (announce)

@@ -193,6 +193,28 @@ public sealed class CameraLifecycleTests
         Assert.Equal(expectedAnnounce, CameraWatchdogPolicy.ShouldAnnounceCameraLost(state));
     }
 
+    /// <summary>
+    /// 现场反馈：网络摄像头连上后一帧都没来过，看门狗每 20 秒播报一次"信号丢失"，
+    /// 用户只听到反复播报却拿不到原因。零帧连播只在第一轮播，第二轮起转成一次自检。
+    /// </summary>
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    [InlineData(5, false)]
+    public void CameraWatchdogPolicy_AnnouncesZeroFrameStreakOnlyOnce(int streak, bool expectedAnnounce) =>
+        Assert.Equal(expectedAnnounce, CameraWatchdogPolicy.ShouldAnnounceZeroFrameStreak(streak));
+
+    [Theory]
+    [InlineData(1, false, false)]
+    [InlineData(2, false, true)]
+    [InlineData(3, false, true)]
+    [InlineData(2, true, false)]   // 同一个地址只自检一次
+    public void CameraWatchdogPolicy_RunsZeroFrameSelfCheckOncePerAddress(
+        int streak,
+        bool alreadyRan,
+        bool expected) =>
+        Assert.Equal(expected, CameraWatchdogPolicy.ShouldRunZeroFrameSelfCheck(streak, alreadyRan));
+
     [Theory]
     [InlineData(false, 1.5)]
     [InlineData(true, 0.8)]

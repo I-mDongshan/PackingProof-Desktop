@@ -22,6 +22,7 @@ namespace ExpressPackingMonitoring.ViewModels
         private void MfCameraSource_FrameReady(object sender, MfFrameEventArgs e)
         {
             _lastFrameTime = DateTime.Now;
+            Interlocked.Increment(ref _framesSinceCameraSessionStart);
             MarkCameraStreamHealthy();
             Interlocked.Exchange(ref _archiveFrameUtcTicks, DateTime.UtcNow.Ticks);
             UpdateCameraSourceFpsEstimate();
@@ -45,6 +46,7 @@ namespace ExpressPackingMonitoring.ViewModels
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
             _lastFrameTime = DateTime.Now;
+            Interlocked.Increment(ref _framesSinceCameraSessionStart);
             MarkCameraStreamHealthy();
             Interlocked.Exchange(ref _archiveFrameUtcTicks, DateTime.UtcNow.Ticks);
             UpdateCameraSourceFpsEstimate();
@@ -68,6 +70,7 @@ namespace ExpressPackingMonitoring.ViewModels
         private void NetworkCameraSource_FrameReady(object sender, NetworkCameraFrameEventArgs e)
         {
             _lastFrameTime = DateTime.Now;
+            Interlocked.Increment(ref _framesSinceCameraSessionStart);
             MarkCameraStreamHealthy();
             Interlocked.Exchange(ref _archiveFrameUtcTicks, DateTime.UtcNow.Ticks);
             UpdateCameraSourceFpsEstimate();
