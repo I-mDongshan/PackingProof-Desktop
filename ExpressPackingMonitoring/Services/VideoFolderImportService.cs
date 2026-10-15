@@ -92,9 +92,20 @@ internal sealed class VideoFolderImportService
                 long originalLength = before.Length;
                 DateTime originalWriteTimeUtc = before.LastWriteTimeUtc;
                 string sha256 = await ComputeSha256Async(filePath, cancellationToken).ConfigureAwait(false);
-                if (_database.GetVideoByContentSha256(sha256) != null)
+                // 同内容的记录已存在时不能一律当重复跳过：现场反馈过"换了块硬盘、把录像拷过去、
+                // 拔掉原盘后导入全是跳过"——记录还在，只是它记的那条路径随着旧盘拔掉不可用了。
+                // 这种情况要把它指到新路径（找回），而不是跳过。
+                if (_database.GetVideoByContentSha256(sha256) is VideoRecord sameContent)
                 {
-                    skipped++;
+                    if (TryRelinkMissingRecord(sameContent, filePath)) imported++; else skipped++;
+                    continue;
+                }
+
+                // 早期录像可能没有内容哈希，再用"同名同大小 + 原路径已不可用"认一次，
+                // 免得既找回不了、又插出一条重复记录。
+                if (FindMissingRecordByNameAndSize(filePath, originalLength) is VideoRecord sameName)
+                {
+                    if (TryRelinkMissingRecord(sameName, filePath)) imported++; else skipped++;
                     continue;
                 }
 
@@ -159,6 +170,50 @@ internal sealed class VideoFolderImportService
             && !string.Equals(relative, "..", StringComparison.Ordinal)
             && !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
             && !relative.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 把"原路径已不可用"的记录指到新位置：换硬盘/改盘符之后，用户要的是找回录像，
+    /// 而不是被告知"跳过"。原来那份文件还在时不改（那是真重复），返回 false 让调用方计跳过。
+    /// </summary>
+    private bool TryRelinkMissingRecord(VideoRecord record, string newPath)
+    {
+        string recordedPath = record.FilePath ?? "";
+        if (string.Equals(recordedPath, newPath, StringComparison.OrdinalIgnoreCase)) return false;
+        if (File.Exists(recordedPath)) return false;
+
+        _database.UpdateVideoFilePath(recordedPath, newPath);
+        // 老记录没有哈希时补上，之后再遇到同内容的副本就能按内容识别。
+        if (string.IsNullOrWhiteSpace(record.ContentSha256))
+        {
+            try
+            {
+                _database.UpdateVideoContentSha256(
+                    newPath,
+                    ComputeSha256Async(newPath, CancellationToken.None).GetAwaiter().GetResult());
+            }
+            catch (Exception ex)
+            {
+                Logging.RuntimeLog.Warn("VideoImport", $"补写内容哈希失败：{ex.Message}");
+            }
+        }
+        Logging.RuntimeLog.Info(
+            "VideoImport",
+            $"找回丢失录像：{Path.GetFileName(newPath)}（原路径已不可用：{recordedPath}）");
+        return true;
+    }
+
+    private VideoRecord? FindMissingRecordByNameAndSize(string filePath, long sizeBytes)
+    {
+        if (sizeBytes <= 0) return null;
+        string fileName = Path.GetFileName(filePath);
+        if (string.IsNullOrWhiteSpace(fileName)) return null;
+
+        return _database
+            .FindVideoRecordsByFileSize(sizeBytes)
+            .FirstOrDefault(record =>
+                string.Equals(Path.GetFileName(record.FilePath), fileName, StringComparison.OrdinalIgnoreCase)
+                && !File.Exists(record.FilePath));
     }
 
     private bool TryGetManagedRoot(string path, out string managedRoot)

@@ -66,6 +66,137 @@ public sealed class VideoFolderImportServiceTests
     }
 
     [Fact]
+    public async Task ImportAsync_RelinksMissingRecordInsteadOfSkipping()
+    {
+        string root = CreateTempDirectory();
+        string databasePath = Path.Combine(root, "videos.db");
+        // 旧盘已经拔掉：这条记录还在，但它记的路径不存在了。
+        string missingPath = Path.Combine(root, "old-disk", "ORDER-9.mp4");
+        // 用户把原录像拷到新盘，并用新目录再次导入。
+        string newDiskFolder = Directory.CreateDirectory(Path.Combine(root, "new-disk")).FullName;
+        string movedFile = Path.Combine(newDiskFolder, "ORDER-9.mp4");
+        File.WriteAllBytes(movedFile, [1, 2, 3, 4]);
+
+        try
+        {
+            using var database = new VideoDatabase(databasePath);
+            long recordId = database.InsertVideoRecord(
+                "ORDER-9", "发货", "", "", missingPath, DateTime.Now.AddDays(-1));
+            database.UpdateVideoRecordOnStop(
+                recordId, DateTime.Now.AddDays(-1).AddMinutes(1), 30, 4, "手动");
+
+            var service = CreateService(database, root);
+            VideoImportResult result = await service.ImportAsync(
+                newDiskFolder,
+                "发货",
+                progress: null,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.Imported);
+            Assert.Equal(0, result.Skipped);
+            Assert.Equal(0, result.Failed);
+            // 没有插出重复记录：原来的那条被指到了新路径。
+            VideoRecord relinked = Assert.Single(database.QueryVideos(null, null));
+            Assert.Equal(recordId, relinked.Id);
+            Assert.Equal(movedFile, relinked.FilePath);
+        }
+        finally
+        {
+            SqliteTestPool.ClearPoolFor(root);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_RelinksMissingRecordByContentHash()
+    {
+        string root = CreateTempDirectory();
+        string databasePath = Path.Combine(root, "videos.db");
+        string missingPath = Path.Combine(root, "old-disk", "ORDER-11.mp4");
+        string newDiskFolder = Directory.CreateDirectory(Path.Combine(root, "new-disk")).FullName;
+        string movedFile = Path.Combine(newDiskFolder, "ORDER-11.mp4");
+        File.WriteAllBytes(movedFile, [21, 22, 23]);
+        string sha256 = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(movedFile))).ToLowerInvariant();
+
+        try
+        {
+            using var database = new VideoDatabase(databasePath);
+            // 记录带内容哈希、指向已经拔掉的旧盘：现场这次"全是跳过"最可能就是这条分支。
+            Assert.True(database.TryInsertImportedVideoRecord(
+                "ORDER-11",
+                "发货",
+                missingPath,
+                3,
+                DateTime.Now.AddDays(-3),
+                30,
+                sha256,
+                "device-old",
+                "旧电脑"));
+
+            var service = CreateService(database, root);
+            VideoImportResult result = await service.ImportAsync(
+                newDiskFolder,
+                "发货",
+                progress: null,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.Imported);
+            Assert.Equal(0, result.Skipped);
+            VideoRecord relinked = Assert.Single(database.QueryVideos(null, null));
+            Assert.Equal(movedFile, relinked.FilePath);
+            Assert.Equal(sha256, relinked.ContentSha256);
+        }
+        finally
+        {
+            SqliteTestPool.ClearPoolFor(root);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_RelinksMissingRecordBySameNameAndSize()
+    {
+        string root = CreateTempDirectory();
+        string databasePath = Path.Combine(root, "videos.db");
+        string missingPath = Path.Combine(root, "old-disk", "ORDER-10.mp4");
+        string newDiskFolder = Directory.CreateDirectory(Path.Combine(root, "new-disk")).FullName;
+        string movedFile = Path.Combine(newDiskFolder, "ORDER-10.mp4");
+        File.WriteAllBytes(movedFile, [7, 8, 9, 10, 11]);
+
+        try
+        {
+            using var database = new VideoDatabase(databasePath);
+            // 早期录像没有内容哈希：这条兜底必须靠"同名同大小 + 原路径不可用"认出来。
+            long recordId = database.InsertVideoRecord(
+                "ORDER-10", "发货", "", "", missingPath, DateTime.Now.AddDays(-2));
+            database.UpdateVideoRecordOnStop(
+                recordId, DateTime.Now.AddDays(-2).AddMinutes(1), 30, 5, "手动");
+            Assert.True(string.IsNullOrEmpty(database.GetVideoById(recordId)?.ContentSha256));
+
+            var service = CreateService(database, root);
+            VideoImportResult result = await service.ImportAsync(
+                newDiskFolder,
+                "发货",
+                progress: null,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.Imported);
+            Assert.Equal(0, result.Skipped);
+            VideoRecord relinked = Assert.Single(database.QueryVideos(null, null));
+            Assert.Equal(recordId, relinked.Id);
+            Assert.Equal(movedFile, relinked.FilePath);
+            // 找回时把缺失的内容哈希补上，之后再遇到同内容副本不必退到"同名同大小"。
+            Assert.False(string.IsNullOrWhiteSpace(relinked.ContentSha256));
+        }
+        finally
+        {
+            SqliteTestPool.ClearPoolFor(root);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void PlaybackWindow_ShowsOneImportEntryAndDialogOwnsModeActions()
     {
         string xamlPath = FindRepositoryFile(

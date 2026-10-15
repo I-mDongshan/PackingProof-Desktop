@@ -1120,6 +1120,66 @@ namespace ExpressPackingMonitoring.Data
             }
         }
 
+        /// <summary>
+        /// 找回丢失录像时补写内容哈希：早期记录可能没有哈希，
+        /// 补上以后同内容再导入就能按内容识别，不用退到"同名同大小"。
+        /// </summary>
+        public void UpdateVideoContentSha256(string filePath, string contentSha256)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(contentSha256))
+                return;
+
+            lock (_lock)
+            {
+                using var cmd = _connection.CreateCommand();
+                cmd.CommandText = @"
+                    UPDATE VideoRecords
+                    SET ContentSha256 = @sha256
+                    WHERE IsDeleted = 0
+                      AND FilePath = @filePath COLLATE NOCASE
+                      AND (ContentSha256 IS NULL OR ContentSha256 = '');";
+                cmd.Parameters.AddWithValue("@sha256", contentSha256.Trim().ToLowerInvariant());
+                cmd.Parameters.AddWithValue("@filePath", filePath);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// 按文件大小捞候选记录，供"换盘后找回丢失录像"用：大小先筛一遍，
+        /// 文件名在调用方精确比对（SQLite 的 LIKE 会把手写文件名里的下划线当通配符）。
+        /// </summary>
+        public IReadOnlyList<VideoRecord> FindVideoRecordsByFileSize(long fileSizeBytes, int limit = 20)
+        {
+            var result = new List<VideoRecord>();
+            if (fileSizeBytes <= 0 || limit <= 0) return result;
+            lock (_lock)
+            {
+                using var cmd = _connection.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT Id, OrderId, Mode, VideoCodec, VideoEncoder, FilePath, FileSizeBytes,
+                           StartTime, EndTime, DurationSeconds, StopReason,
+                           IsDeleted, DeletedAt, DeleteReason,
+                           TrackingNumber, SourceOrderId, BuyerMessage, SellerMemo, ProductInfo, OrderInfoPushTime, OrderInfoJson,
+                           SourceType, SourceDeviceId, SourceDeviceName, SourceSessionId, ContentSha256,
+                           StorageState, RemoteVideoRecordId, SourceDeviceKind,
+                           ArchivePath, ArchiveStatus, ArchiveRetryCount,
+                           NextRetryAt, LastArchiveAttemptAt, ArchiveCompletedAt,
+                           LastArchiveProbeAt,
+                           ArchiveError, LocalCopyDeletedAt, LocalDeleteReason,
+                           DeleteReasonCode
+                    FROM VideoRecords
+                    WHERE FileSizeBytes = @size AND IsDeleted = 0
+                    ORDER BY Id DESC
+                    LIMIT @limit;";
+                cmd.Parameters.AddWithValue("@size", fileSizeBytes);
+                cmd.Parameters.AddWithValue("@limit", limit);
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    result.Add(ReadVideoRecord(reader));
+            }
+            return result;
+        }
+
         public bool TryInsertImportedVideoRecord(
             string orderId,
             string mode,
