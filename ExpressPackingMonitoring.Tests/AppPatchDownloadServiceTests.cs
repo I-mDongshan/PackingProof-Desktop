@@ -113,6 +113,37 @@ public sealed class AppPatchDownloadServiceTests
         Assert.Equal("keep", File.ReadAllText(sentinel, Encoding.UTF8));
     }
 
+    /// <summary>
+    /// 过渡补丁有 75MB，用户很可能下到一半就断线：清单声明的体积大于服务器实际给出的字节。
+    /// 这种情况绝不能把半截文件发布成"待安装补丁"，也不能碰上一份已经发布的补丁。
+    /// </summary>
+    [Fact]
+    public async Task TruncatedDownload_DoesNotPublishPendingPatchAndKeepsExisting()
+    {
+        using var fixture = new AppPatchFixture();
+        Directory.CreateDirectory(fixture.PendingDirectory);
+        string sentinel = Path.Combine(fixture.PendingDirectory, "published-by-another-task.txt");
+        File.WriteAllText(sentinel, "keep", Encoding.UTF8);
+
+        byte[] halfDownloaded = "half-of-a-big-patch"u8.ToArray();
+        fixture.AddRelease(
+            "1.2.3",
+            "0.0.0",
+            halfDownloaded,
+            advertisedSize: halfDownloaded.Length + 4096);
+
+        AppPatchPreparationResult result = await fixture.PrepareAsync("1.2.3");
+
+        Assert.Equal(AppPatchPreparationStatus.Failed, result.Status);
+        Assert.Equal("keep", File.ReadAllText(sentinel, Encoding.UTF8));
+        Assert.Empty(Directory.GetFiles(fixture.PendingDirectory, "*.zip"));
+
+        // 半截文件不能留在更新缓存里等下次被误当成补丁。
+        string updatesDirectory = Path.GetDirectoryName(fixture.PendingDirectory)!;
+        Assert.Empty(Directory.GetFiles(updatesDirectory, "*.zip", SearchOption.AllDirectories));
+        Assert.Empty(Directory.GetFiles(updatesDirectory, "*.tmp", SearchOption.AllDirectories));
+    }
+
     [Fact]
     public async Task LaterFailedTaskPreservesEarlierValidPublishedPatch()
     {
@@ -308,7 +339,8 @@ public sealed class AppPatchDownloadServiceTests
             string version,
             string baseline,
             byte[] package,
-            string? advertisedHash = null)
+            string? advertisedHash = null,
+            long? advertisedSize = null)
         {
             _packages[version] = package;
             string manifestUrl = ManifestUrlFor(version);
@@ -318,7 +350,7 @@ public sealed class AppPatchDownloadServiceTests
                 baseline,
                 packageUrl,
                 advertisedHash ?? Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant(),
-                package.Length);
+                advertisedSize ?? package.Length);
             _handler.Add(manifestUrl, Encoding.UTF8.GetBytes(manifest), "application/json");
             _handler.Add(packageUrl, package, "application/zip");
         }
