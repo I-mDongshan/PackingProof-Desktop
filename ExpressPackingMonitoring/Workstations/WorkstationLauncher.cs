@@ -67,7 +67,8 @@ public static class WorkstationConfigStore
 
                 if (!string.Equals(path, AppPaths.ConfigPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    RuntimeLog.Warn("Config", "Primary config invalid, loaded backup config");
+                    // 主配置缺失和解析失败都会走到这里：以前统一说成 invalid，现场根本分不清是哪种。
+                    RuntimeLog.Warn("Config", "主配置缺失或无法解析，已用备份配置恢复（主配置写入是原子的，若为解析失败请看上面的留档文件）");
                     try { Save(config); }
                     catch (Exception ex) { RuntimeLog.Warn("Config", $"Backup config restore failed: {ex.Message}"); }
                 }
@@ -75,7 +76,13 @@ public static class WorkstationConfigStore
             }
             catch (Exception ex)
             {
-                RuntimeLog.Warn("Config", $"Config load failed file={Path.GetFileName(path)}, error={ex.Message}");
+                // 解析不了的主配置不能就这么被回退覆盖：先留档，反馈包里才有证据可查。
+                // 以前回退时立刻 Save，坏文件当场被覆盖，两个现场包都只剩一句 "Primary config invalid"。
+                string archived = TryPreserveUnreadableConfig(path);
+                RuntimeLog.Warn(
+                    "Config",
+                    $"Config load failed file={Path.GetFileName(path)}, error={ex.Message}"
+                    + (archived.Length > 0 ? $"，原文件已留档 {Path.GetFileName(archived)}" : ""));
             }
         }
 
@@ -270,6 +277,28 @@ public static class WorkstationConfigStore
         config.AppRootDirectory = normalized;
         return true;
     }
+
+        /// <summary>
+        /// 把解析不了的配置留一份档（同一目录下 config.json.invalid-时间戳），返回留档路径。
+        /// 只复制不移动：原文件随后会被备份配置的恢复写入覆盖，留档是唯一的现场证据。
+        /// </summary>
+        internal static string TryPreserveUnreadableConfig(string path)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                    return "";
+
+                string archived = $"{path}.invalid-{DateTime.Now:yyyyMMdd-HHmmss}";
+                File.Copy(path, archived, overwrite: true);
+                return archived;
+            }
+            catch (Exception ex)
+            {
+                RuntimeLog.Warn("Config", $"留档损坏配置失败：{ex.Message}");
+                return "";
+            }
+        }
 
     internal static string NormalizeAppRootDirectory(string baseDirectory)
     {
