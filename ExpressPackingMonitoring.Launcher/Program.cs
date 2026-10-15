@@ -13,6 +13,10 @@ internal static class Program
 {
     private const string AppRelativePath = "app\\ExpressPackingMonitoring.exe";
     private const string AppDllRelativePath = "app\\ExpressPackingMonitoring.dll";
+    // 补丁条目的安装位置：缺省是 app\（旧清单不写 root 也照常），runtime\ 用于过渡补丁投递共享运行时。
+    private const string PatchRootApp = "app";
+    private const string PatchRootRuntime = "runtime";
+    private const string PatchRuntimeSourcePrefix = ".runtime";
     private const string UpdateUrlKey = "UPDATE_CHECK_URL";
     private const string UpdateFallbackUrlKey = "UPDATE_CHECK_FALLBACK_URL";
     private const string DefaultCheckUrlMetadataKey = "LauncherDefaultUpdateCheckUrl";
@@ -643,7 +647,6 @@ internal static class Program
         ValidatePatchManifest(manifest, descriptor);
         ValidatePatchFiles(patchFilesDir, manifest.Files);
 
-        string appDir = Path.Combine(baseDir, "app");
         string backupRoot = GetUpdateBackupDir();
         SafeDeleteDirectory(backupRoot);
         Directory.CreateDirectory(backupRoot);
@@ -653,8 +656,8 @@ internal static class Program
         {
             foreach (PatchFile file in manifest.Files)
             {
-                string targetPath = GetSafeChildPath(appDir, file.RelativePath);
-                string backupPath = GetSafeChildPath(backupRoot, file.RelativePath);
+                string targetPath = GetSafeChildPath(ResolvePatchTargetRoot(baseDir, file.Root), file.RelativePath);
+                string backupPath = GetSafeChildPath(Path.Combine(backupRoot, file.Root), file.RelativePath);
                 bool existed = File.Exists(targetPath);
                 FileAttributes originalAttributes = FileAttributes.Normal;
                 if (existed)
@@ -670,8 +673,8 @@ internal static class Program
 
             foreach (PatchFile file in manifest.Files)
             {
-                string sourcePath = GetSafeChildPath(patchFilesDir, file.RelativePath);
-                string targetPath = GetSafeChildPath(appDir, file.RelativePath);
+                string sourcePath = ResolvePatchSourcePath(patchFilesDir, file);
+                string targetPath = GetSafeChildPath(ResolvePatchTargetRoot(baseDir, file.Root), file.RelativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
                 RemoveReadOnlyAttribute(targetPath);
                 File.Copy(sourcePath, targetPath, overwrite: true);
@@ -702,12 +705,15 @@ internal static class Program
             string relativePath = NormalizeRelativePath(ReadString(fileElement, "path"));
             string sha256 = ReadString(fileElement, "sha256");
             long size = ReadInt64(fileElement, "size");
+            string targetRoot = NormalizePatchRoot(
+                fileElement.TryGetProperty("root", out JsonElement rootElement) ? rootElement.GetString() : null);
             if (string.IsNullOrWhiteSpace(relativePath) || string.IsNullOrWhiteSpace(sha256))
                 throw new InvalidOperationException("Patch manifest 文件条目不完整");
-            if (!seenPaths.Add(relativePath))
+            // 同一相对路径可以分别出现在 app\ 与 runtime\，去重要按“位置 + 路径”来。
+            if (!seenPaths.Add(targetRoot + "|" + relativePath))
                 throw new InvalidOperationException($"Patch manifest 文件重复：{relativePath}");
 
-            files.Add(new PatchFile(relativePath, sha256, size));
+            files.Add(new PatchFile(relativePath, sha256, size, targetRoot));
         }
 
         return new PatchManifest(
@@ -756,7 +762,7 @@ internal static class Program
 
         foreach (PatchFile file in files)
         {
-            string sourcePath = GetSafeChildPath(patchFilesDir, file.RelativePath);
+            string sourcePath = ResolvePatchSourcePath(patchFilesDir, file);
             if (!File.Exists(sourcePath))
                 throw new InvalidOperationException($"Patch 文件不存在：{file.RelativePath}");
 
@@ -1325,6 +1331,24 @@ internal static class Program
         return string.Join('\\', parts);
     }
 
+    /// <summary>补丁条目的安装位置；缺省（旧清单）是 app\。</summary>
+    private static string NormalizePatchRoot(string? value)
+    {
+        string normalized = (value ?? "").Trim().ToLowerInvariant();
+        if (normalized.Length == 0) return PatchRootApp;
+        if (normalized == PatchRootApp || normalized == PatchRootRuntime) return normalized;
+        throw new InvalidOperationException($"Patch manifest 不支持的安装位置：{value}");
+    }
+
+    private static string ResolvePatchTargetRoot(string baseDir, string root) =>
+        root == PatchRootRuntime ? Path.Combine(baseDir, PatchRootRuntime) : Path.Combine(baseDir, PatchRootApp);
+
+    /// <summary>runtime 位置的条目放在 files\.runtime\ 下，避免与 app\ 里的同名文件冲突。</summary>
+    private static string ResolvePatchSourcePath(string patchFilesDir, PatchFile file) =>
+        file.Root == PatchRootRuntime
+            ? GetSafeChildPath(Path.Combine(patchFilesDir, PatchRuntimeSourcePrefix), file.RelativePath)
+            : GetSafeChildPath(patchFilesDir, file.RelativePath);
+
     private static string GetSafeChildPath(string root, string relativePath)
     {
         string normalized = NormalizeRelativePath(relativePath);
@@ -1760,7 +1784,7 @@ internal static class Program
         string LatestVersion,
         List<PatchFile> Files);
 
-    private sealed record PatchFile(string RelativePath, string Sha256, long Size);
+    private sealed record PatchFile(string RelativePath, string Sha256, long Size, string Root);
 
     private sealed record FileBackup(
         string TargetPath,
