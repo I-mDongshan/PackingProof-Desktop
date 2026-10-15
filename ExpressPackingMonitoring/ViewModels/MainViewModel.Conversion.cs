@@ -111,19 +111,24 @@ namespace ExpressPackingMonitoring.ViewModels
                     DeleteEmbeddedAudioMarker(mkvPath);
                     // 更新数据库中的文件路径
                     _db?.UpdateVideoFilePath(mkvPath, mp4Path);
+                    _db?.ClearMkvConversionFailure(mkvPath);
                     Debug.WriteLine($"[MkvToMp4] 转换成功: {mp4Path}");
                 }
                 else
                 {
                     // 仅在没有可接受 MP4 时保留 MKV；音轨诊断异常不会进入这里。
+                    // 失败只落库 + 写日志，不给用户弹提示：这是后台派生物环节失败，
+                    // 原片还在、桌面端照常能播，弹"转换失败"只会让用户以为软件出问题。
+                    // 空闲清理会在不影响录像的时候自动重试。
                     try { if (File.Exists(mp4Path)) File.Delete(mp4Path); } catch { }
-                    Debug.WriteLine($"[MkvToMp4] 转换失败，保留原始 MKV");
+                    string failureReason = convertExited
+                        ? $"MP4 转换或校验失败（exit={process.ExitCode}）"
+                        : "MP4 转换超时";
+                    _db?.RecordMkvConversionFailure(mkvPath, DateTime.Now, failureReason);
+                    RuntimeLog.Warn(
+                        "MkvToMp4",
+                        $"{failureReason}，保留原始 MKV 并等待后台重试 file={Path.GetFileName(mkvPath)}");
                     WriteAudioDiagnostic($"MP4 容器转换失败，已保留 MKV/WAV: mkv={mkvPath}, wav={audioPath}", audioLogPath);
-                    _ = Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (!_isDisposed)
-                            ShowToast("录像未生成兼容 MP4，原始录像已保留", ToastSeverity.Warning);
-                    });
                 }
             }
             catch (Exception ex)
