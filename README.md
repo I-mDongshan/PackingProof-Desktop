@@ -448,6 +448,7 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 从源码运行或进行二次开发，需要准备：
 
 * .NET 10 SDK
+* Visual Studio 2026（18.x，勾选 .NET 桌面开发工作负载）或其它支持 .NET 10 的 IDE；VS 2022 的 MSBuild 17.14 解析不了 .NET 10 SDK，打开解决方案会直接报“未能正确加载解决方案中的一个或多个项目”，命令行 `dotnet` 构建不受影响
 * FFmpeg
 * Windows 10/11 x64
 * macOS 12+（Apple Silicon，用于构建 macOS 保存主机）

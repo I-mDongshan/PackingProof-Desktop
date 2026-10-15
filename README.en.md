@@ -398,6 +398,7 @@ Recordings and databases are retained if the database is missing, corrupt, busy,
 Development requires:
 
 * .NET 10 SDK
+* Visual Studio 2026 (18.x, with the .NET desktop development workload) or another .NET 10 capable IDE; VS 2022 (MSBuild 17.14) cannot resolve the .NET 10 SDK and fails to load the solution, while command-line `dotnet` builds keep working
 * FFmpeg, with an Essentials build recommended
 * Windows 10/11 x64
 * macOS 12+ on Apple Silicon, for building the macOS save host

@@ -449,6 +449,7 @@ Windows のファイアウォールの確認が表示された場合は、ソフ
 ソースから実行したり二次開発を行うには、次のものが必要です。
 
 * .NET 10 SDK
+* Visual Studio 2026（18.x、.NET デスクトップ開発ワークロードを選択）または .NET 10 対応の IDE；VS 2022 の MSBuild 17.14 は .NET 10 SDK を解決できず、ソリューションを開くと読み込みエラーになります（コマンドラインの `dotnet` ビルドは影響なし）
 * FFmpeg
 * Windows 10/11 x64
 * macOS 12+（Apple Silicon、macOS 保存ホストのビルド用）
