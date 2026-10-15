@@ -839,8 +839,11 @@ public sealed class ArchiveServiceTests : IDisposable
                 AutomaticWorkerEnabled = false,
                 BatchSize = 20,
                 UnreachableFailureThreshold = 1,
-                UnreachableCooldown = TimeSpan.FromMilliseconds(150),
-                MaxUnreachableCooldown = TimeSpan.FromMilliseconds(400)
+                // 冷却期要明显长于"两次调用之间的间隔"：以前用 150 毫秒，
+                // 打包这种机器满载的场景下两次相邻调用之间就可能超过它，
+                // 第二次调用于是重新尝试归档，断言（仍然只尝试 1 次）偶发失败并打断发布门禁。
+                UnreachableCooldown = TimeSpan.FromSeconds(3),
+                MaxUnreachableCooldown = TimeSpan.FromSeconds(6)
             });
 
         int first = await service.ProcessPendingOnceAsync(
@@ -855,7 +858,7 @@ public sealed class ArchiveServiceTests : IDisposable
         Assert.Equal(1, provider.PublishAttempts);
 
         provider.Unreachable = false;
-        await Task.Delay(350, TestContext.Current.CancellationToken);
+        await Task.Delay(3200, TestContext.Current.CancellationToken);
         int third = await service.ProcessPendingOnceAsync(
             TestContext.Current.CancellationToken);
 
