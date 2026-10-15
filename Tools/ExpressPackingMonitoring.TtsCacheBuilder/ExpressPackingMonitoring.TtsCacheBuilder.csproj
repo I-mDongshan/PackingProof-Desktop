@@ -4,7 +4,8 @@
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <!-- 主程序现在是框架依赖发布（运行时在包根的 runtime\），SDK 10 起不允许自包含工程引用非自包含工程。 -->
+    <SelfContained>false</SelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>

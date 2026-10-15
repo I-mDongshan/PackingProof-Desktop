@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$LauncherPath = "",
-    [string]$SelfContainedAppDir = "",
+    [string]$LayoutSourceAppDir = "",
     [switch]$KeepWorkspace
 )
 
@@ -69,11 +69,11 @@ if ([string]::IsNullOrWhiteSpace($LauncherPath)) {
 if (-not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
     throw "找不到根启动器：$LauncherPath"
 }
-if ([string]::IsNullOrWhiteSpace($SelfContainedAppDir)) {
-    $SelfContainedAppDir = Join-Path $repoRoot "ExpressPackingMonitoring\bin\Debug\net8.0-windows\win-x64"
+if ([string]::IsNullOrWhiteSpace($LayoutSourceAppDir)) {
+    $LayoutSourceAppDir = Join-Path $repoRoot "ExpressPackingMonitoring\bin\Debug\net8.0-windows\win-x64"
 }
-if (-not (Test-Path -LiteralPath (Join-Path $SelfContainedAppDir "coreclr.dll") -PathType Leaf)) {
-    throw "自包含发布目录不完整（缺 coreclr.dll）：$SelfContainedAppDir（先 dotnet build ExpressPackingMonitoring.sln -c Debug）"
+if (-not (Test-Path -LiteralPath $LayoutSourceAppDir -PathType Container)) {
+    throw "应用发布目录不存在：$LayoutSourceAppDir（先 dotnet build ExpressPackingMonitoring.sln -c Debug）"
 }
 
 try {
@@ -117,13 +117,16 @@ return 0;
         throw "探针程序发布失败：$([Environment]::NewLine)$($stubPublishOutput -join [Environment]::NewLine)"
     }
 
-    # 2. 先准备好共享运行时布局（场景二才放进安装目录），用它确定“老装机的平铺运行时文件”名单，
-    #    避免把应用自身的 dll 也当成运行时副本铺进去。
+    # 2. 先准备好共享运行时布局（场景二才放进安装目录）。布局按应用发布目录的 runtimeconfig 定版本，
+    #    框架依赖或自包含产物都能读。
     $layoutSourcePath = Join-Path $workspace "layout-source"
-    New-SharedRuntimeLayout -AppDir $SelfContainedAppDir -DestinationPath $layoutSourcePath | Out-Null
+    New-SharedRuntimeLayout -AppDir $LayoutSourceAppDir -DestinationPath $layoutSourcePath | Out-Null
     Test-SharedRuntimeLayout -LayoutPath $layoutSourcePath | Out-Null
     $layoutManifest = Get-Content -Raw -Encoding UTF8 (Join-Path $layoutSourcePath "layout.json") | ConvertFrom-Json
-    $mapNames = @($layoutManifest.appFileMap.PSObject.Properties.Name)
+    $legacySources = @{}
+    foreach ($property in $layoutManifest.appFileMap.PSObject.Properties) {
+        $legacySources[$property.Name] = Join-Path $layoutSourcePath (@($property.Value)[0] -replace '/', '\')
+    }
 
     # 3. 组装安装目录：框架依赖的 app\ + 根启动器（老装机的平铺运行时副本到场景二再加）
     $installRoot = Join-Path $workspace "install"
@@ -131,7 +134,6 @@ return 0;
     [System.IO.Directory]::CreateDirectory($appDirectory) | Out-Null
     Copy-Item -Path (Join-Path $stubPublishDirectory "*") -Destination $appDirectory -Recurse -Force
     Copy-Item -LiteralPath $LauncherPath -Destination (Join-Path $installRoot "ExpressPackingMonitoring.exe") -Force
-    $legacyRuntimeNames = @($mapNames | Where-Object { Test-Path -LiteralPath (Join-Path $SelfContainedAppDir $_) -PathType Leaf })
     Write-Host "临时安装目录：$installRoot"
 
     # 4. 场景一：没有 runtime\ 时启动器必须什么都不动（灰度期不能干扰现有安装）
@@ -156,8 +158,10 @@ return 0;
 
     # 5. 场景二：补上老装机的平铺运行时副本与共享布局（增量升级上来的形态），验证迁移与 DOTNET_ROOT
     $copied = 0
-    foreach ($name in $legacyRuntimeNames) {
-        Copy-Item -LiteralPath (Join-Path $SelfContainedAppDir $name) -Destination (Join-Path $appDirectory $name) -Force
+    # 老装机的平铺运行时副本：按布局清单里的映射把同名文件铺回 app\，
+    # 名字集合与真实自包含时代的 app\ 一致，用来验证迁移。
+    foreach ($name in $legacySources.Keys) {
+        Copy-Item -LiteralPath $legacySources[$name] -Destination (Join-Path $appDirectory $name) -Force
         $copied++
     }
     $layoutPath = Join-Path $installRoot "runtime"
