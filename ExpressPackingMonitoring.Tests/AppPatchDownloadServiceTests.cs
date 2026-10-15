@@ -239,6 +239,33 @@ public sealed class AppPatchDownloadServiceTests
         Assert.Equal(Timeout.InfiniteTimeSpan, AppPatchDownloadService.PackageDownloadTimeout);
     }
 
+    /// <summary>
+    /// 清单是从 gitee.com 下来的，增量包就只走 Gitee：国内机器上 Gitee 附件比 GitHub 快十几倍，
+    /// 清单能下来已经说明 Gitee 那条链路是通的，再去碰慢源就是白等（GitHub 那条一次都不该被请求）。
+    /// </summary>
+    [Fact]
+    public async Task ManifestFromGitee_DownloadsThePatchFromGiteeWithoutTouchingGithub()
+    {
+        using var fixture = new AppPatchFixture();
+        byte[] package = BuildPackage(64_000);
+        (string githubUrl, string giteeUrl) =
+            fixture.AddDualSourceReleaseWithGiteeManifest("1.2.3", package);
+
+        AppPatchPreparationResult result = await fixture.PrepareWithManifestUrlAsync(
+            "1.2.3",
+            fixture.GiteeManifestUrl("1.2.3"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Status == AppPatchPreparationStatus.Ready, result.Message);
+        Assert.Contains(giteeUrl, fixture.Requests);
+        Assert.DoesNotContain(githubUrl, fixture.Requests);
+        Assert.Equal(
+            package,
+            File.ReadAllBytes(Path.Combine(
+                fixture.PendingDirectory,
+                "PackingProof_AppPatch_v1.2.3.zip")));
+    }
+
     [Fact]
     public async Task LaterFailedTaskPreservesEarlierValidPublishedPatch()
     {
@@ -545,8 +572,51 @@ public sealed class AppPatchDownloadServiceTests
             string manifestUrl = ManifestBase + $"update-{version}.json";
             string githubUrl = ManifestBase + $"github-patch-{version}.zip";
             string giteeUrl = ManifestBase + $"gitee-patch-{version}.zip";
+            _handler.Add(
+                manifestUrl,
+                Encoding.UTF8.GetBytes(BuildDualSourceManifest(version, package, githubUrl, giteeUrl)),
+                "application/json");
+            if (githubServedBytes is int servedBytes)
+            {
+                _handler.Add(githubUrl, package, "application/zip");
+                _handler.TruncateAfter(githubUrl, servedBytes);
+            }
+            else
+            {
+                _handler.AddStatus(githubUrl, HttpStatusCode.ServiceUnavailable);
+            }
+            _handler.Add(giteeUrl, package, "application/zip");
+            return (githubUrl, giteeUrl);
+        }
+
+        /// <summary>
+        /// 清单挂在 gitee.com 的附件地址上（现场形态：检查命中 Gitee，或 GitHub 那条清单地址打不开、
+        /// 走了镜像附件）。两个平台都放同一个包，用来验证"包跟着清单来源走"：慢的那条不该被碰。
+        /// </summary>
+        internal (string GithubUrl, string GiteeUrl) AddDualSourceReleaseWithGiteeManifest(
+            string version,
+            byte[] package)
+        {
+            string manifestUrl = GiteeManifestUrl(version);
+            string githubUrl = ManifestBase + $"github-patch-{version}.zip";
+            string giteeUrl = ManifestBase + $"gitee-patch-{version}.zip";
+            _handler.Add(
+                manifestUrl,
+                Encoding.UTF8.GetBytes(BuildDualSourceManifest(version, package, githubUrl, giteeUrl)),
+                "application/json");
+            _handler.Add(githubUrl, package, "application/zip");
+            _handler.Add(giteeUrl, package, "application/zip");
+            return (githubUrl, giteeUrl);
+        }
+
+        private static string BuildDualSourceManifest(
+            string version,
+            byte[] package,
+            string githubUrl,
+            string giteeUrl)
+        {
             string hash = Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant();
-            string manifest =
+            return
                 $$"""
                 {
                   "latest_version": "{{version}}",
@@ -563,18 +633,6 @@ public sealed class AppPatchDownloadServiceTests
                   }
                 }
                 """;
-            _handler.Add(manifestUrl, Encoding.UTF8.GetBytes(manifest), "application/json");
-            if (githubServedBytes is int servedBytes)
-            {
-                _handler.Add(githubUrl, package, "application/zip");
-                _handler.TruncateAfter(githubUrl, servedBytes);
-            }
-            else
-            {
-                _handler.AddStatus(githubUrl, HttpStatusCode.ServiceUnavailable);
-            }
-            _handler.Add(giteeUrl, package, "application/zip");
-            return (githubUrl, giteeUrl);
         }
 
         internal Task<AppPatchPreparationResult> PrepareAsync(string version)

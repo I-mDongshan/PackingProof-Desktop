@@ -461,7 +461,7 @@ internal static class Program
                 return BuildManualUpdateNotification(descriptor, ManualUpdateReason.PatchDescriptorUnavailable);
             }
 
-            await DownloadPendingPatchAsync(resolved.Manifest.RootElement, descriptor);
+            await DownloadPendingPatchAsync(resolved.Manifest.RootElement, descriptor, resolved.ManifestUrl);
             SaveSuccessfulUpdateCheck(currentVersion, latestVersion, resolved.SourceUrl, allowPrerelease);
             WriteLog($"Patch 已下载到 pending，下次启动安装：{descriptor.LatestVersion}");
             return null;
@@ -526,7 +526,8 @@ internal static class Program
                 {
                     await DownloadPendingPatchAsync(
                         step.Manifest.RootElement,
-                        stepDescriptor);
+                        stepDescriptor,
+                        step.ManifestUrl);
                     WriteLog($"基线版本 {stepDescriptor.LatestVersion} 的补丁已下载到 pending，下次启动先安装它");
                     return true;
                 }
@@ -559,7 +560,8 @@ internal static class Program
     /// </summary>
     private static async Task DownloadPendingPatchAsync(
         JsonElement manifestRoot,
-        UpdateDescriptor descriptor)
+        UpdateDescriptor descriptor,
+        string manifestSourceUrl)
     {
         string updatesDir = GetUpdatesCacheDir();
         string pendingDir = GetPendingUpdateDir();
@@ -584,7 +586,8 @@ internal static class Program
                 descriptor.PatchPackage.Url,
                 derivedGithubUrl,
                 failureState.ConsecutiveGithubDownloadFailures,
-                GithubDownloadFailureFallbackThreshold);
+                GithubDownloadFailureFallbackThreshold,
+                manifestSourceUrl);
 
             string downloadedPath;
             try

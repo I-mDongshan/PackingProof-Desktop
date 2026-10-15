@@ -106,7 +106,7 @@ internal sealed class AppPatchDownloadService
         try
         {
             progress?.Report(new AppPatchDownloadProgress("正在读取增量更新信息"));
-            string manifestJson = await DownloadTextWithMirrorAsync(
+            (string manifestJson, string manifestSourceUrl) = await DownloadTextWithMirrorAsync(
                 update.UpdateManifestUrl,
                 progress,
                 cancellationToken);
@@ -146,6 +146,7 @@ internal sealed class AppPatchDownloadService
             return await DownloadAndPublishAsync(
                 descriptor,
                 manifestJson,
+                manifestSourceUrl,
                 progress,
                 cancellationToken);
         }
@@ -224,6 +225,7 @@ internal sealed class AppPatchDownloadService
                     AppPatchPreparationResult prepared = await DownloadAndPublishAsync(
                         stepDescriptor,
                         step.Manifest.RootElement.GetRawText(),
+                        step.ManifestUrl,
                         progress,
                         cancellationToken,
                         requireExactPendingVersion: true);
@@ -262,6 +264,7 @@ internal sealed class AppPatchDownloadService
     private async Task<AppPatchPreparationResult> DownloadAndPublishAsync(
         AppPatchDescriptor descriptor,
         string manifestJson,
+        string manifestSourceUrl,
         IProgress<AppPatchDownloadProgress>? progress,
         CancellationToken cancellationToken,
         bool requireExactPendingVersion = false)
@@ -287,7 +290,7 @@ internal sealed class AppPatchDownloadService
         {
             Directory.CreateDirectory(partialDirectory);
             PruneLegacyDownloadDirectories(_updatesDirectory);
-            PackageDownloadRoute route = GetDownloadRoute(descriptor.PatchPackage);
+            PackageDownloadRoute route = GetDownloadRoute(descriptor.PatchPackage, manifestSourceUrl);
             progress?.Report(new AppPatchDownloadProgress(
                 route.PreferGitee ? "正在从 Gitee 下载增量更新包" : "正在从 GitHub 下载增量更新包"));
             var downloadProgress = new PatchDownloadProgressAdapter(progress);
@@ -517,14 +520,20 @@ internal sealed class AppPatchDownloadService
     /// 现场（0.0.74 的店里机器）：检查命中 GitHub 后清单地址就在 github.com，而那条链路在店里打不开；
     /// 旧实现只给增量包做了回退，清单这一步挂了就整条中断，增量包的回退永远轮不到。
     /// </summary>
-    private async Task<string> DownloadTextWithMirrorAsync(
+    /// <summary>
+    /// 下载更新清单，主地址失败时改用另一个平台的镜像附件（GitHub ↔ Gitee 的同一 tag、同一文件名）。
+    /// 现场（0.0.74 的店里机器）：检查命中 GitHub 后清单地址就在 github.com，而那条链路在店里打不开；
+    /// 旧实现只给增量包做了回退，清单这一步挂了就整条中断，增量包的回退永远轮不到。
+    /// 返回值里带上这份清单**实际**是从哪个地址下来的，后面的增量包就跟着它选源。
+    /// </summary>
+    private async Task<(string Json, string SourceUrl)> DownloadTextWithMirrorAsync(
         string url,
         IProgress<AppPatchDownloadProgress>? progress,
         CancellationToken cancellationToken)
     {
         try
         {
-            return await DownloadTextAsync(url, cancellationToken);
+            return (await DownloadTextAsync(url, cancellationToken), url);
         }
         catch (Exception ex) when (IsTransientDownloadFailure(ex, cancellationToken))
         {
@@ -537,7 +546,7 @@ internal sealed class AppPatchDownloadService
 
             RuntimeLog.Warn("Update", $"Manifest download failed, trying mirror: {ex.Message}");
             progress?.Report(new AppPatchDownloadProgress("更新清单下载失败，正在改用镜像源"));
-            return await DownloadTextAsync(mirrorUrl, cancellationToken);
+            return (await DownloadTextAsync(mirrorUrl, cancellationToken), mirrorUrl);
         }
     }
 
@@ -623,6 +632,15 @@ internal sealed class AppPatchDownloadService
     }
 
     internal static PackageDownloadRoute GetDownloadRoute(AppPatchPackageInfo package)
+        => GetDownloadRoute(package, manifestSourceUrl: null);
+
+    /// <param name="manifestSourceUrl">
+    /// 这份清单实际是从哪个地址下来的。清单走 gitee.com 时增量包也优先走 Gitee：
+    /// 国内机器上 Gitee 附件比 GitHub 快得多，而"清单能下来"本身就说明那条链路是通的。
+    /// </param>
+    internal static PackageDownloadRoute GetDownloadRoute(
+        AppPatchPackageInfo package,
+        string? manifestSourceUrl)
     {
         return PackageDownloadRoutePolicy.Resolve(
             package.GithubUrl,
@@ -630,7 +648,8 @@ internal sealed class AppPatchDownloadService
             package.Url,
             derivedGithubUrl: "",
             consecutiveGithubFailures: 0,
-            fallbackThreshold: 3);
+            fallbackThreshold: 3,
+            manifestSourceUrl);
     }
 
     private static void ValidatePackage(string path, AppPatchPackageInfo package)

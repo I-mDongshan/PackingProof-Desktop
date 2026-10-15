@@ -12,7 +12,8 @@ namespace ExpressPackingMonitoring.Tests;
 /// 现场事故（0.0.74 的店里机器）：Gitee 检查源挑不到新版本 → 落到 GitHub → 更新清单地址在
 /// github.com、附件域名在店里打不开 → 旧实现只给增量包做了回退，读清单这一步挂了就整条中断，
 /// 用户看到"没有连接、没有回应"。这条守卫把整条路一次跑通：Gitee 检查源不可用、GitHub 的
-/// 清单与增量包附件域名也不可用，仍然必须挑到最新版并把增量包准备好。
+/// 清单与增量包附件域名也不可用，仍然必须挑到最新版并把增量包准备好；清单最后是从 gitee.com
+/// 的镜像附件下来的，增量包也就直接跟着走 Gitee，不再先去撞一遍打不开的慢源。
 /// </summary>
 public sealed class UpdatePipelineGuardTests
 {
@@ -61,11 +62,12 @@ public sealed class UpdatePipelineGuardTests
             Assert.True(File.Exists(pendingPackage));
             Assert.Equal(TwoPlatformHandler.PackageBytes, File.ReadAllBytes(pendingPackage));
 
-            // 清单与增量包都必须真的走了镜像：github.com 那两次是失败的尝试，gitee.com 才是成功的那次
+            // 清单走了镜像：github.com 那次是失败的尝试，gitee.com 才是成功的那次。
+            // 增量包不再先撞一遍打不开的慢源，而是跟着清单来源直接走 Gitee。
             Assert.Contains(TwoPlatformHandler.GithubManifestUrl, handler.Requests);
             Assert.Contains(TwoPlatformHandler.GiteeManifestUrl, handler.Requests);
-            Assert.Contains(TwoPlatformHandler.GithubPatchUrl, handler.Requests);
             Assert.Contains(TwoPlatformHandler.GiteePatchUrl, handler.Requests);
+            Assert.DoesNotContain(TwoPlatformHandler.GithubPatchUrl, handler.Requests);
             Assert.True(
                 handler.Requests.IndexOf(TwoPlatformHandler.GiteeManifestUrl)
                 < handler.Requests.IndexOf(TwoPlatformHandler.GiteePatchUrl));

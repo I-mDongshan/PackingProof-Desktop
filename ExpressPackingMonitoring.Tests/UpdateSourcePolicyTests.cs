@@ -204,6 +204,68 @@ public sealed class UpdateSourcePolicyTests
         Assert.True(fallback.PreferGitee);
     }
 
+    /// <summary>
+    /// 清单是从哪个平台的附件下来的，增量包就从那个平台下：现场实测同一台机器
+    /// Gitee 附件 2.1MB/s、GitHub 附件 148KB/s，国内用户按 GitHub 优先只会在慢链路上白等。
+    /// 清单能送到手里，本身就说明那条链路对这台机器是通的。
+    /// </summary>
+    [Fact]
+    public void PackageDownloads_FollowTheHostThatDeliveredTheManifest()
+    {
+        PackageDownloadRoute fromGitee = PackageDownloadRoutePolicy.Resolve(
+            "https://github.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            "https://gitee.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            null,
+            null,
+            consecutiveGithubFailures: 0,
+            fallbackThreshold: 3,
+            manifestSourceUrl:
+                "https://gitee.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/update_v1.2.3.json");
+        PackageDownloadRoute fromGithub = PackageDownloadRoutePolicy.Resolve(
+            "https://github.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            "https://gitee.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            null,
+            null,
+            consecutiveGithubFailures: 0,
+            fallbackThreshold: 3,
+            manifestSourceUrl:
+                "https://github.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/update_v1.2.3.json");
+        PackageDownloadRoute unknownHost = PackageDownloadRoutePolicy.Resolve(
+            "https://github.example/patch.zip",
+            "https://gitee.example/patch.zip",
+            null,
+            null,
+            consecutiveGithubFailures: 0,
+            fallbackThreshold: 3,
+            manifestSourceUrl: "https://mirror.example/update_v1.2.3.json");
+
+        Assert.Equal(fromGitee.GiteeUrl, fromGitee.SelectedUrl);
+        Assert.True(fromGitee.PreferGitee);
+        // 清单走 github.com 时保持原来的 GitHub 优先，不去猜。
+        Assert.Equal(fromGithub.GithubUrl, fromGithub.SelectedUrl);
+        Assert.False(fromGithub.PreferGitee);
+        Assert.Equal(unknownHost.GithubUrl, unknownHost.SelectedUrl);
+        Assert.False(unknownHost.PreferGitee);
+    }
+
+    /// <summary>失败记录比"哪条链路通"更可信：GitHub 连续失败到阈值时，即使清单来自 GitHub，也切 Gitee。</summary>
+    [Fact]
+    public void PackageDownloads_KeepHonouringFailureHistoryAboveManifestHost()
+    {
+        PackageDownloadRoute route = PackageDownloadRoutePolicy.Resolve(
+            "https://github.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            "https://gitee.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/patch.zip",
+            null,
+            null,
+            consecutiveGithubFailures: 3,
+            fallbackThreshold: 3,
+            manifestSourceUrl:
+                "https://github.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/update_v1.2.3.json");
+
+        Assert.Equal(route.GiteeUrl, route.SelectedUrl);
+        Assert.True(route.PreferGitee);
+    }
+
     private sealed class MetadataHandler : HttpMessageHandler
     {
         internal List<string> Requests { get; } = [];

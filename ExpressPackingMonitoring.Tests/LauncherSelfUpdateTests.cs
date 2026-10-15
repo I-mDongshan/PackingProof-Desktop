@@ -46,6 +46,11 @@ public sealed class LauncherSelfUpdateTests
         LauncherDownloadRoute initial = LauncherUpdateService.GetDownloadRoute(package, 0);
         LauncherDownloadRoute secondFailure = LauncherUpdateService.GetDownloadRoute(package, 2);
         LauncherDownloadRoute threshold = LauncherUpdateService.GetDownloadRoute(package, 3);
+        // 清单是从 gitee.com 的附件下来的：这台机器 Gitee 那条链路是通的，启动器包也直接走 Gitee。
+        LauncherDownloadRoute fromGiteeManifest = LauncherUpdateService.GetDownloadRoute(
+            package,
+            0,
+            "https://gitee.com/PackingProof/PackingProof-Desktop/releases/download/v1.2.3/update_v1.2.3.json");
 
         Assert.Equal(package.GithubUrl, initial.SelectedUrl);
         Assert.False(initial.PreferFallback);
@@ -53,6 +58,8 @@ public sealed class LauncherSelfUpdateTests
         Assert.False(secondFailure.PreferFallback);
         Assert.Equal(package.GiteeUrl, threshold.SelectedUrl);
         Assert.True(threshold.PreferFallback);
+        Assert.Equal(package.GiteeUrl, fromGiteeManifest.SelectedUrl);
+        Assert.True(fromGiteeManifest.PreferFallback);
     }
 
     [Fact]
