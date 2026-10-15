@@ -3085,6 +3085,7 @@ namespace ExpressPackingMonitoring.Services
                 List<OrderInfo> items = request?.Orders;
                 if (items == null || items.Count == 0)
                 {
+                    OrderPushDiagnostics.LogRejected(ctx, "空数据", "", WriteLog);
                     SendJson(ctx, 400, new { error = "空数据" });
                     return;
                 }
@@ -3195,15 +3196,8 @@ namespace ExpressPackingMonitoring.Services
                 (int count, int testCount) = execution.Result;
                 if (execution.IsDuplicate) count = 0;
 
-                if (EnableOrderInfoLog)
-                {
-                    Log($"HandlePushOrderInfo: 接收 {count} 条订单信息, 测试={testCount}, 缓存总数={_orderInfoCache.Count}");
-                    foreach (var item in items)
-                    {
-                        if (!string.IsNullOrWhiteSpace(item.TrackingNumber))
-                            Log($"  订单: 运单号={item.TrackingNumber}, 订单号={item.OrderId}, 测试={item.IsTest}, 打印后退款={item.IsPrintedRefund}, 退款状态=[{item.RefundStatus}], 买家留言=[{item.BuyerMessage}], 卖家备注=[{item.SellerMemo}], 商品=[{item.ProductInfo}]");
-                    }
-                }
+                OrderPushDiagnostics.LogReceived(
+                    ctx, items, count, testCount, execution.IsDuplicate, _orderInfoCache.Count, EnableOrderInfoLog, WriteLog);
 
                 SendJson(ctx, 200, new
                 {
@@ -3219,7 +3213,7 @@ namespace ExpressPackingMonitoring.Services
             }
             catch (Exception ex)
             {
-                Log($"HandlePushOrderInfo 异常: {ex.Message}");
+                OrderPushDiagnostics.LogRejected(ctx, "异常", ex.Message, WriteLog);
                 SendJson(ctx, 400, new { error = ex.Message });
             }
         }
