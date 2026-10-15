@@ -102,7 +102,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     StartCamera();
                     _lastRestartAttempt = DateTime.Now;
 
-                    if (IsCameraStreamReady())
+                    if (await WaitForCameraReadyAsync())
                     {
                         _consecutiveRestartFailures = 0;
                         RuntimeLog.Info("Camera", "Camera reconnected after stopping interrupted recording");
@@ -136,7 +136,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     StartCamera();
                     _lastRestartAttempt = DateTime.Now;
 
-                    if (IsCameraStreamReady())
+                    if (await WaitForCameraReadyAsync())
                     {
                         _consecutiveRestartFailures = 0;
                         RuntimeLog.Info("Camera", "Camera reconnected while idle");
@@ -1809,6 +1809,35 @@ namespace ExpressPackingMonitoring.ViewModels
             if (networkSource != null)
                 return networkSource.ActualWidth > 0 && networkSource.ActualHeight > 0;
             return IsVideoSourceRunning();
+        }
+
+        /// <summary>
+        /// 刚 StartCamera 之后判断采集源有没有真的接上。
+        /// 网络摄像头的分辨率要等 ffmpeg 解析出流信息才有值（实测约 2-3 秒），启动后立刻查必然是 false，
+        /// 以前这会把每次启动都记成"重连失败"（现场日志 failures 每次重新从 1 涨到 5），
+        /// 涨到上限还会播报"已停止自动重连"。所以网络源给它一段等待时间；真正的断流由帧看门狗判定。
+        /// </summary>
+        private async Task<bool> WaitForCameraReadyAsync()
+        {
+            if (!IsNetworkCameraConfigured())
+                return IsCameraStreamReady();
+
+            DateTime deadline = DateTime.Now + NetworkCameraReadyProbeTimeout;
+            while (true)
+            {
+                if (IsCameraStreamReady())
+                    return true;
+                if (DateTime.Now >= deadline || !IsVideoSourceRunning())
+                    return IsCameraStreamReady();
+                try
+                {
+                    await Task.Delay(200).ConfigureAwait(true);
+                }
+                catch (TaskCanceledException)
+                {
+                    return IsCameraStreamReady();
+                }
+            }
         }
 
         private bool IsNetworkCameraGracePeriod()

@@ -72,11 +72,21 @@ namespace ExpressPackingMonitoring.ViewModels
             Interlocked.Exchange(ref _archiveFrameUtcTicks, DateTime.UtcNow.Ticks);
             UpdateCameraSourceFpsEstimate();
 
-            // 与 DirectShow 路径同一口径：先旋转，再进预录缓冲与主帧槽。
-            Mat frame = CameraFrameOrientation.Apply(e.Frame, Config.CameraRotationDegrees);
-            if (ShouldCaptureEventRecordingBufferFrame())
-                UpdatePreRecordBuffer(frame);
-            HandleCameraFrame(frame);
+            try
+            {
+                // 与 DirectShow 路径同一口径：先旋转，再进预录缓冲与主帧槽。
+                Mat frame = CameraFrameOrientation.Apply(e.Frame, Config.CameraRotationDegrees);
+                if (ShouldCaptureEventRecordingBufferFrame())
+                    UpdatePreRecordBuffer(frame);
+                HandleCameraFrame(frame);
+            }
+            catch (Exception ex)
+            {
+                // 这条回调跑在 ffmpeg 读帧线程上：抛出去会一路冒到读循环，
+                // 让整个网络流静默停掉（现场只看到"信号丢失 20s"反复重连）。
+                // 另外两条采集路径一直有兜底，这里补齐。
+                RuntimeLog.Error("Camera", "Network camera frame processing failed", ex);
+            }
         }
     }
 }

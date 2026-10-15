@@ -244,6 +244,12 @@ namespace ExpressPackingMonitoring.ViewModels
         // RTSP 网络源首帧可能因等待关键帧延迟数秒，宽限期内不判信号丢失。
         private const double NetworkCameraConnectGraceSeconds = 20.0;
 
+        /// <summary>
+        /// 网络摄像头启动后等流信息的最长时间：真实实测约 2-3 秒，
+        /// 给到 8 秒是为了容忍相机响应慢，同时不让"重连失败"的判定跑在流信息之前。
+        /// </summary>
+        private static readonly TimeSpan NetworkCameraReadyProbeTimeout = TimeSpan.FromSeconds(8);
+
         private readonly SemaphoreSlim _recorderLock = new SemaphoreSlim(1, 1);
         private readonly PrintedRefundLookupCoordinator _printedRefundLookupCoordinator;
         // 一段录像里同一张面单只报一次退款警告：扫码开始、打包过程中、同码停录后拿到的都归到一起。
