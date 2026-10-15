@@ -1,16 +1,20 @@
 $script:LauncherBaselineSchemaVersion = 1
 $script:LauncherUpdateProtocolVersion = 1
+# 启动器指纹的输入：启动器自己的源码与清单，加上它链接的整个 UpdateCore 项目的 .cs。
+# 这里原来是手写清单，漏了 SharedRuntimeLayout.cs（启动器启动前就用它处理共享运行时）以及后来
+# 新增的 ResumableFileDownload.cs；只改这些文件时前置检查会以为基线还新鲜，发布包里就可能夹着
+# 与源码不一致的启动器。改成按项目取全部 .cs，新增文件自动纳入。
 $script:LauncherFingerprintFiles = @(
     "ExpressPackingMonitoring.Launcher\Program.cs",
     "ExpressPackingMonitoring.Launcher\ExpressPackingMonitoring.Launcher.csproj",
     "ExpressPackingMonitoring.UpdateCore\ExpressPackingMonitoring.UpdateCore.csproj",
-    "ExpressPackingMonitoring.UpdateCore\UpdateEndpointPolicy.cs",
-    "ExpressPackingMonitoring.UpdateCore\UpdateMetadataClient.cs",
-    "ExpressPackingMonitoring.UpdateCore\PackageDownloadRoutePolicy.cs",
     "ExpressPackingMonitoring\app.ico",
     "Tools\Install-LauncherPatch.cmd",
     "Tools\Apply-LauncherPatch.ps1"
-)
+) + @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "..\ExpressPackingMonitoring.UpdateCore") `
+        -Filter "*.cs" -File |
+    Sort-Object -Property Name |
+    ForEach-Object { "ExpressPackingMonitoring.UpdateCore\$($_.Name)" })
 $script:LauncherPackageEntries = @(
     "ExpressPackingMonitoring.exe",
     "双击更新启动器.cmd",

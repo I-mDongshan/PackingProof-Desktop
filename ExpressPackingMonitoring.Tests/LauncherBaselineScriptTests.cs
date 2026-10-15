@@ -48,11 +48,19 @@ public sealed class LauncherBaselineScriptTests
             $otherUrl = Get-LauncherLogicalFingerprint -RepositoryRoot '{{EscapePowerShell(repositoryRoot)}}' -Runtime 'win-x64' -UpdateCheckUrl 'https://example.test/two'
             $otherRuntime = Get-LauncherLogicalFingerprint -RepositoryRoot '{{EscapePowerShell(repositoryRoot)}}' -Runtime 'win-arm64' -UpdateCheckUrl 'https://example.test/one'
             $files = @(Get-LauncherFingerprintFiles)
+            # UpdateCore 里每个 .cs 都算启动器逻辑输入：漏一个就可能拿旧基线发新启动器。
+            $updateCoreFiles = @(Get-ChildItem -LiteralPath (Join-Path '{{EscapePowerShell(repositoryRoot)}}' 'ExpressPackingMonitoring.UpdateCore') -Filter '*.cs' -File |
+                ForEach-Object { "ExpressPackingMonitoring.UpdateCore\$($_.Name)" })
+            $missing = @($updateCoreFiles | Where-Object { $files -notcontains $_ })
             if ($one -ne $same -or $one -eq $otherUrl -or $one -eq $otherRuntime -or
                 $files -notcontains 'Tools\Install-LauncherPatch.cmd' -or
                 $files -notcontains 'Tools\Apply-LauncherPatch.ps1' -or
                 $files -notcontains 'ExpressPackingMonitoring.UpdateCore\UpdateMetadataClient.cs' -or
-                $files -notcontains 'ExpressPackingMonitoring.UpdateCore\PackageDownloadRoutePolicy.cs') { exit 1 }
+                $files -notcontains 'ExpressPackingMonitoring.UpdateCore\PackageDownloadRoutePolicy.cs' -or
+                $missing.Count -gt 0) {
+                Write-Error "启动器指纹缺少：$($missing -join ', ')"
+                exit 1
+            }
             """;
 
         ProcessResult result = RunPowerShell(command, repositoryRoot);
@@ -121,13 +129,15 @@ public sealed class LauncherBaselineScriptTests
                 @"ExpressPackingMonitoring.Launcher\Program.cs",
                 @"ExpressPackingMonitoring.Launcher\ExpressPackingMonitoring.Launcher.csproj",
                 @"ExpressPackingMonitoring.UpdateCore\ExpressPackingMonitoring.UpdateCore.csproj",
-                @"ExpressPackingMonitoring.UpdateCore\UpdateEndpointPolicy.cs",
-                @"ExpressPackingMonitoring.UpdateCore\UpdateMetadataClient.cs",
-                @"ExpressPackingMonitoring.UpdateCore\PackageDownloadRoutePolicy.cs",
                 @"ExpressPackingMonitoring\app.ico",
                 @"Tools\Install-LauncherPatch.cmd",
                 @"Tools\Apply-LauncherPatch.ps1"
-            })
+            }.Concat(Directory
+                .EnumerateFiles(
+                    Path.Combine(repositoryRoot, "ExpressPackingMonitoring.UpdateCore"),
+                    "*.cs")
+                .Select(Path.GetFileName)
+                .Select(name => @"ExpressPackingMonitoring.UpdateCore\" + name)))
             {
                 string path = Path.Combine(root, relativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
