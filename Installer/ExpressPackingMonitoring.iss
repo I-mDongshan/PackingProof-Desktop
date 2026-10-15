@@ -422,7 +422,10 @@ begin
   Parameters := Parameters + ' --uninstall-log ' + Quote(CleanupLogPath);
   Result :=
     FileExists(AppExe) and
-    Exec(AppExe, Parameters, ExpandConstant('{app}\app'), SW_HIDE,
+    // 用"以原用户身份执行"：卸载器会提权，直接 Exec 会以提权账号运行，
+    // 那样 %LOCALAPPDATA% 指向提权账号的配置目录，勾了"删除设置"也删不到当前用户的设置。
+    // 未提权时 Inno 会退回当前用户，行为不变。
+    ExecAsOriginalUser(AppExe, Parameters, ExpandConstant('{app}\app'), SW_HIDE,
       ewWaitUntilTerminated, ResultCode) and
     (ResultCode = 0);
 end;

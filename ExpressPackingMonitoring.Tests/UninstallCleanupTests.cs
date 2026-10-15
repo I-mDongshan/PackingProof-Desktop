@@ -222,6 +222,61 @@ public sealed class UninstallCleanupTests
     }
 
     [Fact]
+    public void DeleteLocalSettingsAndCache_RemovesBackupConfigAndCredentials()
+    {
+        using var fixture = new CleanupFixture();
+        string config = fixture.CreateFile("", "config.json", "{}");
+        // 只删 config.json 时，下次安装会从 .bak 把旧设置恢复回来——用户看到的就是"勾了却没删"。
+        string configBackup = fixture.CreateFile("", "config.json.bak", "{}");
+        string userscripts = fixture.CreateFile("userscripts", "kd.js", "script");
+        string pairing = fixture.CreateFile("mobile-backup-state", "backup-device-credentials.json", "{}");
+        string botSecrets = fixture.CreateFile("QQBot", "secrets.dat", "secrets");
+        string backup = fixture.CreateFile("backups", "videos-backup.db", "backup");
+        string recording = fixture.CreateFile("mobile-backup-recordings", "keep.mp4", "video");
+
+        UninstallCleanupResult result = UninstallCleanupService.DeleteLocalSettingsAndCache(
+            fixture.Root,
+            fixture.LogPath);
+
+        Assert.True(result.Success, result.Message);
+        Assert.False(File.Exists(config));
+        Assert.False(File.Exists(configBackup));
+        Assert.False(File.Exists(userscripts));
+        Assert.False(File.Exists(pairing));
+        Assert.False(File.Exists(botSecrets));
+        // 录像、录像库与恢复备份仍然保留：它们归另一个勾选项管。
+        Assert.True(File.Exists(fixture.DatabasePath));
+        Assert.True(File.Exists(backup));
+        Assert.True(File.Exists(recording));
+    }
+
+    [Fact]
+    public void DeleteLocalSettingsAndCache_ReportsWhenNothingWasActuallyRemoved()
+    {
+        using var fixture = new CleanupFixture();
+        string config = fixture.CreateFile("", "config.json", "{}");
+
+        // 占住文件：删除会失败，这时必须报出来（以前只发删除请求、不看结果，用户以为删掉了）。
+        using (new FileStream(config, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            UninstallCleanupResult blocked = UninstallCleanupService.DeleteLocalSettingsAndCache(
+                fixture.Root,
+                fixture.LogPath);
+
+            Assert.False(blocked.Success);
+            Assert.Contains("config.json", blocked.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.True(File.Exists(config));
+        }
+
+        UninstallCleanupResult retried = UninstallCleanupService.DeleteLocalSettingsAndCache(
+            fixture.Root,
+            fixture.LogPath);
+
+        Assert.True(retried.Success, retried.Message);
+        Assert.False(File.Exists(config));
+    }
+
+    [Fact]
     public void DeleteLocalSettingsAndCache_UsesAllowListAndPreservesRecordingData()
     {
         using var fixture = new CleanupFixture();

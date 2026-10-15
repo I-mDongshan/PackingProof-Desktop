@@ -295,26 +295,38 @@ internal static class UninstallCleanupService
         string normalizedUserDataDirectory = NormalizeDirectoryPath(userDataDirectory);
         var failures = new List<string>();
 
-        TryDeleteFileInsideRoot(
-            normalizedUserDataDirectory,
+        // 设置与缓存类目标。录像、录像库（videos.db）、恢复备份、手机备份录像都不在这里，
+        // 它们归"删除录像和录像记录"那个勾选项管。
+        string[] settingFiles =
+        [
+            // 备份配置也是设置：只删 config.json 的话，下次安装 Load() 会从 .bak 把旧设置恢复回来，
+            // 用户看到的就是"勾了删除设置却没删掉"。
             Path.Combine(normalizedUserDataDirectory, "config.json"),
-            failures,
-            logPath);
-        TryDeleteDirectoryInsideRoot(
-            normalizedUserDataDirectory,
+            Path.Combine(normalizedUserDataDirectory, "config.json.bak")
+        ];
+        string[] settingDirectories =
+        [
             Path.Combine(normalizedUserDataDirectory, "log"),
-            failures,
-            logPath);
-        TryDeleteDirectoryInsideRoot(
-            normalizedUserDataDirectory,
             Path.Combine(normalizedUserDataDirectory, "cache"),
-            failures,
-            logPath);
-        TryDeleteDirectoryInsideRoot(
-            normalizedUserDataDirectory,
             Path.Combine(normalizedUserDataDirectory, "command-barcodes"),
-            failures,
-            logPath);
+            // 油猴脚本配置、手机备份配对凭据、QQ 机器人凭据都是设置，不是录像。
+            Path.Combine(normalizedUserDataDirectory, "userscripts"),
+            Path.Combine(normalizedUserDataDirectory, "mobile-backup-state"),
+            Path.Combine(normalizedUserDataDirectory, "QQBot")
+        ];
+
+        foreach (string path in settingFiles)
+            TryDeleteFileInsideRoot(normalizedUserDataDirectory, path, failures, logPath);
+        foreach (string path in settingDirectories)
+            TryDeleteDirectoryInsideRoot(normalizedUserDataDirectory, path, failures, logPath);
+
+        // 删完复核：以前只发删除请求、不看结果，勾了"删除设置"也可能什么都没删掉，
+        // 用户侧表现为"勾了但没删"。这里把残留显式报出来，卸载器会提示并指向日志。
+        foreach (string path in settingFiles.Concat(settingDirectories))
+        {
+            if (File.Exists(path) || Directory.Exists(path))
+                failures.Add($"删除后仍存在：{path}");
+        }
 
         bool success = failures.Count == 0;
         string message = success
