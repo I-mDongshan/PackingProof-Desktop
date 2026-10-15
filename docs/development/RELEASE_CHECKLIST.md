@@ -35,7 +35,7 @@
 - Setup 从同一干净发布目录生成，不包含配置、数据库、日志、缓存或录像；固定 AppId、当前用户 x64 模式和固定安装目录均正确
 - 完整包包含预生成的默认 Edge TTS 语音缓存，首次使用固定文案不需要现场生成
 - 增量包不包含 TTS 缓存，并验证补丁清单、`update_vX.Y.Z.json`、启动器基线清单、标签和程序版本号一致
-- 发布前把 `ExpressPackingMonitoring/ExpressPackingMonitoring.csproj` 的 `<Version>` 更新为本次版本，并与 `vX.Y.Z` 标签、`update_vX.Y.Z.json` 保持一致
+- 发布前把仓根 `Directory.Build.props` 的 `<Version>` 更新为本次版本（这是唯一的版本来源，工程文件不得再各自写 `<Version>`），并与 `vX.Y.Z` 标签、`update_vX.Y.Z.json` 保持一致
 - 发布流程顺序：改动经 PR 合并到主干并通过本地 CI → 在合并后的提交上创建本地 `vX.Y.Z` 标签 → 以标签身份完成一次 Release 构建、全量测试、自动验收和发布包校验 → 推送标签到 GitHub 与 Gitee → 创建并同步 Release（含 Mac 侧上传的 macOS DMG）→ 生成并上传 Gitee 专属的 no-runtime 安装向导；禁止普通 `main` push 触发发布包工作流
 - 发布笔记按 `RELEASE_NOTES_TEMPLATE.md` 填写：更新内容三类齐全、《问题修复》只写上一正式版就存在的缺陷（本版自己引入又修掉的不写）、下载与更新说明与实际上传资产一致（含 Gitee 的 no-runtime 安装向导与 macOS DMG，且不写已不存在的免安装整包）、且与 `update_vX.Y.Z.json` 的标题和说明同步
 - 预览版本必须在 GitHub 与 Gitee 上将 Release 标记为 prerelease，发布笔记正文首行注明“预览版”；正式版本不得标记 prerelease
