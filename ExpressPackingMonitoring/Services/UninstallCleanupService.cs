@@ -312,7 +312,12 @@ internal static class UninstallCleanupService
             // 油猴脚本配置、手机备份配对凭据、QQ 机器人凭据都是设置，不是录像。
             Path.Combine(normalizedUserDataDirectory, "userscripts"),
             Path.Combine(normalizedUserDataDirectory, "mobile-backup-state"),
-            Path.Combine(normalizedUserDataDirectory, "QQBot")
+            Path.Combine(normalizedUserDataDirectory, "QQBot"),
+            // 已安装扩展与临时产物不算"设置"，但卸载时也该跟着这个勾选项一起清掉：
+            // 扩展重装后可重新下载，录制缓冲与测试订单图片是纯粹的临时文件。
+            Path.Combine(normalizedUserDataDirectory, "extensions"),
+            Path.Combine(normalizedUserDataDirectory, "RecordingBuffer"),
+            Path.Combine(normalizedUserDataDirectory, "TestOrderPicture")
         ];
 
         foreach (string path in settingFiles)
