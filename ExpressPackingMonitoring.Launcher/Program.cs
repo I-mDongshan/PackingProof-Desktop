@@ -556,19 +556,16 @@ internal static class Program
     {
         string updatesDir = GetUpdatesCacheDir();
         string pendingDir = GetPendingUpdateDir();
-        string downloadDir = Path.Combine(updatesDir, "download");
+        string partialDir = Path.Combine(updatesDir, "partial");
         string patchZipName = GetPatchZipFileName(descriptor);
-        string downloadPath = Path.Combine(downloadDir, patchZipName);
         string pendingPatchPath = Path.Combine(pendingDir, patchZipName);
         string pendingManifestPath = Path.Combine(pendingDir, "update_manifest.json");
-        string tmpPath = downloadPath + ".tmp";
+        string partialPath = Path.Combine(partialDir, patchZipName + ResumableFileDownload.PartialFileSuffix);
 
         try
         {
             Directory.CreateDirectory(updatesDir);
-            SafeDeleteDirectory(downloadDir);
-            Directory.CreateDirectory(downloadDir);
-            DeleteFileIfExists(tmpPath);
+            Directory.CreateDirectory(partialDir);
 
             string derivedGithubUrl = BuildDefaultGithubPatchDownloadUrl(descriptor, patchZipName);
             PatchDownloadFailureState failureState = LoadPatchDownloadFailureState(descriptor.LatestVersion);
@@ -580,10 +577,12 @@ internal static class Program
                 failureState.ConsecutiveGithubDownloadFailures,
                 GithubDownloadFailureFallbackThreshold);
 
+            string downloadedPath;
             try
             {
                 WriteLog($"准备下载 Patch：version={descriptor.LatestVersion}, source={(route.PreferGitee ? "gitee" : "github")}, failures={failureState.ConsecutiveGithubDownloadFailures}, url={route.SelectedUrl}");
-                await DownloadFileAsync(route.SelectedUrl, tmpPath, cancellationToken);
+                downloadedPath = await DownloadVerifiedPatchAsync(
+                    route.SelectedUrl, partialPath, descriptor, cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested
                                        && !route.PreferGitee
@@ -593,29 +592,46 @@ internal static class Program
                 SavePatchDownloadFailureState(failureState);
                 WriteLog($"GitHub Patch 下载失败 {failureState.ConsecutiveGithubDownloadFailures}/{GithubDownloadFailureFallbackThreshold}：{ex.Message}");
 
-                TryDeleteFile(tmpPath);
                 WriteLog($"GitHub Patch 下载失败，本次立即改用 Gitee：{route.GiteeUrl}");
-                await DownloadFileAsync(route.GiteeUrl, tmpPath, cancellationToken);
+                downloadedPath = await DownloadVerifiedPatchAsync(
+                    route.GiteeUrl, partialPath, descriptor, cancellationToken);
             }
 
-            ValidateDownloadedFileSize(tmpPath, descriptor.PatchPackage.Size);
-            string actualHash = ComputeSha256(tmpPath);
-            if (!string.Equals(actualHash, descriptor.PatchPackage.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Patch 包 SHA256 校验失败");
-            WriteLog($"Patch 下载校验通过：version={descriptor.LatestVersion}, size={(new FileInfo(tmpPath)).Length}");
+            WriteLog($"Patch 下载校验通过：version={descriptor.LatestVersion}, size={(new FileInfo(downloadedPath)).Length}");
 
             SafeDeleteDirectory(pendingDir);
             Directory.CreateDirectory(pendingDir);
-            File.Move(tmpPath, pendingPatchPath);
+            File.Move(downloadedPath, pendingPatchPath);
             File.WriteAllText(pendingManifestPath, manifestRoot.GetRawText(), Encoding.UTF8);
             ResetPatchDownloadFailureState();
             WriteLog("Patch 已保存到 pending，等待下次启动安装");
         }
         finally
         {
-            TryDeleteFile(tmpPath);
-            TryDeleteDirectory(downloadDir);
+            // 断点文件故意留着：下次启动的这次检查会带上 Range 从断点继续。
+            // download\ 是老版本写半截包的地方，这里顺手清掉，别让它白占几十兆。
+            TryDeleteDirectory(Path.Combine(updatesDir, "download"));
         }
+    }
+
+    /// <summary>
+    /// 下载增量包并校验；断点文件在校验不过时由 ResumableFileDownload 自己清掉重来，
+    /// 断线或停滞时保留，下次启动接着下。
+    /// </summary>
+    private static Task<string> DownloadVerifiedPatchAsync(
+        string url,
+        string partialPath,
+        UpdateDescriptor descriptor,
+        CancellationToken cancellationToken)
+    {
+        return ResumableFileDownload.DownloadVerifiedAsync(
+            HttpClient,
+            url,
+            partialPath,
+            descriptor.PatchPackage.Size,
+            descriptor.PatchPackage.Sha256,
+            progress: null,
+            cancellationToken);
     }
 
     private static void InstallPatchZip(string baseDir, string patchZipPath, UpdateDescriptor descriptor)
@@ -1020,21 +1036,6 @@ internal static class Program
         {
             return false;
         }
-    }
-
-    private static async Task DownloadFileAsync(string url, string path, CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.UserAgent.ParseAdd("ExpressPackingMonitoring");
-        using HttpResponseMessage response = await HttpClient.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using Stream target = File.Create(path);
-        await source.CopyToAsync(target, cancellationToken);
     }
 
     private static UpdateDescriptor ReadUpdateDescriptor(JsonElement manifestRoot, string fallbackVersion)

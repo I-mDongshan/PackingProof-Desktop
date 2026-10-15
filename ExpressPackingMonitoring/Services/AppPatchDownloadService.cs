@@ -248,24 +248,30 @@ internal sealed class AppPatchDownloadService
             return existing;
 
         string operationId = Guid.NewGuid().ToString("N");
-        string downloadDirectory = Path.Combine(_updatesDirectory, $"download-{operationId}");
+        string partialDirectory = Path.Combine(_updatesDirectory, "partial");
         string stagingDirectory = Path.Combine(_updatesDirectory, $"staging-{operationId}");
         string backupDirectory = Path.Combine(_updatesDirectory, $"replaced-{operationId}");
         string patchFileName = $"PackingProof_AppPatch_v{descriptor.LatestVersion}.zip";
-        string downloadPath = Path.Combine(downloadDirectory, patchFileName);
+        // 半截文件按版本留在这里，断线后重试（以及根启动器的那次后台下载）都从断点接着下。
+        string partialPath = Path.Combine(
+            partialDirectory,
+            patchFileName + ResumableFileDownload.PartialFileSuffix);
         try
         {
-            Directory.CreateDirectory(downloadDirectory);
+            Directory.CreateDirectory(partialDirectory);
+            PruneLegacyDownloadDirectories(_updatesDirectory);
             PackageDownloadRoute route = GetDownloadRoute(descriptor.PatchPackage);
             progress?.Report(new AppPatchDownloadProgress(
                 route.PreferGitee ? "正在从 Gitee 下载增量更新包" : "正在从 GitHub 下载增量更新包"));
+            var downloadProgress = new PatchDownloadProgressAdapter(progress);
+            string downloadPath;
             try
             {
-                await DownloadFileAsync(
+                downloadPath = await DownloadVerifiedPatchAsync(
                     route.SelectedUrl,
-                    downloadPath,
-                    descriptor.PatchPackage.Size,
-                    progress,
+                    partialPath,
+                    descriptor.PatchPackage,
+                    downloadProgress,
                     cancellationToken);
             }
             catch (Exception ex) when (IsTransientDownloadFailure(ex, cancellationToken))
@@ -279,17 +285,15 @@ internal sealed class AppPatchDownloadService
                 RuntimeLog.Warn(
                     "Update",
                     $"{failedSource} AppPatch download failed, trying {alternateSource}: {ex.Message}");
-                TryDeleteOwnedFile(downloadPath);
                 progress?.Report(new AppPatchDownloadProgress(
                     $"{failedSource} 下载失败，正在改用 {alternateSource}"));
-                await DownloadFileAsync(
+                downloadPath = await DownloadVerifiedPatchAsync(
                     alternateUrl,
-                    downloadPath,
-                    descriptor.PatchPackage.Size,
-                    progress,
+                    partialPath,
+                    descriptor.PatchPackage,
+                    downloadProgress,
                     cancellationToken);
             }
-            ValidatePackage(downloadPath, descriptor.PatchPackage);
 
             progress?.Report(new AppPatchDownloadProgress("校验通过，正在准备下次启动安装"));
             Directory.CreateDirectory(stagingDirectory);
@@ -316,8 +320,69 @@ internal sealed class AppPatchDownloadService
         }
         finally
         {
-            TryDeleteOwnedDirectory(downloadDirectory);
             TryDeleteOwnedDirectory(stagingDirectory);
+        }
+    }
+
+    /// <summary>
+    /// 下载增量包并校验；半截文件失效时由 ResumableFileDownload 自己清掉重下一遍。
+    /// 这里是下载失败（断线、停滞）唯一会保留半截文件的地方——下次重试接着下。
+    /// </summary>
+    private Task<string> DownloadVerifiedPatchAsync(
+        string url,
+        string partialPath,
+        AppPatchPackageInfo package,
+        IProgress<ResumableDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        return ResumableFileDownload.DownloadVerifiedAsync(
+            _client,
+            url,
+            partialPath,
+            package.Size,
+            package.Sha256,
+            progress,
+            cancellationToken);
+    }
+
+    /// <summary>把断点续传的进度翻译成界面上那一行下载进度。</summary>
+    private sealed class PatchDownloadProgressAdapter(IProgress<AppPatchDownloadProgress>? target)
+        : IProgress<ResumableDownloadProgress>
+    {
+        public void Report(ResumableDownloadProgress value)
+        {
+            target?.Report(new AppPatchDownloadProgress(
+                "正在下载增量更新包",
+                value.BytesReceived,
+                value.TotalBytes));
+        }
+    }
+
+    /// <summary>
+    /// 清掉"每次下载建一个目录"那个旧实现留下的 download-&lt;操作号&gt; 目录（进程被强杀时
+    /// 会连着几十兆的半截包一起留下）。只清一小时没动过的，正在写的目录不碰。
+    /// </summary>
+    private static void PruneLegacyDownloadDirectories(string updatesDirectory)
+    {
+        try
+        {
+            foreach (string directory in Directory.EnumerateDirectories(updatesDirectory, "download-*"))
+            {
+                try
+                {
+                    if (DateTime.UtcNow - Directory.GetLastWriteTimeUtc(directory) < TimeSpan.FromHours(1))
+                        continue;
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // 删不掉就留着，下一次更新再试。
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 清理旧目录失败不影响本次下载。
         }
     }
 
@@ -467,40 +532,6 @@ internal sealed class AppPatchDownloadService
     private static bool IsTransientDownloadFailure(Exception ex, CancellationToken cancellationToken)
         => !cancellationToken.IsCancellationRequested
             && ex is HttpRequestException or IOException or TaskCanceledException;
-
-    private async Task DownloadFileAsync(
-        string url,
-        string path,
-        long expectedSize,
-        IProgress<AppPatchDownloadProgress>? progress,
-        CancellationToken cancellationToken)
-    {
-        using HttpResponseMessage response = await _client.GetAsync(
-            url,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-        long total = response.Content.Headers.ContentLength ?? expectedSize;
-        await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using FileStream target = new(
-            path,
-            FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.None,
-            81920,
-            useAsync: true);
-        byte[] buffer = new byte[81920];
-        long received = 0;
-        while (true)
-        {
-            int read = await source.ReadAsync(buffer, cancellationToken);
-            if (read == 0)
-                break;
-            await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            received += read;
-            progress?.Report(new AppPatchDownloadProgress("正在下载增量更新包", received, total));
-        }
-    }
 
     internal static AppPatchDescriptor ParseDescriptor(string json, string fallbackVersion)
     {
@@ -692,18 +723,6 @@ internal sealed class AppPatchDownloadService
         }
     }
 
-    private static void TryDeleteOwnedFile(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-        catch (Exception ex)
-        {
-            RuntimeLog.Warn("Update", $"Unable to clean owned update file {Path.GetFileName(path)}: {ex.Message}");
-        }
-    }
 }
 
 internal sealed record AppPatchDescriptor(

@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Services;
+using ExpressPackingMonitoring.UpdateCore;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -138,10 +139,93 @@ public sealed class AppPatchDownloadServiceTests
         Assert.Equal("keep", File.ReadAllText(sentinel, Encoding.UTF8));
         Assert.Empty(Directory.GetFiles(fixture.PendingDirectory, "*.zip"));
 
-        // 半截文件不能留在更新缓存里等下次被误当成补丁。
+        // 半截文件不能留在更新缓存里等下次被误当成补丁；这一份是干净下完却对不上清单的，
+        // 留成断点只会让下一次接着拼出同样的错，所以必须清掉。
         string updatesDirectory = Path.GetDirectoryName(fixture.PendingDirectory)!;
         Assert.Empty(Directory.GetFiles(updatesDirectory, "*.zip", SearchOption.AllDirectories));
         Assert.Empty(Directory.GetFiles(updatesDirectory, "*.tmp", SearchOption.AllDirectories));
+        Assert.Empty(Directory.GetFiles(updatesDirectory, "*.partial", SearchOption.AllDirectories));
+    }
+
+    /// <summary>
+    /// 下到一半断线：已经落盘的字节要留在断点文件里，下次（网络恢复后）带 Range 从断点继续，
+    /// 而不是从 0 再下一遍。75MB 的过渡包全靠这一条才不会每次重试都白下。
+    /// </summary>
+    [Fact]
+    public async Task TruncatedDownload_KeepsPartialSoTheNextAttemptResumesFromIt()
+    {
+        using var fixture = new AppPatchFixture();
+        byte[] package = BuildPackage(200_000);
+        fixture.AddRelease("1.2.3", "0.0.0", package);
+        fixture.EnableRangeSupport();
+        string packageUrl = fixture.PackageUrlFor("1.2.3");
+        fixture.TruncatePackageDownload(packageUrl, servedBytes: 50_000);
+
+        AppPatchPreparationResult first = await fixture.PrepareAsync("1.2.3");
+
+        Assert.Equal(AppPatchPreparationStatus.Failed, first.Status);
+        string partialPath = fixture.PartialPathFor("1.2.3");
+        Assert.Equal(50_000, new FileInfo(partialPath).Length);
+        Assert.False(Directory.Exists(fixture.PendingDirectory));
+
+        fixture.ClearPackageTruncation(packageUrl);
+        AppPatchPreparationResult second = await fixture.PrepareAsync("1.2.3");
+
+        Assert.True(second.Status == AppPatchPreparationStatus.Ready, second.Message);
+        Assert.Equal(
+            package,
+            File.ReadAllBytes(Path.Combine(
+                fixture.PendingDirectory,
+                "PackingProof_AppPatch_v1.2.3.zip")));
+        Assert.Equal("bytes=50000-", fixture.RangeHeaders[^1]);
+        Assert.False(File.Exists(partialPath));
+    }
+
+    /// <summary>
+    /// 换源之后仍然接着下：GitHub 下到一半连接被掐断，改用 Gitee 时必须带 Range 从断点继续。
+    /// 两个平台放的是同一个附件，拼出来的整包仍要通过体积 + SHA256 双校验才算数。
+    /// </summary>
+    [Fact]
+    public async Task MirrorFallbackAfterMidStreamFailure_ResumesFromThePartialDownloadedFromTheOtherPlatform()
+    {
+        using var fixture = new AppPatchFixture();
+        byte[] package = BuildPackage(200_000);
+        (string githubUrl, string giteeUrl) =
+            fixture.AddDualSourceRelease("1.2.3", package, githubServedBytes: 60_000);
+        fixture.EnableRangeSupport();
+
+        AppPatchPreparationResult result = await fixture.PrepareAsync("1.2.3");
+
+        Assert.True(result.Status == AppPatchPreparationStatus.Ready, result.Message);
+        Assert.Equal(
+            package,
+            File.ReadAllBytes(Path.Combine(
+                fixture.PendingDirectory,
+                "PackingProof_AppPatch_v1.2.3.zip")));
+        int giteeIndex = fixture.Requests.IndexOf(giteeUrl);
+        Assert.True(giteeIndex > fixture.Requests.IndexOf(githubUrl));
+        Assert.Equal("bytes=60000-", fixture.RangeHeaders[giteeIndex]);
+        Assert.False(File.Exists(fixture.PartialPathFor("1.2.3")));
+    }
+
+    /// <summary>
+    /// 改用断点续传之前，旧实现每次下载都建一个 download-&lt;操作号&gt; 目录，进程被强杀会连
+    /// 几十兆的半截包一起留下；下一次下载要顺手把它清掉。
+    /// </summary>
+    [Fact]
+    public async Task StaleLegacyDownloadDirectory_IsCleanedUpOnTheNextDownload()
+    {
+        using var fixture = new AppPatchFixture();
+        fixture.AddRelease("1.2.3", "0.0.0", "legacy-cleanup-patch"u8.ToArray());
+        string stale = Path.Combine(fixture.UpdatesDirectory, "download-legacy");
+        Directory.CreateDirectory(stale);
+        File.WriteAllBytes(Path.Combine(stale, "PackingProof_AppPatch_v1.2.3.zip"), new byte[1024]);
+        Directory.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddHours(-2));
+
+        AppPatchPreparationResult result = await fixture.PrepareAsync("1.2.3");
+
+        Assert.True(result.Status == AppPatchPreparationStatus.Ready, result.Message);
+        Assert.False(Directory.Exists(stale));
     }
 
     [Fact]
@@ -312,7 +396,22 @@ public sealed class AppPatchDownloadServiceTests
         internal string UpdatesDirectory => Path.Combine(_root, "updates");
         internal string PendingDirectory => Path.Combine(UpdatesDirectory, "pending");
         internal List<string> Requests => _handler.Requests;
+        internal IReadOnlyList<string> RangeHeaders => _handler.RangeHeaders;
         internal string SourceUrl => ApiBase + "/releases/latest";
+
+        internal string PartialPathFor(string version) => Path.Combine(
+            UpdatesDirectory,
+            "partial",
+            $"PackingProof_AppPatch_v{version}.zip{ResumableFileDownload.PartialFileSuffix}");
+
+        /// <summary>附件服务器支持 Range（206 续传）——真实的 GitHub / Gitee 附件都支持。</summary>
+        internal void EnableRangeSupport() => _handler.SupportsRange = true;
+
+        /// <summary>让某个附件地址下到一半就把连接掐断。</summary>
+        internal void TruncatePackageDownload(string url, int servedBytes) =>
+            _handler.TruncateAfter(url, servedBytes);
+
+        internal void ClearPackageTruncation(string url) => _handler.ClearTruncation(url);
 
         internal string ManifestUrlFor(string version) => ManifestBase + $"update-{version}.json";
 
@@ -423,9 +522,14 @@ public sealed class AppPatchDownloadServiceTests
                 "application/json");
         }
 
+        /// <summary>
+        /// GitHub 与 Gitee 各一个附件地址。githubServedBytes 给定时，GitHub 那条会先吐这么多
+        /// 字节再把连接掐断（模拟下到一半断线），否则直接回 503。
+        /// </summary>
         internal (string GithubUrl, string GiteeUrl) AddDualSourceRelease(
             string version,
-            byte[] package)
+            byte[] package,
+            int? githubServedBytes = null)
         {
             string manifestUrl = ManifestBase + $"update-{version}.json";
             string githubUrl = ManifestBase + $"github-patch-{version}.zip";
@@ -449,7 +553,15 @@ public sealed class AppPatchDownloadServiceTests
                 }
                 """;
             _handler.Add(manifestUrl, Encoding.UTF8.GetBytes(manifest), "application/json");
-            _handler.AddStatus(githubUrl, HttpStatusCode.ServiceUnavailable);
+            if (githubServedBytes is int servedBytes)
+            {
+                _handler.Add(githubUrl, package, "application/zip");
+                _handler.TruncateAfter(githubUrl, servedBytes);
+            }
+            else
+            {
+                _handler.AddStatus(githubUrl, HttpStatusCode.ServiceUnavailable);
+            }
             _handler.Add(giteeUrl, package, "application/zip");
             return (githubUrl, giteeUrl);
         }
@@ -528,8 +640,13 @@ public sealed class AppPatchDownloadServiceTests
             new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, HttpStatusCode> _statuses =
             new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, int> _truncateAfter = new(StringComparer.OrdinalIgnoreCase);
 
         internal List<string> Requests { get; } = [];
+
+        internal List<string> RangeHeaders { get; } = [];
+
+        internal bool SupportsRange { get; set; }
 
         internal void Add(string url, byte[] content, string contentType)
         {
@@ -541,6 +658,17 @@ public sealed class AppPatchDownloadServiceTests
             _statuses[url] = status;
         }
 
+        /// <summary>这个地址只吐 servedBytes 个字节就把连接掐断（模拟现场那条不稳的网）。</summary>
+        internal void TruncateAfter(string url, int servedBytes)
+        {
+            _truncateAfter[url] = servedBytes;
+        }
+
+        internal void ClearTruncation(string url)
+        {
+            _truncateAfter.Remove(url);
+        }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -550,6 +678,7 @@ public sealed class AppPatchDownloadServiceTests
 
             string url = request.RequestUri?.AbsoluteUri ?? "";
             Requests.Add(url);
+            RangeHeaders.Add(request.Headers.Range?.ToString() ?? "");
             if (_statuses.TryGetValue(url, out HttpStatusCode status))
             {
                 return Task.FromResult(new HttpResponseMessage(status)
@@ -561,6 +690,41 @@ public sealed class AppPatchDownloadServiceTests
             if (request.RequestUri != null
                 && _responses.TryGetValue(url, out var response))
             {
+                if (_truncateAfter.TryGetValue(url, out int servedBytes))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new TruncatingContent(response.Content, servedBytes),
+                        RequestMessage = request
+                    });
+                }
+
+                long from = SupportsRange && request.Headers.Range?.Ranges.Count == 1
+                    ? request.Headers.Range.Ranges.First().From ?? 0
+                    : 0;
+                if (from > 0)
+                {
+                    if (from >= response.Content.Length)
+                    {
+                        return Task.FromResult(new HttpResponseMessage(
+                            HttpStatusCode.RequestedRangeNotSatisfiable)
+                        {
+                            RequestMessage = request
+                        });
+                    }
+
+                    var remainder = new ByteArrayContent(response.Content[(int)from..]);
+                    remainder.Headers.ContentType =
+                        new System.Net.Http.Headers.MediaTypeHeaderValue(response.ContentType);
+                    remainder.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(
+                        from, response.Content.Length - 1, response.Content.Length);
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent)
+                    {
+                        Content = remainder,
+                        RequestMessage = request
+                    });
+                }
+
                 var content = new ByteArrayContent(response.Content);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(response.ContentType);
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -575,5 +739,64 @@ public sealed class AppPatchDownloadServiceTests
                 RequestMessage = request
             });
         }
+    }
+
+    /// <summary>声明的是整包长度，实际只吐 servedBytes 个字节就把连接掐断。</summary>
+    private sealed class TruncatingContent(byte[] content, int servedBytes) : HttpContent
+    {
+        protected override Task<Stream> CreateContentReadStreamAsync() =>
+            Task.FromResult<Stream>(new TruncatingStream(content, servedBytes));
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+            throw new NotSupportedException();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = content.Length;
+            return true;
+        }
+    }
+
+    private sealed class TruncatingStream(byte[] content, int servedBytes) : Stream
+    {
+        private int _position;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_position >= servedBytes)
+                throw new IOException("模拟连接中断：服务器没有把整包传完");
+
+            int read = Math.Min(Math.Min(count, servedBytes - _position), content.Length - _position);
+            Array.Copy(content, _position, buffer, offset, read);
+            _position += read;
+            return read;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private static byte[] BuildPackage(int length)
+    {
+        var content = new byte[length];
+        new Random(length).NextBytes(content);
+        return content;
     }
 }
