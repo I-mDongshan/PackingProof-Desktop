@@ -34,17 +34,31 @@ internal sealed class AppPatchDownloadService
 {
     internal const string UpdateMutexName = @"Local\ExpressPackingMonitoring.Launcher.Update";
     private const string PatchPackageType = "baseline_patch";
+    // 增量包有 75MB：清单那 75 秒的总超时管不住它，慢网用户每次都正好卡在下到一半。
+    // 换成按分钟给的预算 + 下载自身的停滞判据（60 秒没有新字节），断点文件保留，超时后重试从断点继续。
+    private static readonly TimeSpan PatchDownloadBudget = TimeSpan.FromMinutes(30);
+
     private static readonly HttpClient SharedClient = new()
     {
         Timeout = TimeSpan.FromSeconds(75)
     };
 
+    /// <summary>
+    /// 增量包专用客户端：不设 HttpClient 总时长（那会把 75MB 的下载按 75 秒掐断），
+    /// 防卡死靠 ResumableFileDownload 的停滞判据与调用方的下载预算。
+    /// </summary>
+    private static readonly HttpClient SharedPackageClient = new()
+    {
+        Timeout = Timeout.InfiniteTimeSpan
+    };
+
     private readonly HttpClient _client;
+    private readonly HttpClient _packageClient;
     private readonly string _updatesDirectory;
     private readonly string _appBaseDirectory;
 
     internal AppPatchDownloadService()
-        : this(SharedClient, AppPaths.UpdatesCacheDir, AppContext.BaseDirectory)
+        : this(SharedClient, AppPaths.UpdatesCacheDir, AppContext.BaseDirectory, SharedPackageClient)
     {
     }
 
@@ -52,11 +66,24 @@ internal sealed class AppPatchDownloadService
         HttpClient client,
         string updatesDirectory,
         string appBaseDirectory)
+        : this(client, updatesDirectory, appBaseDirectory, client)
+    {
+    }
+
+    internal AppPatchDownloadService(
+        HttpClient client,
+        string updatesDirectory,
+        string appBaseDirectory,
+        HttpClient packageClient)
     {
         _client = client;
+        _packageClient = packageClient;
         _updatesDirectory = Path.GetFullPath(updatesDirectory);
         _appBaseDirectory = Path.GetFullPath(appBaseDirectory);
     }
+
+    /// <summary>增量包下载客户端的总超时（守卫用例用来盯住"不能套 75 秒总时长"这条不变量）。</summary>
+    internal static TimeSpan PackageDownloadTimeout => SharedPackageClient.Timeout;
 
     internal async Task<AppPatchPreparationResult> PrepareAsync(
         UpdateCheckResult update,
@@ -265,34 +292,46 @@ internal sealed class AppPatchDownloadService
                 route.PreferGitee ? "正在从 Gitee 下载增量更新包" : "正在从 GitHub 下载增量更新包"));
             var downloadProgress = new PatchDownloadProgressAdapter(progress);
             string downloadPath;
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            budget.CancelAfter(PatchDownloadBudget);
             try
             {
-                downloadPath = await DownloadVerifiedPatchAsync(
-                    route.SelectedUrl,
-                    partialPath,
-                    descriptor.PatchPackage,
-                    downloadProgress,
-                    cancellationToken);
-            }
-            catch (Exception ex) when (IsTransientDownloadFailure(ex, cancellationToken))
-            {
-                string alternateUrl = ResolveAlternatePatchUrl(route);
-                if (alternateUrl.Length == 0)
-                    throw;
+                try
+                {
+                    downloadPath = await DownloadVerifiedPatchAsync(
+                        route.SelectedUrl,
+                        partialPath,
+                        descriptor.PatchPackage,
+                        downloadProgress,
+                        budget.Token);
+                }
+                catch (Exception ex) when (IsTransientDownloadFailure(ex, budget.Token))
+                {
+                    string alternateUrl = ResolveAlternatePatchUrl(route);
+                    if (alternateUrl.Length == 0)
+                        throw;
 
-                string failedSource = route.PreferGitee ? "Gitee" : "GitHub";
-                string alternateSource = DescribeDownloadSource(route, alternateUrl);
-                RuntimeLog.Warn(
-                    "Update",
-                    $"{failedSource} AppPatch download failed, trying {alternateSource}: {ex.Message}");
-                progress?.Report(new AppPatchDownloadProgress(
-                    $"{failedSource} 下载失败，正在改用 {alternateSource}"));
-                downloadPath = await DownloadVerifiedPatchAsync(
-                    alternateUrl,
-                    partialPath,
-                    descriptor.PatchPackage,
-                    downloadProgress,
-                    cancellationToken);
+                    string failedSource = route.PreferGitee ? "Gitee" : "GitHub";
+                    string alternateSource = DescribeDownloadSource(route, alternateUrl);
+                    RuntimeLog.Warn(
+                        "Update",
+                        $"{failedSource} AppPatch download failed, trying {alternateSource}: {ex.Message}");
+                    progress?.Report(new AppPatchDownloadProgress(
+                        $"{failedSource} 下载失败，正在改用 {alternateSource}"));
+                    downloadPath = await DownloadVerifiedPatchAsync(
+                        alternateUrl,
+                        partialPath,
+                        descriptor.PatchPackage,
+                        downloadProgress,
+                        budget.Token);
+                }
+            }
+            catch (OperationCanceledException) when (budget.IsCancellationRequested
+                                                     && !cancellationToken.IsCancellationRequested)
+            {
+                throw new IOException(
+                    $"增量包下载超过 {PatchDownloadBudget.TotalMinutes:0} 分钟还没下完；"
+                    + "已经下好的部分会留着，稍后重试可以从断点继续");
             }
 
             progress?.Report(new AppPatchDownloadProgress("校验通过，正在准备下次启动安装"));
@@ -336,7 +375,7 @@ internal sealed class AppPatchDownloadService
         CancellationToken cancellationToken)
     {
         return ResumableFileDownload.DownloadVerifiedAsync(
-            _client,
+            _packageClient,
             url,
             partialPath,
             package.Size,

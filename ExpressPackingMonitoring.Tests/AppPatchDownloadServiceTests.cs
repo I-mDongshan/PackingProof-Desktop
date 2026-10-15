@@ -228,6 +228,17 @@ public sealed class AppPatchDownloadServiceTests
         Assert.False(Directory.Exists(stale));
     }
 
+    /// <summary>
+    /// 增量包不能套用"检查更新"那 75 秒的总超时：75MB 的包在慢网上会正好卡在下到一半，
+    /// 用户重试多少次都过不去（这就是现场"下了一半点失败"的直接原因）。防卡死交给下载自身的
+    /// 停滞判据与下载预算，HttpClient 这一层不再设总时长。
+    /// </summary>
+    [Fact]
+    public void PackageDownloadClient_HasNoHttpClientTotalTimeout()
+    {
+        Assert.Equal(Timeout.InfiniteTimeSpan, AppPatchDownloadService.PackageDownloadTimeout);
+    }
+
     [Fact]
     public async Task LaterFailedTaskPreservesEarlierValidPublishedPatch()
     {

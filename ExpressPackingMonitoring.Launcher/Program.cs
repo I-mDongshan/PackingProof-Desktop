@@ -31,6 +31,8 @@ internal static class Program
     private const string CameraMonitorRole = "CameraMonitor";
     private const string PrintStationRole = "PrintStation";
     private static readonly TimeSpan NetworkUpdateTimeout = TimeSpan.FromSeconds(75);
+    // 增量包预算：只给"检查元数据"用 75 秒是不够下 75MB 的，下载单独放宽（停滞判据仍然生效）。
+    private static readonly TimeSpan PatchDownloadBudget = TimeSpan.FromMinutes(30);
     private const int MetadataRequestAttempts = 2;
     private const uint InfoIcon = 0x00000040;
     private const uint ErrorIcon = 0x00000010;
@@ -459,7 +461,7 @@ internal static class Program
                 return BuildManualUpdateNotification(descriptor, ManualUpdateReason.PatchDescriptorUnavailable);
             }
 
-            await DownloadPendingPatchAsync(resolved.Manifest.RootElement, descriptor, cancellationToken);
+            await DownloadPendingPatchAsync(resolved.Manifest.RootElement, descriptor);
             SaveSuccessfulUpdateCheck(currentVersion, latestVersion, resolved.SourceUrl, allowPrerelease);
             WriteLog($"Patch 已下载到 pending，下次启动安装：{descriptor.LatestVersion}");
             return null;
@@ -524,8 +526,7 @@ internal static class Program
                 {
                     await DownloadPendingPatchAsync(
                         step.Manifest.RootElement,
-                        stepDescriptor,
-                        cancellationToken);
+                        stepDescriptor);
                     WriteLog($"基线版本 {stepDescriptor.LatestVersion} 的补丁已下载到 pending，下次启动先安装它");
                     return true;
                 }
@@ -549,10 +550,16 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// 下载增量包到 pending。
+    ///
+    /// 这里刻意不用元数据检查那 75 秒的预算：75MB 的过渡包在店里那条网上要下好几分钟，
+    /// 按 75 秒掐断只会让用户永远下不完。下载单独给一段宽松预算，真正防卡死靠
+    /// ResumableFileDownload 的停滞判据（60 秒没有新字节就放弃，字节留着下次接着下）。
+    /// </summary>
     private static async Task DownloadPendingPatchAsync(
         JsonElement manifestRoot,
-        UpdateDescriptor descriptor,
-        CancellationToken cancellationToken)
+        UpdateDescriptor descriptor)
     {
         string updatesDir = GetUpdatesCacheDir();
         string pendingDir = GetPendingUpdateDir();
@@ -561,6 +568,8 @@ internal static class Program
         string pendingPatchPath = Path.Combine(pendingDir, patchZipName);
         string pendingManifestPath = Path.Combine(pendingDir, "update_manifest.json");
         string partialPath = Path.Combine(partialDir, patchZipName + ResumableFileDownload.PartialFileSuffix);
+        using var budget = new CancellationTokenSource(PatchDownloadBudget);
+        CancellationToken downloadToken = budget.Token;
 
         try
         {
@@ -582,9 +591,9 @@ internal static class Program
             {
                 WriteLog($"准备下载 Patch：version={descriptor.LatestVersion}, source={(route.PreferGitee ? "gitee" : "github")}, failures={failureState.ConsecutiveGithubDownloadFailures}, url={route.SelectedUrl}");
                 downloadedPath = await DownloadVerifiedPatchAsync(
-                    route.SelectedUrl, partialPath, descriptor, cancellationToken);
+                    route.SelectedUrl, partialPath, descriptor, downloadToken);
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested
+            catch (Exception ex) when (!downloadToken.IsCancellationRequested
                                        && !route.PreferGitee
                                        && !AreSameUrl(route.GithubUrl, route.GiteeUrl))
             {
@@ -594,7 +603,7 @@ internal static class Program
 
                 WriteLog($"GitHub Patch 下载失败，本次立即改用 Gitee：{route.GiteeUrl}");
                 downloadedPath = await DownloadVerifiedPatchAsync(
-                    route.GiteeUrl, partialPath, descriptor, cancellationToken);
+                    route.GiteeUrl, partialPath, descriptor, downloadToken);
             }
 
             WriteLog($"Patch 下载校验通过：version={descriptor.LatestVersion}, size={(new FileInfo(downloadedPath)).Length}");
@@ -605,6 +614,12 @@ internal static class Program
             File.WriteAllText(pendingManifestPath, manifestRoot.GetRawText(), Encoding.UTF8);
             ResetPatchDownloadFailureState();
             WriteLog("Patch 已保存到 pending，等待下次启动安装");
+        }
+        catch (OperationCanceledException) when (budget.IsCancellationRequested)
+        {
+            throw new IOException(
+                $"增量包下载超过 {PatchDownloadBudget.TotalMinutes:0} 分钟还没下完；"
+                + "已经下好的部分会留着，下次启动继续从断点下载");
         }
         finally
         {
