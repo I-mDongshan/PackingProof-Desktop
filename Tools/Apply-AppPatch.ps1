@@ -408,6 +408,11 @@ try {
 
     $manifestPath = Join-Path $PatchRoot "patch_manifest.json"
     $patchFilesRoot = Join-Path $PatchRoot "files"
+    # 过渡补丁会把共享运行时投递到安装目录的 runtime\（物理文件在 files\.runtime\ 下），
+    # 老装机因此不用下载完整包；普通补丁仍然只往 app\ 里写。
+    $installRoot = Split-Path -Parent ([System.IO.Path]::GetFullPath($appRoot))
+    $runtimeRoot = Join-Path $installRoot "runtime"
+    $runtimeFilesRoot = Join-Path $patchFilesRoot ".runtime"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
         throw "增量更新包缺少 patch_manifest.json"
     }
@@ -453,10 +458,22 @@ try {
             throw "补丁清单包含不安全路径：$relativePath"
         }
 
-        $sourcePath = [System.IO.Path]::GetFullPath((Join-Path $patchFilesRoot $relativePath))
-        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $appRoot $relativePath))
-        if (-not (Test-PathWithinDirectory -Path $sourcePath -Directory $patchFilesRoot) -or
-            -not (Test-PathWithinDirectory -Path $destinationPath -Directory $appRoot)) {
+        # 安装位置：缺省 app\，过渡补丁里的运行时条目写 runtime\；其它值一律拒绝。
+        $targetRootName = "app"
+        if ($file.PSObject.Properties["root"]) {
+            $targetRootName = ([string]$file.root).Trim().ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace($targetRootName)) { $targetRootName = "app" }
+        }
+        if ($targetRootName -ne "app" -and $targetRootName -ne "runtime") {
+            throw "补丁清单包含不支持的安装位置：$targetRootName"
+        }
+        $sourceBase = if ($targetRootName -eq "runtime") { $runtimeFilesRoot } else { $patchFilesRoot }
+        $targetBase = if ($targetRootName -eq "runtime") { $runtimeRoot } else { $appRoot }
+
+        $sourcePath = [System.IO.Path]::GetFullPath((Join-Path $sourceBase $relativePath))
+        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $targetBase $relativePath))
+        if (-not (Test-PathWithinDirectory -Path $sourcePath -Directory $sourceBase) -or
+            -not (Test-PathWithinDirectory -Path $destinationPath -Directory $targetBase)) {
             throw "补丁文件超出允许目录：$relativePath"
         }
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
@@ -477,6 +494,7 @@ try {
 
         $validatedFiles.Add((New-Object PSObject -Property @{
             RelativePath = $relativePath
+            RootName = $targetRootName
             SourcePath = $sourcePath
             DestinationPath = $destinationPath
             ExpectedHash = $expectedHash
@@ -505,7 +523,7 @@ try {
         else {
             [System.IO.FileAttributes]::Normal
         }
-        $backupPath = Join-Path $backupRoot $file.RelativePath
+        $backupPath = Join-Path $backupRoot (Join-Path $file.RootName $file.RelativePath)
         if ($destinationExisted) {
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupPath) | Out-Null
             Copy-Item -LiteralPath $file.DestinationPath -Destination $backupPath -Force

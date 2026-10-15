@@ -22,7 +22,9 @@ param(
     [switch]$SkipTtsCacheGeneration,
     [switch]$ConfirmManualCoreChecks,
     [switch]$ReuseExistingLauncherBaseline,
-    [switch]$DisablePatch
+    [switch]$DisablePatch,
+    # 只在“老装机升级到共享运行时布局”的那一版打开：增量包里额外带上整份 runtime\。
+    [switch]$IncludeRuntimeInPatch
 )
 
 $ErrorActionPreference = "Stop"
@@ -868,7 +870,9 @@ function New-AppPatchPackage {
         [string]$LatestVersion,
         [string]$InstallerCmdPath,
         [string]$InstallerScriptPath,
-        [switch]$ExcludeCompatibleRuntimes
+        [switch]$ExcludeCompatibleRuntimes,
+        # 过渡补丁专用：把共享运行时整份投递给老装机（它们没有 runtime\，只靠增量包升不上来）。
+        [string]$RuntimeDir = ""
     )
 
     if (-not (Test-Path $BaselineDir)) {
@@ -921,6 +925,27 @@ function New-AppPatchPackage {
     if ($changedFiles.Count -eq 0) {
         Remove-Item -LiteralPath $patchWorkDir -Recurse -Force
         throw "AppPatch package has no changed files. Check BaselineAppDir or disable patch for this release."
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeDir) -and (Test-Path -LiteralPath $RuntimeDir -PathType Container)) {
+        # 运行时不与任何基线比对：老装机没有 runtime\，整份都要投递。
+        # 物理位置放在 files\.runtime\ 下，避免与 app\ 里的同名文件冲突；清单用 root 标明落点。
+        $runtimeFilesDir = Join-Path $patchFilesDir ".runtime"
+        $runtimeFiles = @(Get-ChildItem -LiteralPath $RuntimeDir -File -Recurse)
+        if ($runtimeFiles.Count -eq 0) {
+            throw "RuntimeDir 里没有文件，无法生成过渡补丁：$RuntimeDir"
+        }
+        foreach ($runtimeFile in $runtimeFiles) {
+            $relativePath = Get-RelativePath -BaseDir $RuntimeDir -Path $runtimeFile.FullName
+            Copy-FilePreservingRelativePath -SourceFile $runtimeFile.FullName -DestinationRoot $runtimeFilesDir -RelativePath $relativePath
+            $changedFiles += [ordered]@{
+                "path" = $relativePath.Replace('\', '/')
+                "sha256" = (Get-FileHash -LiteralPath $runtimeFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+                "size" = $runtimeFile.Length
+                "root" = "runtime"
+            }
+        }
+        Write-Host ("过渡补丁已带上共享运行时：{0} 个文件" -f $runtimeFiles.Count)
     }
 
     $patchManifest = [ordered]@{}
@@ -1355,10 +1380,14 @@ else {
             -LatestVersion $normalizedVersion `
             -InstallerCmdPath $appPatchCmdSource `
             -InstallerScriptPath $appPatchScriptSource `
-            -ExcludeCompatibleRuntimes
+            -ExcludeCompatibleRuntimes `
+            -RuntimeDir $(if ($IncludeRuntimeInPatch) { $sharedRuntimeLayoutPath } else { "" })
 
         if (-not (Test-ZipContainsEntry -ZipFile $appPatchZipPath -EntryName "patch_manifest.json")) {
             throw "AppPatch package validation failed: missing patch_manifest.json"
+        }
+        if ($IncludeRuntimeInPatch -and -not (Test-ZipContainsEntry -ZipFile $appPatchZipPath -EntryName 'files/.runtime/layout.json')) {
+            throw 'AppPatch transition validation failed: missing shared runtime layout'
         }
         foreach ($appPatchEntry in @(
             $appPatchInstallerCmdName,
@@ -1400,6 +1429,11 @@ else {
 
 if ($launcherPublishedWithRelease -and -not $patchSupported -and -not $DisablePatch) {
     throw "A new launcher baseline requires a compatible AppPatch bridge in the same release."
+}
+
+# 过渡补丁靠增量包把共享运行时送下去；没生成增量包时会退回普通发布，必须显式提醒。
+if ($IncludeRuntimeInPatch -and -not $patchSupported) {
+    Write-Warning "已指定 IncludeRuntimeInPatch，但本次没有生成增量包：$patchReason"
 }
 
 $updateManifest = [ordered]@{}
