@@ -1159,7 +1159,7 @@ namespace ExpressPackingMonitoring.Services
             {
                 string path = ctx.Request.Url?.AbsolutePath?.TrimEnd('/') ?? "";
                 string method = ctx.Request.HttpMethod;
-                Log($">>> {method} {path} from {ctx.Request.RemoteEndPoint}");
+                OrderPushDiagnostics.LogRequest(method, path, ctx.Request.RemoteEndPoint?.ToString(), EnableOrderInfoLog, WriteLog);
 
                 LanRequestCategory requestCategory = ClassifyRequest(method, path);
                 if (!_requestRateLimiter.TryEnter(
