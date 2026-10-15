@@ -70,7 +70,17 @@ if (-not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
     throw "找不到根启动器：$LauncherPath"
 }
 if ([string]::IsNullOrWhiteSpace($LayoutSourceAppDir)) {
-    $LayoutSourceAppDir = Join-Path $repoRoot "ExpressPackingMonitoring\bin\Debug\net8.0-windows\win-x64"
+    # 自动取目标框架最新的一份调试产物，升级 TFM 后这里不用改。
+    $candidate = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "ExpressPackingMonitoring\bin\Debug") -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'net*-windows' } |
+        Sort-Object -Property @{ Expression = { [version]([regex]::Match($_.Name, '\d+\.\d+').Value) } } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'win-x64' } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container } |
+        Select-Object -First 1)
+    if ($candidate.Count -eq 0) {
+        throw "找不到调试产物目录（先 dotnet build ExpressPackingMonitoring.sln -c Debug）"
+    }
+    $LayoutSourceAppDir = $candidate[0]
 }
 if (-not (Test-Path -LiteralPath $LayoutSourceAppDir -PathType Container)) {
     throw "应用发布目录不存在：$LayoutSourceAppDir（先 dotnet build ExpressPackingMonitoring.sln -c Debug）"
@@ -80,11 +90,18 @@ try {
     # 1. 框架依赖的探针：把启动器传进来的环境与真实运行时目录落到文件里
     $stubProjectDirectory = Join-Path $workspace "stub"
     [System.IO.Directory]::CreateDirectory($stubProjectDirectory) | Out-Null
+    # 探针的 TFM 必须与被测应用一致：宿主不会拿 10 的运行时去跑请求 8 的应用（.NET 7+ 已取消多级回退）。
+    $appRuntimeConfig = Join-Path $LayoutSourceAppDir "ExpressPackingMonitoring.runtimeconfig.json"
+    $stubTfm = "net10.0-windows"
+    if (Test-Path -LiteralPath $appRuntimeConfig -PathType Leaf) {
+        $tfm = (Get-Content -Raw -Encoding UTF8 $appRuntimeConfig | ConvertFrom-Json).runtimeOptions.tfm
+        if (-not [string]::IsNullOrWhiteSpace($tfm)) { $stubTfm = "$tfm-windows" }
+    }
     [System.IO.File]::WriteAllText((Join-Path $stubProjectDirectory "stub.csproj"), @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>$stubTfm</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

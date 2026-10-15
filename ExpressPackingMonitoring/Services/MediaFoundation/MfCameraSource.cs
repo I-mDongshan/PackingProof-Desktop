@@ -529,7 +529,7 @@ public sealed partial class MfCameraSource : IDisposable
         // IMFSample 在声明上继承 IMFAttributes，运行时按继承链做类型转换会失败，
         // 于是这里静默返回、一帧都发不出去（实测样本明明已经拿到 85 个）。
         Guid sampleId = typeof(IMFSample).GUID;
-        if (Marshal.QueryInterface(samplePointer, ref sampleId, out IntPtr samplePointerTyped) < 0
+        if (Marshal.QueryInterface(samplePointer, in sampleId, out IntPtr samplePointerTyped) < 0
             || samplePointerTyped == IntPtr.Zero)
         {
             LastFrameFailure = "样本不支持 IMFSample";

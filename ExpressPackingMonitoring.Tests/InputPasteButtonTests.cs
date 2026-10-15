@@ -178,6 +178,9 @@ public sealed class InputPasteButtonRenderTests
             {
                 if (Application.Current == null)
                     _ = new Application();
+                // 每个用例自己把 App.xaml 那套合并资源装好：以前有的用例靠别的用例先设过
+                // Application.Current.Resources 才通过，换 SDK/框架后执行顺序一变就必现失败。
+                LoadAppResources();
                 action();
             }
             catch (Exception ex) { failure = ex; }

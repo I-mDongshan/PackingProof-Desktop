@@ -9,7 +9,7 @@
     不做任何 glob 或排除。待 Windows 侧改动平稳后再把它们整体搬进本目录，届时只需改路径。
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>

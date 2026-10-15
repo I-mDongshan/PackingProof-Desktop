@@ -47,6 +47,6 @@
 ## 下载与更新说明
 
 - 安装向导：PackingProof_Setup_v<X.Y.Z>.exe（未签名时注明：未签名，SmartScreen 可能提示未知发布者）
-- Gitee 专属：PackingProof_Setup_no-runtime_v<X.Y.Z>.exe（不含 .NET 运行时，约 60MB；机器需已安装 .NET 8 桌面运行时）
+- Gitee 专属：PackingProof_Setup_no-runtime_v<X.Y.Z>.exe（不含 .NET 运行时，约 60MB；机器需已安装 .NET 10 桌面运行时）
 - 已安装用户：启动器会自动下载 AppPatch；如需手动更新，可完整解压 AppPatch 后双击包内更新脚本
 - <仅新启动器基线时保留>：本版本建立新启动器基线 launcher-v<X.Y.Z>，升级后的主程序会自动应用 LauncherPatch
