@@ -97,7 +97,7 @@ internal sealed class VideoFolderImportService
                 // 这种情况要把它指到新路径（找回），而不是跳过。
                 if (_database.GetVideoByContentSha256(sha256) is VideoRecord sameContent)
                 {
-                    if (TryRelinkMissingRecord(sameContent, filePath)) imported++; else skipped++;
+                    if (TryRelinkMissingRecord(sameContent, filePath, sha256)) imported++; else skipped++;
                     continue;
                 }
 
@@ -105,7 +105,7 @@ internal sealed class VideoFolderImportService
                 // 免得既找回不了、又插出一条重复记录。
                 if (FindMissingRecordByNameAndSize(filePath, originalLength) is VideoRecord sameName)
                 {
-                    if (TryRelinkMissingRecord(sameName, filePath)) imported++; else skipped++;
+                    if (TryRelinkMissingRecord(sameName, filePath, sha256)) imported++; else skipped++;
                     continue;
                 }
 
@@ -176,7 +176,7 @@ internal sealed class VideoFolderImportService
     /// 把"原路径已不可用"的记录指到新位置：换硬盘/改盘符之后，用户要的是找回录像，
     /// 而不是被告知"跳过"。原来那份文件还在时不改（那是真重复），返回 false 让调用方计跳过。
     /// </summary>
-    private bool TryRelinkMissingRecord(VideoRecord record, string newPath)
+    private bool TryRelinkMissingRecord(VideoRecord record, string newPath, string contentSha256)
     {
         string recordedPath = record.FilePath ?? "";
         if (string.Equals(recordedPath, newPath, StringComparison.OrdinalIgnoreCase)) return false;
@@ -184,19 +184,9 @@ internal sealed class VideoFolderImportService
 
         _database.UpdateVideoFilePath(recordedPath, newPath);
         // 老记录没有哈希时补上，之后再遇到同内容的副本就能按内容识别。
-        if (string.IsNullOrWhiteSpace(record.ContentSha256))
-        {
-            try
-            {
-                _database.UpdateVideoContentSha256(
-                    newPath,
-                    ComputeSha256Async(newPath, CancellationToken.None).GetAwaiter().GetResult());
-            }
-            catch (Exception ex)
-            {
-                Logging.RuntimeLog.Warn("VideoImport", $"补写内容哈希失败：{ex.Message}");
-            }
-        }
+        // 复用调用方已经算好的哈希，不再为同一个文件多算一遍（大文件重复哈希很贵）。
+        if (string.IsNullOrWhiteSpace(record.ContentSha256) && !string.IsNullOrWhiteSpace(contentSha256))
+            _database.UpdateVideoContentSha256(newPath, contentSha256);
         Logging.RuntimeLog.Info(
             "VideoImport",
             $"找回丢失录像：{Path.GetFileName(newPath)}（原路径已不可用：{recordedPath}）");
