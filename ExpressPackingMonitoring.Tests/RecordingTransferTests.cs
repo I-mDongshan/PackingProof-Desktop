@@ -737,6 +737,127 @@ public sealed class RecordingTransferTests
                 .Select(task => task.Id));
     }
 
+    [Fact]
+    public void ResolveSessionId_PrefersRecordingGuidOverLocalId()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string databasePath = Path.Combine(directory, "videos.db");
+            string videoPath = Path.Combine(directory, "session.mp4");
+            File.WriteAllBytes(videoPath, new byte[64]);
+            using var database = new VideoDatabase(databasePath);
+            long recordId = database.InsertVideoRecord(
+                "SESSION-GUID", "发货", "", "", videoPath, DateTime.Now.AddMinutes(-1));
+            VideoRecord record = database.GetVideoById(recordId);
+            AppConfig config = CreateConfig(directory, Guid.NewGuid().ToString("D"));
+
+            string sessionId = RecordingTransferService.ResolveSessionId(config, record);
+            Assert.Equal(record.SourceSessionId, sessionId);
+            Assert.NotEqual($"{config.NodeId}:{recordId}", sessionId);
+
+            // 本地库重建后自增 ID 会重新排号，会话标识必须跟着录像走而不是跟着 ID 走。
+            record.Id = recordId + 1000;
+            Assert.Equal(sessionId, RecordingTransferService.ResolveSessionId(config, record));
+
+            // 老数据没有 GUID 时才退回旧格式。
+            record.SourceSessionId = "";
+            Assert.Equal($"{config.NodeId}:{record.Id}", RecordingTransferService.ResolveSessionId(config, record));
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessReadyOnce_AbandonsTaskWhenLocalRecordingWasDeleted()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string databasePath = Path.Combine(directory, "videos.db");
+            string videoPath = Path.Combine(directory, "deleted.mp4");
+            await File.WriteAllBytesAsync(videoPath, new byte[4096], TestContext.Current.CancellationToken);
+            using var database = new VideoDatabase(databasePath);
+            long recordId = database.InsertVideoRecord(
+                "ABANDON-DELETED", "发货", "", "", videoPath, DateTime.Now.AddMinutes(-1));
+            database.UpdateVideoRecordOnStop(recordId, DateTime.Now, 30, 4096, "手动");
+            AppConfig config = CreateConfig(directory, Guid.NewGuid().ToString("D"));
+            using var store = new RecordingTransferQueueStore(databasePath);
+            using var service = new RecordingTransferService(
+                store,
+                database,
+                () => config,
+                nodeInfoResolver: (_, _) => Task.FromResult<PackingProofNodeInfo?>(null));
+            service.EnqueueCompletedRecordings();
+
+            database.MarkVideoDeleted(videoPath, "用户删除");
+            await service.ProcessReadyOnceAsync(TestContext.Current.CancellationToken);
+
+            RecordingTransferSummary summary = store.GetSummary();
+            Assert.Equal(1, summary.AbandonedCount);
+            Assert.Equal(0, summary.FailedCount);
+            Assert.Empty(store.GetReady(DateTime.UtcNow));
+            Assert.Contains("本地录像已删除", summary.LastError, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void QueueStore_RetryFailedNow_RevivesAbandonedTasks()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string databasePath = Path.Combine(directory, "videos.db");
+            using var store = new RecordingTransferQueueStore(databasePath);
+            Assert.True(store.Enqueue(
+                1,
+                Path.Combine(directory, "abandoned.mp4"),
+                "session-1",
+                Guid.NewGuid().ToString("D"),
+                "http://127.0.0.1:5280",
+                DateTime.UtcNow));
+
+            store.MarkAbandoned(1, "保存主机上已存在同编号的其它录像", DateTime.UtcNow);
+            Assert.Equal(1, store.GetSummary().AbandonedCount);
+            Assert.Empty(store.GetReady(DateTime.UtcNow));
+
+            store.RetryFailedNow(DateTime.UtcNow);
+
+            RecordingTransferTask task = Assert.Single(store.GetReady(DateTime.UtcNow));
+            Assert.Equal(RecordingTransferStates.Pending, task.State);
+            Assert.Equal(0, task.RetryCount);
+            Assert.Equal(0, store.GetSummary().AbandonedCount);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Theory]
+    [InlineData("session_conflict", 1, true)]
+    [InlineData("session_conflict", RecordingTransferService.MaxRetryCount + 1, true)]
+    [InlineData("upload_not_found", 1, false)]
+    [InlineData("upload_not_found", RecordingTransferService.MaxRetryCount, false)]
+    [InlineData("upload_not_found", RecordingTransferService.MaxRetryCount + 1, true)]
+    public void ClassifyFailure_StopsOnlyOnSessionConflictOrRetryCap(
+        string errorCode,
+        int retryCount,
+        bool expectsStop)
+    {
+        var exception = new RecordingTransferHostException(errorCode, "主机拒绝");
+
+        string reason = RecordingTransferService.ClassifyFailure(exception, retryCount);
+
+        Assert.Equal(expectsStop, reason.Length > 0);
+    }
+
     private static AppConfig CreateConfig(string directory, string targetNodeId)
     {
         var config = new AppConfig

@@ -18,8 +18,21 @@ internal sealed record RecordingTransferProgress(
     string State,
     string Error = "");
 
+/// <summary>保存主机按协议拒绝了这次上传；ErrorCode 用于判定能否继续重试。</summary>
+internal sealed class RecordingTransferHostException : Exception
+{
+    public RecordingTransferHostException(string errorCode, string message)
+        : base(message) =>
+        ErrorCode = errorCode ?? "";
+
+    public string ErrorCode { get; }
+}
+
 internal sealed class RecordingTransferService : IDisposable
 {
+    /// <summary>同一段录像连续失败到这个次数就停止自动重试，等用户处理。</summary>
+    internal const int MaxRetryCount = 20;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -100,7 +113,7 @@ internal sealed class RecordingTransferService : IDisposable
             if (!File.Exists(record.FilePath))
                 continue;
 
-            string sourceSessionId = $"{config.NodeId}:{record.Id}";
+            string sourceSessionId = ResolveSessionId(config, record);
             if (_store.Enqueue(
                     record.Id,
                     record.FilePath,
@@ -125,6 +138,34 @@ internal sealed class RecordingTransferService : IDisposable
     {
         _store.RetryFailedNow(DateTime.UtcNow);
         Signal();
+    }
+
+    /// <summary>
+    /// 上传会话标识：优先用录像自己的 GUID（VideoRecords.SourceSessionId 在插入时就生成），
+    /// 这样本地库重建、自增 ID 重新从 1 开始时，不会和保存主机上上一代库的旧绑定撞车，
+    /// 而同一条录像的多次重试仍然稳定。老数据缺 GUID 时才退回"节点:本地ID"。
+    /// </summary>
+    internal static string ResolveSessionId(AppConfig config, VideoRecord record)
+    {
+        string session = record.SourceSessionId?.Trim() ?? "";
+        return session.Length > 0 ? session : $"{config.NodeId}:{record.Id}";
+    }
+
+    /// <summary>返回非空表示必须停止自动重试（内容为原因），空串表示继续退避重试。</summary>
+    internal static string ClassifyFailure(Exception exception, int retryCount)
+    {
+        if (exception is RecordingTransferHostException host
+            && string.Equals(host.ErrorCode, "session_conflict", StringComparison.OrdinalIgnoreCase))
+        {
+            return "保存主机上已存在同编号的其它录像，已停止自动重试；请先在保存主机删除那条旧记录，再手动重试";
+        }
+
+        if (retryCount > MaxRetryCount)
+        {
+            return $"连续上传失败 {retryCount} 次，已停止自动重试；请检查网络与保存主机后手动重试";
+        }
+
+        return "";
     }
 
     internal async Task<int> ProcessReadyOnceAsync(CancellationToken cancellationToken = default)
@@ -190,8 +231,28 @@ internal sealed class RecordingTransferService : IDisposable
         {
             AppConfig config = _configProvider();
             ValidateTaskTarget(task, config);
-            VideoRecord record = _database.GetVideoById(task.LocalVideoRecordId)
-                ?? throw new InvalidOperationException("本地录像记录不存在");
+            // 用包含已删除的读法，才能把"用户删了这条"和"记录不存在"分开告诉用户。
+            VideoRecord? record = _database.GetVideoByIdIncludingDeleted(task.LocalVideoRecordId);
+            if (record == null || record.IsDeleted)
+            {
+                // 用户删了本地录像就不该继续排队：以前会一直重试到"本地录像记录不存在"。
+                AbandonTask(
+                    task,
+                    record == null ? "本地录像记录不存在，已停止上传" : "本地录像已删除，已停止上传",
+                    now);
+                return;
+            }
+
+            string sessionId = ResolveSessionId(config, record);
+            if (!string.Equals(sessionId, task.SourceSessionId, StringComparison.Ordinal))
+            {
+                _store.SetSessionId(task.Id, sessionId, now);
+                task.SourceSessionId = sessionId;
+                RuntimeLog.Info(
+                    "RecordingTransfer",
+                    $"Upload session updated localRecord={task.LocalVideoRecordId}, session={sessionId}");
+            }
+
             string filePath = ResolveCurrentFilePath(task, record);
             ValidateUploadFile(filePath);
 
@@ -287,6 +348,13 @@ internal sealed class RecordingTransferService : IDisposable
         catch (Exception ex)
         {
             int retryCount = task.RetryCount + 1;
+            string stopReason = ClassifyFailure(ex, retryCount);
+            if (stopReason.Length > 0)
+            {
+                AbandonTask(task, stopReason, now);
+                return;
+            }
+
             TimeSpan backoff = GetBackoff(retryCount);
             _store.MarkFailed(task.Id, retryCount, ex.Message, now.Add(backoff), now);
             ProgressChanged?.Invoke(new RecordingTransferProgress(
@@ -296,6 +364,20 @@ internal sealed class RecordingTransferService : IDisposable
                 "RecordingTransfer",
                 $"Upload deferred localRecord={task.LocalVideoRecordId}, retry={retryCount}, error={ex.Message}");
         }
+    }
+
+    private void AbandonTask(RecordingTransferTask task, string reason, DateTime now)
+    {
+        _store.MarkAbandoned(task.Id, reason, now);
+        ProgressChanged?.Invoke(new RecordingTransferProgress(
+            task.Id,
+            task.ServerOffset,
+            GetExistingLength(task.LocalFilePath),
+            RecordingTransferStates.Abandoned,
+            reason));
+        RuntimeLog.Warn(
+            "RecordingTransfer",
+            $"Upload abandoned localRecord={task.LocalVideoRecordId}, error={reason}");
     }
 
     private async Task<MobileBackupCreateResponse> CreateOrResumeAsync(
@@ -542,28 +624,34 @@ internal sealed class RecordingTransferService : IDisposable
         string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            string message = TryReadError(body);
-            throw new HttpRequestException(
-                string.IsNullOrWhiteSpace(message)
-                    ? $"主机请求失败：HTTP {(int)response.StatusCode}"
-                    : message);
+            (string errorCode, string message) = TryReadError(body);
+            string text = string.IsNullOrWhiteSpace(message)
+                ? $"主机请求失败：HTTP {(int)response.StatusCode}"
+                : message;
+            throw string.IsNullOrWhiteSpace(errorCode)
+                ? new HttpRequestException(text)
+                : new RecordingTransferHostException(errorCode, text);
         }
         T? result = JsonSerializer.Deserialize<T>(body, JsonOptions);
         return result ?? throw new InvalidDataException("主机返回空响应");
     }
 
-    private static string TryReadError(string body)
+    private static (string ErrorCode, string Message) TryReadError(string body)
     {
         try
         {
             using JsonDocument document = JsonDocument.Parse(body);
-            return document.RootElement.TryGetProperty("error", out JsonElement error)
+            string errorCode = document.RootElement.TryGetProperty("errorCode", out JsonElement code)
+                ? code.GetString() ?? ""
+                : "";
+            string message = document.RootElement.TryGetProperty("error", out JsonElement error)
                 ? error.GetString() ?? ""
                 : "";
+            return (errorCode, message);
         }
         catch
         {
-            return "";
+            return ("", "");
         }
     }
 

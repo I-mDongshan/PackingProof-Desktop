@@ -191,9 +191,9 @@ public sealed class RecordingWorkstationLoopbackIntegrationTests
             Assert.Equal("pc", hostRecord.SourceDeviceKind);
             Assert.Equal("退货", hostRecord.Mode);
             Assert.Equal(workstationConfig.NodeId, hostRecord.SourceDeviceId);
-            Assert.Equal(
-                $"{workstationConfig.NodeId}:{localRecordId}",
-                hostRecord.SourceSessionId);
+            // 上传会话标识跟录像自己的 GUID 走，不再用"节点:本地自增ID"（本地库重建会与旧绑定撞车）。
+            Assert.Equal(localRecord.SourceSessionId, hostRecord.SourceSessionId);
+            Assert.Matches("^[0-9a-f]{32}$", hostRecord.SourceSessionId);
             Assert.True(File.Exists(hostRecord.FilePath));
             Assert.StartsWith(
                 Path.GetFullPath(hostStoragePath) + Path.DirectorySeparatorChar,

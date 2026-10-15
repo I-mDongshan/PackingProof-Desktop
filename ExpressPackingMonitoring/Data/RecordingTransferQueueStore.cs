@@ -9,6 +9,8 @@ internal static class RecordingTransferStates
     public const string Uploading = "Uploading";
     public const string Uploaded = "Uploaded";
     public const string Failed = "Failed";
+    // 停止自动重试并等用户处理：本地录像已删除、保存主机已有同编号的其它录像，或重试次数用尽。
+    public const string Abandoned = "Abandoned";
 }
 
 internal sealed class RecordingTransferTask
@@ -17,7 +19,7 @@ internal sealed class RecordingTransferTask
     public long LocalVideoRecordId { get; init; }
     public string LocalFilePath { get; init; } = "";
     public string FileSha256 { get; init; } = "";
-    public string SourceSessionId { get; init; } = "";
+    public string SourceSessionId { get; set; } = "";
     public string TargetNodeId { get; init; } = "";
     public string TargetAddress { get; set; } = "";
     public string State { get; init; } = RecordingTransferStates.Pending;
@@ -37,6 +39,7 @@ internal sealed record RecordingTransferSummary(
     int PendingCount,
     int UploadingCount,
     int FailedCount,
+    int AbandonedCount,
     string LastError);
 
 internal sealed class RecordingTransferQueueStore : IDisposable
@@ -201,6 +204,17 @@ internal sealed class RecordingTransferQueueStore : IDisposable
         Update(id,
             "State = 'Failed', RetryCount = @retry, LastError = @error, NextAttemptAt = @next, UpdatedAt = @now",
             ("@retry", retryCount), ("@error", TrimError(error)), ("@next", Format(nextAttemptAt)), ("@now", Format(now)));
+
+    /// <summary>停止自动重试并保留原因；用户点"重试上传"时会重新排队。</summary>
+    public void MarkAbandoned(long id, string reason, DateTime now) =>
+        Update(id,
+            "State = 'Abandoned', LastError = @error, NextAttemptAt = NULL, UpdatedAt = @now",
+            ("@error", TrimError(reason)), ("@now", Format(now)));
+
+    public void SetSessionId(long id, string sessionId, DateTime now) =>
+        Update(id,
+            "SourceSessionId = @session, UpdatedAt = @now",
+            ("@session", sessionId ?? ""), ("@now", Format(now)));
 
     public void MarkUploaded(
         long id,
@@ -388,9 +402,10 @@ internal sealed class RecordingTransferQueueStore : IDisposable
             cmd.CommandText = @"
                 UPDATE RecordingTransferQueue
                 SET State = 'Pending',
+                    RetryCount = 0,
                     NextAttemptAt = NULL,
                     UpdatedAt = @now
-                WHERE State = 'Failed';";
+                WHERE State IN ('Failed', 'Abandoned');";
             cmd.Parameters.AddWithValue("@now", Format(now));
             cmd.ExecuteNonQuery();
         }
@@ -403,13 +418,14 @@ internal sealed class RecordingTransferQueueStore : IDisposable
             int pending = ScalarIntCore("SELECT COUNT(1) FROM RecordingTransferQueue WHERE State = 'Pending';");
             int uploading = ScalarIntCore("SELECT COUNT(1) FROM RecordingTransferQueue WHERE State = 'Uploading';");
             int failed = ScalarIntCore("SELECT COUNT(1) FROM RecordingTransferQueue WHERE State = 'Failed';");
+            int abandoned = ScalarIntCore("SELECT COUNT(1) FROM RecordingTransferQueue WHERE State = 'Abandoned';");
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = @"
                 SELECT LastError FROM RecordingTransferQueue
                 WHERE LastError <> ''
                 ORDER BY UpdatedAt DESC, Id DESC LIMIT 1;";
             string lastError = cmd.ExecuteScalar() as string ?? "";
-            return new RecordingTransferSummary(pending, uploading, failed, lastError);
+            return new RecordingTransferSummary(pending, uploading, failed, abandoned, lastError);
         }
     }
 

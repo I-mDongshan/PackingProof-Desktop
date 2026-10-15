@@ -1047,7 +1047,11 @@ public sealed class DeploymentStartupTests
         Assert.Contains("heartbeat.Online ? \"在线\" : \"离线\"", transferSource, StringComparison.Ordinal);
         Assert.Contains("recentlyUploaded ? \"最近录像已上传\" : \"暂无待上传录像\"", transferSource, StringComparison.Ordinal);
         Assert.Contains(
-            "$\"{totalCount} 个录像已保存在本机，联网后自动上传\"",
+            "$\"{totalCount} 个录像已保存在本机，联网后自动上传{stoppedSuffix}\"",
+            transferSource,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "个录像已停止上传，请查看失败原因后重试",
             transferSource,
             StringComparison.Ordinal);
         Assert.Contains(

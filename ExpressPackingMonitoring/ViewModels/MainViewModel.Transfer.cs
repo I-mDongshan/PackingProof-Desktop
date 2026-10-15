@@ -436,7 +436,8 @@ public partial class MainViewModel
             }
             else
             {
-                if (progress.State == RecordingTransferStates.Failed)
+                if (progress.State == RecordingTransferStates.Failed
+                    || progress.State == RecordingTransferStates.Abandoned)
                     LastRecordingTransferError = progress.Error;
                 RefreshRecordingTransferSummary();
             }
@@ -455,6 +456,7 @@ public partial class MainViewModel
             summary.PendingCount,
             summary.UploadingCount,
             summary.FailedCount,
+            summary.AbandonedCount,
             RecordingTransferProgress,
             string.Equals(BoundHostOnlineStatusText, "离线", StringComparison.Ordinal),
             recentlyUploaded,
@@ -525,6 +527,7 @@ public partial class MainViewModel
         int pendingCount,
         int uploadingCount,
         int failedCount,
+        int abandonedCount,
         double progress,
         bool hostOffline,
         bool recentlyUploaded,
@@ -533,6 +536,8 @@ public partial class MainViewModel
         int totalCount = Math.Max(0, pendingCount)
             + Math.Max(0, uploadingCount)
             + Math.Max(0, failedCount);
+        // 停止重试的录像不占卡片状态，只并进现有明细，避免多出一种卡片口径。
+        string stoppedSuffix = abandonedCount > 0 ? $" · {abandonedCount} 个已停止上传" : "";
         if (uploadingCount > 0)
         {
             return new RecordingTransferCardState(
@@ -550,7 +555,7 @@ public partial class MainViewModel
             }
             return new RecordingTransferCardState(
                 "上传失败",
-                $"{totalCount} 个录像等待重试，录像仍保存在本机");
+                $"{totalCount} 个录像等待重试{stoppedSuffix}，录像仍保存在本机");
         }
 
         if (totalCount > 0)
@@ -558,8 +563,16 @@ public partial class MainViewModel
             return new RecordingTransferCardState(
                 "待上传",
                 hostOffline
-                    ? $"{totalCount} 个录像已保存在本机，联网后自动上传"
-                    : $"{totalCount} 个录像等待上传");
+                    ? $"{totalCount} 个录像已保存在本机，联网后自动上传{stoppedSuffix}"
+                    : $"{totalCount} 个录像等待上传{stoppedSuffix}");
+        }
+
+        // 只剩停止重试的任务时沿用"上传失败"口径：不显示出来用户会以为已经传完了。
+        if (abandonedCount > 0)
+        {
+            return new RecordingTransferCardState(
+                "上传失败",
+                $"{abandonedCount} 个录像已停止上传，请查看失败原因后重试");
         }
 
         return new RecordingTransferCardState(
