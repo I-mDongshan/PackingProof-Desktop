@@ -573,7 +573,9 @@ namespace ExpressPackingMonitoring.Config
         public bool AnnounceProductInfo { get; set; } = false;
         public bool AnnounceTotalItemCount { get; set; } = true;
         public bool EnablePrintedRefundAlert { get; set; } = true;
-        public bool EnableOrderInfoLog { get; set; } = false;
+        // 默认打开：现场报"快递助手发送测试订单失败"时，关掉开关的机器上什么都查不到。
+        // 明细只在收到推送时写，量很小；日志本身有 2MB 上限轮转。
+        public bool EnableOrderInfoLog { get; set; } = true;
 
         // TTS 断句关键词（电商场景，在这些词前自动插入停顿）
         public List<string> TtsBreakWords { get; set; } = new();

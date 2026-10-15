@@ -110,14 +110,26 @@ internal static class StorageLocationResolver
             if (result.CanUse)
             {
                 localChoice = result;
-                RuntimeLog.Info(
-                    "Storage",
-                    $"Selected storage path={result.Path}, priority={location.Priority}, free={FormatBytes(result.AvailableBytes)}, reserve={FormatBytes(result.ReserveBytes)}");
+                // 选中的位置每次评估都记一条会把日志窗口顶掉（现场实测每分钟两条）：
+                // 只在选择发生变化时记，或每 6 小时提醒一次。
+                if (RuntimeLogThrottle.ShouldLog($"storage-selected|{result.Path}", TimeSpan.FromHours(6), DateTime.Now))
+                {
+                    RuntimeLog.Info(
+                        "Storage",
+                        $"Selected storage path={result.Path}, priority={location.Priority}, free={FormatBytes(result.AvailableBytes)}, reserve={FormatBytes(result.ReserveBytes)}");
+                }
             }
             else
             {
                 failures.Add($"{result.Path}：{result.Reason}");
-                RuntimeLog.Warn("Storage", $"Skip storage path={result.Path}, priority={location.Priority}, reason={result.Reason}");
+                // 空间不足会持续存在，按"位置+原因"每小时最多提醒一次，避免每一分钟刷一遍。
+                if (RuntimeLogThrottle.ShouldLog(
+                        $"storage-skip|{result.Path}|{result.Reason}",
+                        TimeSpan.FromHours(1),
+                        DateTime.Now))
+                {
+                    RuntimeLog.Warn("Storage", $"Skip storage path={result.Path}, priority={location.Priority}, reason={result.Reason}");
+                }
             }
         }
 

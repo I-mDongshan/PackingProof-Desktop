@@ -183,6 +183,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Services\VideoLifecycleCoordinator.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\WebServer.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\OrderPushDiagnostics.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Services\RuntimeLogThrottle.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\WebServer.VideoSources.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\WebTranscodeEncoderPolicy.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\WindowsPlatformSupport.cs" />

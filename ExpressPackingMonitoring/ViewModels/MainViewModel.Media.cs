@@ -188,6 +188,18 @@ namespace ExpressPackingMonitoring.ViewModels
                     }
                     else
                     {
+                        // MKV 不在、MP4 也探测不过（结构损坏，例如缺 moov）时必须记账：
+                        // 否则每次空闲恢复都会重探一遍同一个文件，永远停在"MP4 video probe failed"上。
+                        if (File.Exists(mp4Path))
+                        {
+                            _db?.RecordMkvConversionFailure(
+                                mkvPath,
+                                DateTime.Now,
+                                "MP4 结构损坏且没有 MKV 可重新合并");
+                            RuntimeLog.Warn(
+                                "MkvRecover",
+                                $"MP4 探测不过且没有 MKV 可重建，已记账等待重试策略抑制 file={fileName}");
+                        }
                         batchResult.SkippedCount++;
                         progress?.Report($"[{i + 1}/{total}] 文件不存在，跳过: {fileName}");
                     }
