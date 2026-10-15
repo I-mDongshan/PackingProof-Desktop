@@ -46,11 +46,29 @@ public sealed class OrderPushDiagnosticsTests
         Assert.True(OrderPushDiagnostics.IsHeartbeatPath("/api/extensions/v1/heartbeat"));
         Assert.False(OrderPushDiagnostics.IsHeartbeatPath("/api/orderinfo"));
 
-        // 心跳是几十秒一次的轮询：同一来源十分钟内只记一条，别把日志窗口顶掉。
+        // 心跳是几十秒一次的轮询：同一来源十分钟内只记一条，并带上这段时间的累计次数。
         string source = $"192.168.9.{Random.Shared.Next(2, 250)}:5000";
         DateTime now = DateTime.Now;
-        Assert.True(OrderPushDiagnostics.ShouldLogHeartbeat(source, now));
-        Assert.False(OrderPushDiagnostics.ShouldLogHeartbeat(source, now.AddMinutes(5)));
-        Assert.True(OrderPushDiagnostics.ShouldLogHeartbeat(source, now.AddMinutes(11)));
+        Assert.True(OrderPushDiagnostics.ShouldLogHeartbeat(source, now, out int first));
+        Assert.Equal(1, first);
+        Assert.False(OrderPushDiagnostics.ShouldLogHeartbeat(source, now.AddMinutes(2), out _));
+        Assert.False(OrderPushDiagnostics.ShouldLogHeartbeat(source, now.AddMinutes(5), out _));
+        Assert.True(OrderPushDiagnostics.ShouldLogHeartbeat(source, now.AddMinutes(11), out int aggregated));
+        Assert.Equal(3, aggregated);
+    }
+
+    [Fact]
+    public void LogRequest_HeartbeatLinesCarryCountAndRespectTheSwitch()
+    {
+        var lines = new List<string>();
+        string source = $"192.168.7.{Random.Shared.Next(2, 250)}:6000";
+
+        OrderPushDiagnostics.LogRequest("POST", "/api/connections/heartbeat", source, orderInfoLogEnabled: true, lines.Add);
+        OrderPushDiagnostics.LogRequest("POST", "/api/connections/heartbeat", source, orderInfoLogEnabled: true, lines.Add);
+        OrderPushDiagnostics.LogRequest("POST", "/api/connections/heartbeat", source, orderInfoLogEnabled: false, lines.Add);
+
+        // 十分钟内只留第一条（带累计次数），关掉明细日志时心跳完全不留。
+        Assert.Single(lines);
+        Assert.Contains("次心跳", lines[0], StringComparison.Ordinal);
     }
 }

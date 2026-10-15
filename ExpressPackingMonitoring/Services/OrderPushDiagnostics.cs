@@ -16,6 +16,10 @@ internal static class OrderPushDiagnostics
     private static readonly ConcurrentDictionary<string, DateTime> LastHeartbeatLoggedAt =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>静默期内累计的心跳次数，跨过间隔时一起报出来（只写一条，但不丢"来过多少次"）。</summary>
+    private static readonly ConcurrentDictionary<string, int> PendingHeartbeatCount =
+        new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// 订单推送相关路径。这些请求无论"记录订单信息日志"开关如何都要留痕：
     /// 现场"快递助手发送测试订单失败"时，唯一能定性的是"请求有没有到本机"。
@@ -34,16 +38,23 @@ internal static class OrderPushDiagnostics
         !string.IsNullOrWhiteSpace(path)
         && path.TrimEnd('/').EndsWith("/heartbeat", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>心跳按来源降噪：注册过且还在静默期内就跳过（首次一定记）。</summary>
-    internal static bool ShouldLogHeartbeat(string sourceKey, DateTime now)
+    /// <summary>
+    /// 心跳按来源降噪并汇总：静默期内只累计次数，跨过间隔才写一条，
+    /// 会顺带报出这段时间收到多少次心跳（既不刷屏，也不丢"设备一直在"的证据）。
+    /// </summary>
+    internal static bool ShouldLogHeartbeat(string sourceKey, DateTime now, out int receivedCount)
     {
+        int pending = PendingHeartbeatCount.AddOrUpdate(sourceKey, 1, (_, value) => value + 1);
         if (LastHeartbeatLoggedAt.TryGetValue(sourceKey, out DateTime last)
             && now - last < HeartbeatQuietPeriod)
         {
+            receivedCount = 0;
             return false;
         }
 
         LastHeartbeatLoggedAt[sourceKey] = now;
+        PendingHeartbeatCount[sourceKey] = 0;
+        receivedCount = pending;
         return true;
     }
 
@@ -60,7 +71,15 @@ internal static class OrderPushDiagnostics
     {
         if (IsHeartbeatPath(path))
         {
-            if (!ShouldLogHeartbeat(remoteEndPoint ?? "unknown", DateTime.Now)) return;
+            // 心跳属于"常规明细"：用户把明细日志关掉就不写（订单推送那种必须留痕的走下面）。
+            if (!orderInfoLogEnabled) return;
+            if (!ShouldLogHeartbeat(remoteEndPoint ?? "unknown", DateTime.Now, out int heartbeatCount))
+                return;
+
+            write(
+                $">>> {method} {path} from {remoteEndPoint}"
+                + $"（近 {HeartbeatQuietPeriod.TotalMinutes:F0} 分钟 {heartbeatCount} 次心跳）");
+            return;
         }
         else if (!IsPushRequestPath(path) && !orderInfoLogEnabled)
         {
