@@ -143,6 +143,18 @@ namespace ExpressPackingMonitoring.ViewModels
         private static readonly TimeSpan UiHeartbeatStaleThreshold = TimeSpan.FromSeconds(2);
         // 摄像头断流判定时间窗：处理循环取帧、录制前就绪检查共用同一个门限。
         private static readonly TimeSpan CameraFrameStaleThreshold = TimeSpan.FromSeconds(1.5);
+
+        /// <summary>
+        /// 停止录像时等写入线程收尾的上限。必须比 RunFFmpegPipeline 自己等 ffmpeg 退出的
+        /// 15 秒更长：那边的宽限先走完，它超时才会自己杀一次进程，这里只负责等，不重复杀。
+        /// </summary>
+        private static readonly TimeSpan RecordingWriterShutdownGrace = TimeSpan.FromSeconds(20);
+
+        /// <summary>同一段录像已有转换在跑时，排队等它的上限；超过就放弃这一次（原片保留）。</summary>
+        private static readonly TimeSpan RecordingFileAccessGateQueueTimeout = TimeSpan.FromSeconds(30);
+
+        /// <summary>转换前等写入方释放文件句柄的上限。</summary>
+        private static readonly TimeSpan RecordingFileAccessGateReleaseTimeout = TimeSpan.FromSeconds(15);
         /// <summary>
         /// 休眠唤醒后的宽限期：这段时间里的"没有帧"按唤醒过程处理（静默重启、不播报），
         /// 超过它还没画面才当作真的掉线去提醒用户。

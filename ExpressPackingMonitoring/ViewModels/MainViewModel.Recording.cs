@@ -130,29 +130,18 @@ namespace ExpressPackingMonitoring.ViewModels
             audioFailedForThisRecording = _audioFailedForCurrentRecording;
             audioBytesWrittenForThisRecording = _audioBytesWritten;
 
-            // 4. 等待录制线程真正退出（FFmpeg 进程关闭）
+            // 4. 等录制线程把文件收尾完（FFmpeg 关闭、MKV 尾部写完）
+            //
+            // 以前这里只等 3 秒就强杀，比写入线程自己的收尾宽限（RunFFmpegPipeline 里 15 秒）更短，
+            // 于是"录像画面中断"这类停止会抢先杀掉 ffmpeg：MKV 尾部没写完就被截断（还能播但缺索引），
+            // 后面的 MKV→MP4 转换因此失败。
+            // 现在这里只负责等：等到写入线程自己的收尾窗口走完（它超时会自己杀一次，见
+            // 330b38bf 定下的规矩——杀进程只由持有该进程的写入线程做一次，别处不重复杀）。
             try
             {
                 if (oldWriteTask != null)
                 {
-                    // 给 FFmpeg 3秒时间正常写入尾部信息并关闭
-                    var completedTask = await Task.WhenAny(oldWriteTask, Task.Delay(3000));
-                    if (completedTask != oldWriteTask)
-                    {
-                        Debug.WriteLine("[MainVM] FFmpeg 正常停止超时，执行强杀...");
-                        try 
-                        {
-                            if (oldFfmpegProcess != null && !oldFfmpegProcess.HasExited)
-                            {
-                                oldFfmpegProcess.Kill();
-                                Debug.WriteLine("[MainVM] 僵尸 FFmpeg 已强杀！");
-                            }
-                        } 
-                        catch { }
-                        
-                        // 再等1秒确认彻底死亡
-                        await Task.WhenAny(oldWriteTask, Task.Delay(1000));
-                    }
+                    await Task.WhenAny(oldWriteTask, Task.Delay(RecordingWriterShutdownGrace));
                 }
             }
             catch { }

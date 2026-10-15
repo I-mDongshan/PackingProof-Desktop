@@ -53,6 +53,26 @@ namespace ExpressPackingMonitoring.ViewModels
                     Debug.WriteLine("[MkvToMp4] WAV 音频时间线异常，继续生成 MP4 并记录诊断");
                 }
 
+                // 同一段录像同一时刻只允许一个 ffmpeg 碰它：先排队，再确认写入方已经放开文件句柄。
+                // 330b38bf 之后这条是硬约束——转换与录像抢同一文件会造成录像丢失或截断。
+                using IDisposable? gate = RecordingFileAccessGate.TryAcquire(
+                    mkvPath,
+                    RecordingFileAccessGateQueueTimeout);
+                if (gate == null)
+                {
+                    RuntimeLog.Warn(
+                        "MkvToMp4",
+                        $"同一录像已有转换在进行，本次跳过 file={Path.GetFileName(mkvPath)}");
+                    return;
+                }
+                if (!RecordingFileAccessGate.WaitUntilFileReleased(mkvPath, RecordingFileAccessGateReleaseTimeout))
+                {
+                    RuntimeLog.Warn(
+                        "MkvToMp4",
+                        $"等待文件释放超时，本次不转换（原片保留）file={Path.GetFileName(mkvPath)}");
+                    return;
+                }
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = ffmpegPath,
@@ -205,6 +225,16 @@ namespace ExpressPackingMonitoring.ViewModels
                 // MP4 会因为音频静音片段被误判为失败，最终只留下设备不兼容的 MKV。
                 if (!ValidateAudioCaptureForMux(audioPath, audioLogPath, 0))
                     RuntimeLog.Warn("MkvToMp4", $"Audio capture timeline warning, continuing conversion file={Path.GetFileName(mkvPath)}");
+
+                // 与停止后的自动转换共用同一道门禁：同一段录像同一时刻只有一个 ffmpeg 碰它，
+                // 并且动手前确认写入方已经放开文件句柄（330b38bf 定下的不变量）。
+                using IDisposable? fileGate = RecordingFileAccessGate.TryAcquire(
+                    mkvPath,
+                    RecordingFileAccessGateQueueTimeout);
+                if (fileGate == null)
+                    return MkvConversionResult.Fail("同一录像已有转换在进行", mkvPath);
+                if (!RecordingFileAccessGate.WaitUntilFileReleased(mkvPath, RecordingFileAccessGateReleaseTimeout))
+                    return MkvConversionResult.Fail("等待写入方释放文件句柄超时", mkvPath);
 
                 var psi = new ProcessStartInfo
                 {

@@ -153,6 +153,7 @@
     <Compile Include="Services\Gpu\GpuFrameConverter.cs" />
     <Compile Include="Services\NetworkCameraSource.cs" />
     <Compile Include="Services\NetworkCameraSelfCheck.cs" />
+    <Compile Include="Services\RecordingFileAccessGate.cs" />
     <Compile Include="Services\RecordingProfileDetector.cs" />
     <Compile Include="Services\TrayIconService.cs" />
     <Compile Include="Services\TaskbarIdentityService.cs" />
