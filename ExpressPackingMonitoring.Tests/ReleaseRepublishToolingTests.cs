@@ -103,9 +103,14 @@ public sealed class ReleaseRepublishToolingTests
                     Path.Combine(root, "Tools", scriptName));
             }
 
+            // 产品版本号固定只有一个来源：仓根 Directory.Build.props。
+            File.WriteAllText(
+                Path.Combine(root, "Directory.Build.props"),
+                "<Project><PropertyGroup><Version>9.9.9</Version></PropertyGroup></Project>",
+                new UTF8Encoding(false));
             File.WriteAllText(
                 Path.Combine(root, "ExpressPackingMonitoring", "ExpressPackingMonitoring.csproj"),
-                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><Version>9.9.9</Version></PropertyGroup></Project>",
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0-windows</TargetFramework></PropertyGroup></Project>",
                 new UTF8Encoding(false));
 
             var repo = new TempReleaseRepo(root);

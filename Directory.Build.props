@@ -1,0 +1,13 @@
+<Project>
+
+  <!--
+    产品版本号的唯一来源，发版只改这一处（与 vX.Y.Z 标签保持一致）。
+    主程序、Core、启动器、保存主机、测试与工具工程属于同一次发布，版本必须一致；
+    以前分散写在各个 csproj 里，Core 停在 0.0.78，界面、更新判断和 Mac 打包都读到了旧号。
+    发布脚本仍会用 -p:InformationalVersion 全局覆盖正式产物的信息版本。
+  -->
+  <PropertyGroup>
+    <Version>0.0.81</Version>
+  </PropertyGroup>
+
+</Project>

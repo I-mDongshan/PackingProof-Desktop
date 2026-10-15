@@ -24,7 +24,7 @@ runtime_id="${2:-osx-arm64}"
 version="${3:-}"
 if [ -z "${version}" ]; then
   version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' \
-    "${repository_root}/ExpressPackingMonitoring.Core/ExpressPackingMonitoring.Core.csproj" | head -1)"
+    "${repository_root}/Directory.Build.props" | head -1)"
   version="${version:-0.0.1}"
 fi
 notary_profile="${NOTARY_PROFILE:-PackingProofNotary}"

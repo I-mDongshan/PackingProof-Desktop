@@ -32,7 +32,7 @@ fi
 version="${1:-}"
 if [[ -z "${version}" ]]; then
   version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' \
-    "${repository_root}/ExpressPackingMonitoring.Core/ExpressPackingMonitoring.Core.csproj" | head -1)"
+    "${repository_root}/Directory.Build.props" | head -1)"
   version="${version:-}"
 fi
 if [[ -z "${version}" ]]; then

@@ -6,7 +6,7 @@
 # 约定（与 docs/development/RELEASE_AND_RUNTIME.md 的《重发同一版本》一致）：
 # - 这是"对外动作"，不加 -Confirmed 只打印计划并停下，不构建、不上传；
 #   想看计划又不带确认用 -DryRun
-# - 版本号默认取 csproj 的 <Version>；标签默认 v<版本号>
+# - 版本号默认取 Directory.Build.props 的 <Version>；标签默认 v<版本号>
 # - 发布标签必须指向已合并到主干的提交，且本次修复要在里面；HEAD 允许比标签多提交
 #   （工具、文档这类改动），但只要应用侧代码有差异就直接拒绝，避免发出去的包不是标签内容
 # - 重建交给 Publish-CleanPackage.ps1（它自己会清产物目录，并保留人工写好的发布笔记）
@@ -60,10 +60,10 @@ if (git status --porcelain --untracked-files=all) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $csproj = Join-Path $repoRoot "ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
-    $match = Select-String -LiteralPath $csproj -Pattern "<Version>([^<]+)</Version>" | Select-Object -First 1
+    $versionFile = Join-Path $repoRoot "Directory.Build.props"
+    $match = Select-String -LiteralPath $versionFile -Pattern "<Version>([^<]+)</Version>" | Select-Object -First 1
     if (-not $match) {
-        throw "读不到 csproj 里的 <Version>，请用 -Version 显式指定"
+        throw "读不到 Directory.Build.props 里的 <Version>，请用 -Version 显式指定"
     }
     $Version = $match.Matches[0].Groups[1].Value.Trim()
 }

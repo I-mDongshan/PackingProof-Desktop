@@ -47,14 +47,14 @@ else {
     Write-Ok "工作区干净"
 }
 
-$csprojPath = Join-Path $repoRoot "ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
+$versionFilePath = Join-Path $repoRoot "Directory.Build.props"
 $projectVersion = ""
-if (Test-Path -LiteralPath $csprojPath) {
-    $match = Select-String -Path $csprojPath -Pattern "<Version>([^<]+)</Version>" | Select-Object -First 1
+if (Test-Path -LiteralPath $versionFilePath) {
+    $match = Select-String -Path $versionFilePath -Pattern "<Version>([^<]+)</Version>" | Select-Object -First 1
     if ($match) { $projectVersion = $match.Matches[0].Groups[1].Value.Trim() }
 }
 if ([string]::IsNullOrWhiteSpace($projectVersion)) {
-    Write-Fail "读不到 csproj 里的 <Version>"
+    Write-Fail "读不到 Directory.Build.props 里的 <Version>"
 }
 else {
     # 发行标签与启动器标签（launcher-vX.Y.Z）可能同时落在 HEAD 上 —— 重建启动器基线时就是这样。
@@ -64,17 +64,17 @@ else {
         Where-Object { $_ -match '^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$' } |
         Select-Object -First 1
     if ([string]::IsNullOrWhiteSpace($releaseTagAtHead)) {
-        Write-Warn "当前提交没有 v 形式的发行 tag（csproj 是 $projectVersion，发布前需建 v$projectVersion）"
+        Write-Warn "当前提交没有 v 形式的发行 tag（Directory.Build.props 是 $projectVersion，发布前需建 v$projectVersion）"
     }
     elseif ($releaseTagAtHead.Trim() -eq "v$projectVersion") {
-        Write-Ok "当前提交的 tag $($releaseTagAtHead.Trim()) 与 csproj 一致"
+        Write-Ok "当前提交的 tag $($releaseTagAtHead.Trim()) 与 Directory.Build.props 一致"
         $previousTag = Get-PreviousFormalReleaseTag -RepoRoot $repoRoot -ReleaseTag $releaseTagAtHead.Trim()
         $subjects = Get-ReleaseCommitSubjects -RepoRoot $repoRoot -FromTag $previousTag
         $rangeFrom = if ([string]::IsNullOrWhiteSpace($previousTag)) { "仓库起点" } else { $previousTag }
         Write-Ok "发布笔记范围：$rangeFrom .. $($releaseTagAtHead.Trim()) 共 $($subjects.Count) 个提交，必须逐条覆盖"
     }
     else {
-        Write-Fail "tag $($releaseTagAtHead.Trim()) 与 csproj 的 $projectVersion 不一致"
+        Write-Fail "tag $($releaseTagAtHead.Trim()) 与 Directory.Build.props 的 $projectVersion 不一致"
     }
 }
 
