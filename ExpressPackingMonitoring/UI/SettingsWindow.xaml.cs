@@ -2473,7 +2473,7 @@ namespace ExpressPackingMonitoring.UI
             {
                 bool confirmed = AppDialog.Confirm(
                     this,
-                    $"将打包运行日志、配置和完整录像数据库（含订单明细、买家留言等隐私数据）到本地压缩包。\n确认继续吗？打包完成后可发送到反馈邮箱 {FeedbackEmail}",
+                    $"将打包运行日志、配置和完整录像数据库（含订单明细、买家留言等隐私数据）到本地压缩包。\n确认继续吗？打包完成后可把压缩包发到反馈邮箱 {FeedbackEmail}",
                     "导出诊断日志",
                     AppDialogSeverity.Warning,
                     confirmText: "开始打包");
@@ -2481,18 +2481,15 @@ namespace ExpressPackingMonitoring.UI
 
                 IReadOnlyList<string> warnings = Array.Empty<string>();
                 string zipPath = "";
-                string emlPath = "";
                 await Task.Run(() =>
                 {
                     var service = new FeedbackPackageService(AppPaths.UserDataDir);
                     zipPath = service.CreatePackage(out IReadOnlyList<string> packageWarnings);
                     warnings = packageWarnings;
-                    emlPath = service.CreateFeedbackEml(zipPath, FeedbackEmail);
                 });
 
                 try { Clipboard.SetText(zipPath); } catch { }
-                // 直接打开文件位置；邮件客户端不自动打开，避免窗口互相覆盖，
-                // 由用户在结果弹窗里点击“发送邮件”后再打开。
+                // 直接打开文件位置：压缩包就在那里，用户自己拖进邮件即可。
                 try
                 {
                     Process.Start(new ProcessStartInfo(
@@ -2506,37 +2503,40 @@ namespace ExpressPackingMonitoring.UI
                     $"诊断包已生成：\n{zipPath}\n\n" +
                     $"大小：{FormatBytes(info.Length)}\n" +
                     "已复制路径并打开所在文件夹。\n\n" +
-                    $"点击“发送邮件”会尝试直接打开一封已带反馈模板和压缩包附件的新邮件（收件人 {FeedbackEmail}），填写问题后发送即可；若本机没有经典 Outlook，会退回邮件草稿或普通邮件（可能需要手动添加附件）。\n\n" +
+                    $"点击“复制邮箱地址”会复制反馈邮箱 {FeedbackEmail}，把刚生成的压缩包作为附件发过去即可。\n\n" +
                     "注意：包内含完整订单数据库与本地配置，请勿转发给无关人员";
                 if (warnings.Count > 0)
                     message += "\n\n提示：\n" + string.Join("\n", warnings.Take(10));
 
-                bool sendMail = AppDialog.Confirm(
+                bool copyEmail = AppDialog.Confirm(
                     this,
                     message,
                     "导出诊断日志",
                     AppDialogSeverity.Information,
-                    confirmText: "发送邮件",
+                    confirmText: "复制邮箱地址",
                     cancelText: "关闭",
                     isDangerous: false);
-                if (sendMail)
+                if (copyEmail)
                 {
-                    string subject =
-                        $"PackingProof 反馈（{ExpressPackingMonitoring.Config.AppVersion.Current}）";
-                    string body = FeedbackPackageService.BuildFeedbackBody(
-                        zipPath,
-                        ExpressPackingMonitoring.Config.AppVersion.Current,
-                        ExpressPackingMonitoring.Config.AppVersion.CommitShortId);
-                    bool opened =
-                        FeedbackMailLauncher.TryOpenOutlookDraft(
-                            FeedbackEmail, subject, body, zipPath)
-                        || FeedbackMailLauncher.TryOpenEmlDraft(emlPath)
-                        || FeedbackMailLauncher.TryOpenMailto(FeedbackEmail, subject, body);
-                    if (!opened)
+                    // 不再替用户打开邮件客户端：只把邮箱地址复制好，压缩包就在刚打开的文件夹里。
+                    string emailText = FeedbackEmail;
+                    bool copied = ClipboardHelper.TryCopyText(emailText, () => { });
+                    if (copied)
+                    {
+                        AppDialog.Confirm(
+                            this,
+                            $"已复制反馈邮箱：{emailText}\n\n请把刚生成的压缩包作为附件发送：\n{Path.GetFileName(zipPath)}",
+                            "导出诊断日志",
+                            AppDialogSeverity.Information,
+                            confirmText: "知道了",
+                            cancelText: "关闭",
+                            isDangerous: false);
+                    }
+                    else
                     {
                         AppDialog.Error(
                             this,
-                            $"未能打开邮件客户端，请手动发送到 {FeedbackEmail}（压缩包路径已复制到剪贴板，请作为附件添加）",
+                            $"没能写入剪贴板，请手动记录反馈邮箱：{emailText}",
                             "导出诊断日志");
                     }
                 }

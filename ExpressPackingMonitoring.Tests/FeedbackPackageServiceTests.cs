@@ -139,7 +139,7 @@ public sealed class FeedbackPackageServiceTests
     }
 
     [Fact]
-    public void CreateFeedbackEml_EmbedsTemplateAndAttachment()
+    public void CreatePackage_NoLongerEmitsMailDraftBeside()
     {
         string directory = CreateTempDirectory();
         try
@@ -149,27 +149,11 @@ public sealed class FeedbackPackageServiceTests
                 appVersion: "v0.0.39",
                 commitId: "abc12345");
             string zipPath = service.CreatePackage(out _);
-            string emlPath = service.CreateFeedbackEml(zipPath, "PackingProof@outlook.com");
 
-            Assert.True(File.Exists(emlPath));
-            Assert.Equal(Path.GetFileNameWithoutExtension(zipPath) + ".eml", Path.GetFileName(emlPath));
-            string eml = File.ReadAllText(emlPath, Encoding.UTF8);
-            Assert.Contains("To: PackingProof@outlook.com", eml);
-            Assert.Contains("Subject: =?UTF-8?B?", eml);
-            Assert.Contains("multipart/mixed", eml);
-            Assert.Contains("application/zip", eml);
-            Assert.Contains($"filename=\"{Path.GetFileName(zipPath)}\"", eml);
-
-            string textPart = ExtractEmlTextPart(eml);
-            Assert.Contains("问题描述", textPart);
-            Assert.Contains("复现步骤", textPart);
-            Assert.Contains("期望行为", textPart);
-            Assert.Contains("实际行为", textPart);
-            Assert.Contains("v0.0.39", textPart);
-            Assert.Contains("abc12345", textPart);
-
-            byte[] embedded = ExtractEmlAttachment(eml, Path.GetFileName(zipPath));
-            Assert.Equal(File.ReadAllBytes(zipPath), embedded);
+            // 诊断包只产出压缩包：邮件包（.eml 草稿）整套已移除，
+            // 用户拿到的就是这一个 zip，由自己作为附件发送。
+            Assert.True(File.Exists(zipPath));
+            Assert.Empty(Directory.GetFiles(directory, "*.eml", SearchOption.AllDirectories));
         }
         finally
         {
@@ -239,21 +223,15 @@ public sealed class FeedbackPackageServiceTests
                     $"PackingProof_Feedback_20260101-{index:D2}.zip");
                 File.WriteAllText(oldZipPath, "old", Encoding.UTF8);
                 File.SetLastWriteTimeUtc(oldZipPath, DateTime.UtcNow.AddDays(-30 + index));
-                string emlPath = Path.ChangeExtension(oldZipPath, ".eml");
-                File.WriteAllText(emlPath, "old-eml", Encoding.UTF8);
-                File.SetLastWriteTimeUtc(emlPath, DateTime.UtcNow.AddDays(-30 + index));
             }
             string unrelated = Path.Combine(feedbackDir, "other.zip");
             File.WriteAllText(unrelated, "keep", Encoding.UTF8);
 
             var service = new FeedbackPackageService(directory);
             string zipPath = service.CreatePackage(out _);
-            service.CreateFeedbackEml(zipPath, "PackingProof@outlook.com");
 
             string[] remainingZips = Directory.GetFiles(feedbackDir, "PackingProof_Feedback_*.zip");
-            string[] remainingEmls = Directory.GetFiles(feedbackDir, "PackingProof_Feedback_*.eml");
             Assert.Equal(FeedbackPackageService.MaxPackagesToKeep, remainingZips.Length);
-            Assert.Equal(FeedbackPackageService.MaxPackagesToKeep, remainingEmls.Length);
             Assert.True(File.Exists(unrelated));
         }
         finally
@@ -316,42 +294,4 @@ public sealed class FeedbackPackageServiceTests
         source.CopyTo(target);
     }
 
-    private static byte[] ExtractEmlAttachment(string eml, string fileName)
-    {
-        string[] lines = eml.Split('\n');
-        int headerIndex = Array.FindIndex(
-            lines,
-            line => line.Contains($"filename=\"{fileName}\"", StringComparison.Ordinal));
-        Assert.True(headerIndex >= 0, "未找到附件头");
-        int bodyStart = headerIndex + 1;
-        while (bodyStart < lines.Length && string.IsNullOrWhiteSpace(lines[bodyStart]))
-            bodyStart++;
-        var base64 = new StringBuilder();
-        for (int index = bodyStart; index < lines.Length; index++)
-        {
-            if (lines[index].TrimStart().StartsWith("--", StringComparison.Ordinal)) break;
-            base64.Append(lines[index].Trim());
-        }
-        return Convert.FromBase64String(base64.ToString());
-    }
-
-    private static string ExtractEmlTextPart(string eml)
-    {
-        string[] lines = eml.Split('\n');
-        int headerIndex = Array.FindIndex(
-            lines,
-            line => line.Contains("Content-Type: text/plain", StringComparison.Ordinal));
-        Assert.True(headerIndex >= 0, "未找到正文部分");
-        int bodyStart = headerIndex + 1;
-        while (bodyStart < lines.Length && !string.IsNullOrWhiteSpace(lines[bodyStart]))
-            bodyStart++;
-        if (bodyStart < lines.Length) bodyStart++;
-        var base64 = new StringBuilder();
-        for (int index = bodyStart; index < lines.Length; index++)
-        {
-            if (lines[index].TrimStart().StartsWith("--", StringComparison.Ordinal)) break;
-            base64.Append(lines[index].Trim());
-        }
-        return Encoding.UTF8.GetString(Convert.FromBase64String(base64.ToString()));
-    }
 }
