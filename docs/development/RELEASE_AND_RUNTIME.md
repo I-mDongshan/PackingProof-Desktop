@@ -31,6 +31,7 @@
 ## 启动器与增量更新
 
 - 用户应从包根目录启动器进入。启动器立即启动主程序、后台检查并下载经过校验的 AppPatch 到 `cache\updates`，下次启动时安装。
+- 增量包下载带断点续传：主程序与启动器共用 `ExpressPackingMonitoring.UpdateCore\ResumableFileDownload.cs`，半截包按版本留在 `cache\updates\partial\*.partial` 里，断线、停滞、换源（GitHub ↔ Gitee）、跨重启都带 `Range` 从断点继续。服务端不认 `Range`（回 200/416）就截断重下，绝不拼两段不同来源的字节；最终仍要过体积 + SHA256 双校验才发布到 `pending`，校验不过的断点会被清掉并只重下一次。下载停滞判据是"60 秒没有新字节"而不是绝对时长：主程序端增量包不再用清单那 75 秒的 `HttpClient` 总超时（否则 75MB 的过渡包在慢网上正好卡在下到一半），启动器的下载也单独给 30 分钟预算；超时保留断点，重试从断点继续。
 - 启动器在启动主程序前处理共享运行时布局：安装目录里有可用的 `runtime\` 就把子进程的 `DOTNET_ROOT` 指向它（框架依赖的主程序因此用安装自带的运行时，不依赖机器另外装的 .NET）；没有或不完整就保持原样，走系统运行时，兼容 Gitee 的 no-runtime 安装包。老装机升级上来时 `app\` 里仍留着平铺运行时副本，其中 `app\hostfxr.dll` 会改变宿主行为，启动器按 `runtime\layout.json` 的 `appFileMap` 把它们搬进 `runtime\.legacy\` 留作回滚（只搬布局里有、且不在应用自身 deps.json 里的文件），连续两次正常启动后清理备份；主程序正在运行时只解析布局、不动任何文件。验证入口：`pwsh -NoProfile -File Tools\Test-SharedRuntimeLaunch.ps1`。
 - 主程序可通过独立校验的 `launcher_package` 更新根启动器：等待旧进程退出、持有共享更新互斥体、只替换标准根启动器，失败时恢复旧文件。
 - AppPatch 是固定基线累计补丁，当前默认基线为 `0.0.18`；启动器基线与 AppPatch 基线相互独立。
