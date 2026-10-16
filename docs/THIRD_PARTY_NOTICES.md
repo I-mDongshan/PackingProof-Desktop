@@ -1,6 +1,23 @@
-# 第三方组件说明
+# 第三方组件与许可证
 
-发布包使用以下第三方组件。各组件仍遵循其自身许可证，具体版本以项目文件和发布基线清单为准。
+发布包使用以下第三方组件，各组件仍遵循其自身许可证。组件版本、下载地址、文件大小与 SHA256 固定在 `Tools/ffmpeg-baseline.json`、`Tools/ffmpeg-macos-baseline.json` 和项目文件里，可逐项复核。
+
+本项目自身以 AGPL-3.0 授权，全文见仓库根目录的 `LICENSE`。
+
+## 随包分发的许可证全文
+
+许可证全文随安装包一起分发，Windows 在安装目录的 `app\licenses\`，macOS 主机在 `PackingProofHost.app/Contents/MacOS/Host/licenses/`：
+
+| 文件 | 对应组件 | 许可证 |
+| --- | --- | --- |
+| `AGPL-3.0.txt` | PackingProof 主程序（本项目自身） | AGPL-3.0 |
+| `GPL-3.0.txt` | FFmpeg（Windows 与 macOS 构建） | GPL-3.0 |
+| `LGPL-2.1.txt` | LibVLC 核心（`libvlc.dll` / `libvlccore.dll`） | LGPL-2.1 |
+| `GPL-2.0.txt` | LibVLC 构建中含 GPL 组件的部分（VLC 3.0.x 为 GPLv2 或更高版本） | GPL-2.0 |
+| `ffmpeg-build-notice.txt` | FFmpeg Windows 构建说明：版本、上游 commit、构建参数 | — |
+| `THIRD_PARTY_NOTICES.md` | 本文件 | — |
+
+全文来源：`GPL-3.0.txt` 与 `ffmpeg-build-notice.txt` 直接取自随包二进制所属的同一归档（`ffmpeg-4.4.1-essentials_build.7z` 内的 `LICENSE` 与 `README.txt`），保证与随包二进制一致；`LGPL-2.1.txt` 与 `GPL-2.0.txt` 取自 VideoLAN 上游 `vlc` 仓库 `3.0.21` 标签的 `COPYING.LIB` 与 `COPYING`。仓库内的原始副本保存在 `docs/third-party-licenses/`，打包时原样复制进安装包。
 
 ## FFmpeg
 

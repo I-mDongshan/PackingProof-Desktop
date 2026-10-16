@@ -91,6 +91,26 @@
     </Content>
   </ItemGroup>
 
+  <!-- 第三方组件与许可证全文随包分发（安装目录 app\licenses\），登记见 docs\THIRD_PARTY_NOTICES.md。
+       正文原件保存在 docs\third-party-licenses\，打包时原样复制，不做任何改写。 -->
+  <ItemGroup>
+    <Content Include="..\docs\THIRD_PARTY_NOTICES.md">
+      <TargetPath>licenses\THIRD_PARTY_NOTICES.md</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\LICENSE">
+      <TargetPath>licenses\AGPL-3.0.txt</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\docs\third-party-licenses\*.txt">
+      <TargetPath>licenses\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Include="App.xaml.cs" />
     <Compile Include="Audio\AudioProbe.cs" />
