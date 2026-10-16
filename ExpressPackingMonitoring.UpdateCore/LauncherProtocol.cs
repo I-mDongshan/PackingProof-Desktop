@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
 namespace ExpressPackingMonitoring.UpdateCore;
 
@@ -30,7 +30,12 @@ public static class LauncherProtocol
     /// </summary>
     public const int CurrentAppProtocol = 2;
 
-    public const string StateFileName = "launcher-protocol.json";
+    /// <summary>
+    /// 状态文件用**纯文本**（protocol/version/sha256/written 四行），不用 JSON：
+    /// 启动器是原生 AOT 发布，反射式 JSON 序列化在那里会被裁掉/不可用（IL2026/IL3050）。
+    /// 仓库里读 JSON 的既有约定也是 JsonDocument 手写解析。
+    /// </summary>
+    public const string StateFileName = "launcher-protocol.txt";
 
     /// <summary>已安装启动器自报的能力状态。</summary>
     public sealed record State(int ProtocolVersion, string Version, string Sha256, DateTimeOffset WrittenAtUtc);
@@ -58,12 +63,8 @@ public static class LauncherProtocol
             }
 
             Directory.CreateDirectory(updatesDirectory);
-            var state = new State(CurrentLauncherProtocol, version, launcherSha256, DateTimeOffset.UtcNow);
             string temporaryPath = statePath + $".{Guid.NewGuid():N}.tmp";
-            File.WriteAllText(
-                temporaryPath,
-                JsonSerializer.Serialize(state),
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.WriteAllText(temporaryPath, FormatState(CurrentLauncherProtocol, version, launcherSha256), Utf8NoBom);
             File.Move(temporaryPath, statePath, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -105,18 +106,45 @@ public static class LauncherProtocol
     {
         try
         {
-            State? state = JsonSerializer.Deserialize<State>(File.ReadAllText(statePath, Encoding.UTF8));
-            return state is null || state.Sha256.Length == 0 ? null : state;
+            int protocol = 0;
+            string version = "";
+            string sha256 = "";
+            DateTimeOffset writtenAt = DateTimeOffset.MinValue;
+            foreach (string line in File.ReadAllLines(statePath, Encoding.UTF8))
+            {
+                int separator = line.IndexOf('=');
+                if (separator <= 0) continue;
+                string name = line[..separator].Trim();
+                string value = line[(separator + 1)..].Trim();
+                if (name.Equals("protocol", StringComparison.OrdinalIgnoreCase))
+                    int.TryParse(value, CultureInfo.InvariantCulture, out protocol);
+                else if (name.Equals("version", StringComparison.OrdinalIgnoreCase))
+                    version = value;
+                else if (name.Equals("sha256", StringComparison.OrdinalIgnoreCase))
+                    sha256 = value;
+                else if (name.Equals("written", StringComparison.OrdinalIgnoreCase))
+                    DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out writtenAt);
+            }
+
+            return sha256.Length == 0 ? null : new State(protocol, version, sha256, writtenAt);
         }
-        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return null;
         }
     }
+
+    private static string FormatState(int protocol, string version, string sha256) =>
+        "protocol=" + protocol.ToString(CultureInfo.InvariantCulture) + "\n"
+        + "version=" + version + "\n"
+        + "sha256=" + sha256 + "\n"
+        + "written=" + DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture) + "\n";
 
     private static string ComputeFileSha256(string path)
     {
         using FileStream stream = File.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
+
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 }
