@@ -6,23 +6,28 @@
   "release_tag": "v0.0.82",
   "runtime": "win-x64",
   "update_check_url": "https://gitee.com/api/v5/repos/PackingProof/PackingProof-Desktop/releases/latest",
-  "source_fingerprint": "0571bab768e59d5de443ea62d3942c4ffefa322b7804418966eac6ded54a1ec3",
+  "source_fingerprint": "62aa666cb7f21a2fbb9b1917d2ed26f382c6c725f65b3f77d7b4cbc6c2788e58",
   "fingerprint_files": [
     "ExpressPackingMonitoring.Launcher/Program.cs",
     "ExpressPackingMonitoring.Launcher/ExpressPackingMonitoring.Launcher.csproj",
     "ExpressPackingMonitoring.UpdateCore/ExpressPackingMonitoring.UpdateCore.csproj",
-    "ExpressPackingMonitoring.UpdateCore/UpdateEndpointPolicy.cs",
-    "ExpressPackingMonitoring.UpdateCore/UpdateMetadataClient.cs",
-    "ExpressPackingMonitoring.UpdateCore/PackageDownloadRoutePolicy.cs",
     "ExpressPackingMonitoring/app.ico",
     "Tools/Install-LauncherPatch.cmd",
-    "Tools/Apply-LauncherPatch.ps1"
+    "Tools/Apply-LauncherPatch.ps1",
+    "ExpressPackingMonitoring.UpdateCore/PackageDownloadRoutePolicy.cs",
+    "ExpressPackingMonitoring.UpdateCore/ResumableFileDownload.cs",
+    "ExpressPackingMonitoring.UpdateCore/SharedRuntimeLayout.cs",
+    "ExpressPackingMonitoring.UpdateCore/UpdateChannelPolicy.cs",
+    "ExpressPackingMonitoring.UpdateCore/UpdateCheckThrottle.cs",
+    "ExpressPackingMonitoring.UpdateCore/UpdateEndpointPolicy.cs",
+    "ExpressPackingMonitoring.UpdateCore/UpdateMetadataClient.cs",
+    "ExpressPackingMonitoring.UpdateCore/UpdateReleaseSelection.cs"
   ],
   "package": {
     "file": "PackingProof_LauncherPatch_v0.0.82.zip",
-    "size": 3137793,
-    "sha256": "fcdc44993a443524477cf518e7bfd12cece2c0ee5c32bcd3425aae636ce3635a",
-    "executable_size": 6846976,
-    "executable_sha256": "72aeb19a9bb352474d3724ee3c95cc4b2203c2fe76e43277d886253fc9391a86"
+    "size": 3150413,
+    "sha256": "0316c8f8dc2a504f647083eff879ebd9209e9041282e51aa5cc8fc60c196989f",
+    "executable_size": 6875648,
+    "executable_sha256": "c081fa07a2f1f026664f145bfed2b39f01bf101df7db852542373e7a6d9bec7d"
   }
 }
