@@ -168,6 +168,34 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
         Assert.False(File.Exists(Path.Combine(SharedRuntimeLayout.GetLayoutDirectory(_installRoot), SharedRuntimeLayout.StateFileName)));
     }
 
+    /// <summary>
+    /// 自包含产物可能带不止一个 deps.json。迁移判定必须合并所有清单：只看第一个的话，
+    /// 万一挑到别的依赖清单，就会把运行时文件当成"老装机的平铺副本"搬走，把自包含应用弄坏。
+    /// </summary>
+    [Fact]
+    public void PrepareForLaunch_KeepsFilesListedInAnyDepsJson()
+    {
+        WriteLayout(usable: true, appOwnedFiles: []);
+        WriteAppFile("hostfxr.dll");
+        WriteAppFile("hostpolicy.dll");
+        WriteAppFile("System.Private.CoreLib.dll");
+        // 主 deps.json 是 WriteLayout 写的（hostfxr.dll + hostpolicy.dll 由 appOwnedFiles 决定）；
+        // 这里再放一个把 System.Private.CoreLib.dll 也算成应用自身依赖的清单元。
+        File.WriteAllText(
+            Path.Combine(_installRoot, "app", "ExpressPackingMonitoring.Core.deps.json"),
+            """
+            {"targets":{".NETCoreApp,Version=v10.0":{"Core/1.0.0":{"runtime":{"System.Private.CoreLib.dll":{}}}}}}
+            """,
+            new UTF8Encoding(false));
+
+        SharedRuntimeLaunchContext result = SharedRuntimeLayout.PrepareForLaunch(_installRoot);
+
+        Assert.Equal(2, result.MigratedLegacyFiles);
+        Assert.False(File.Exists(Path.Combine(_installRoot, "app", "hostfxr.dll")));
+        Assert.False(File.Exists(Path.Combine(_installRoot, "app", "hostpolicy.dll")));
+        Assert.True(File.Exists(Path.Combine(_installRoot, "app", "System.Private.CoreLib.dll")));
+    }
+
     [Fact]
     public void PrepareForLaunch_RollsBackWhenAMoveFails()
     {

@@ -353,27 +353,36 @@ public static class SharedRuntimeLayout
         string[] depsFiles = Directory.GetFiles(appDirectory, "*.deps.json", SearchOption.TopDirectoryOnly);
         if (depsFiles.Length == 0) return names;
 
-        try
+        // 逐个都读：自包含产物里运行时文件都列在 deps.json 的 runtime 段，只看「第一个」万一挑到
+        // 别的依赖清单，就会把这些文件当成"老装机的平铺副本"搬走，把应用弄坏。
+        foreach (string depsFile in depsFiles)
         {
-            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(depsFiles[0], Encoding.UTF8));
-            if (!document.RootElement.TryGetProperty("targets", out JsonElement targets)
-                || targets.ValueKind != JsonValueKind.Object) return names;
-
-            foreach (JsonProperty target in targets.EnumerateObject())
+            try
             {
-                if (target.Value.ValueKind != JsonValueKind.Object) continue;
-                foreach (JsonProperty library in target.Value.EnumerateObject())
+                using JsonDocument document = JsonDocument.Parse(File.ReadAllText(depsFile, Encoding.UTF8));
+                if (!document.RootElement.TryGetProperty("targets", out JsonElement targets)
+                    || targets.ValueKind != JsonValueKind.Object)
                 {
-                    AddFileNames(library.Value, "runtime", names);
-                    AddFileNames(library.Value, "native", names);
+                    continue;
+                }
+
+                foreach (JsonProperty target in targets.EnumerateObject())
+                {
+                    if (target.Value.ValueKind != JsonValueKind.Object) continue;
+                    foreach (JsonProperty library in target.Value.EnumerateObject())
+                    {
+                        AddFileNames(library.Value, "runtime", names);
+                        AddFileNames(library.Value, "native", names);
+                    }
                 }
             }
-        }
-        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
-        {
-            // 读不出依赖清单时宁可一个都不搬，避免误删应用文件。
-            names.Clear();
-            names.Add("*");
+            catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+            {
+                // 读不出依赖清单时宁可一个都不搬，避免误删应用文件。
+                names.Clear();
+                names.Add("*");
+                return names;
+            }
         }
         return names;
     }
