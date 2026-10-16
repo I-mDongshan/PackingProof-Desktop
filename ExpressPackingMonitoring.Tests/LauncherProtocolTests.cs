@@ -73,6 +73,37 @@ public sealed class LauncherProtocolTests : IDisposable
         Assert.Equal(0, state.ProtocolVersion);
     }
 
+    /// <summary>
+    /// 补丁要求新启动器、而启动器刚刚被换掉时：状态文件里还是旧哈希（新启动器要等下次启动才写），
+    /// 这时必须按"启动器已就绪"收尾，不能把一次成功的启动器更新报成失败。
+    /// 启动器没被换掉、能力又确实不够时，仍然要如实报失败。
+    /// </summary>
+    [Fact]
+    public void LauncherRequirementSatisfiedAfterUpdate_TreatsAJustAppliedLauncherAsReady()
+    {
+        var staleState = new LauncherProtocol.State(0, "", "", DateTimeOffset.MinValue);
+        var capableState = new LauncherProtocol.State(
+            LauncherProtocol.RuntimeLayoutPayloads,
+            "0.0.83",
+            new string('a', 64),
+            DateTimeOffset.UtcNow);
+
+        // 刚换掉启动器：状态文件还没更新，但这次更新已经落地，按就绪处理。
+        Assert.True(AppPatchDownloadService.LauncherRequirementSatisfiedAfterUpdate(
+            LauncherUpdateOutcome.Applied,
+            staleState,
+            LauncherProtocol.RuntimeLayoutPayloads));
+        // 没换启动器：只有状态文件证明能力够才算满足。
+        Assert.False(AppPatchDownloadService.LauncherRequirementSatisfiedAfterUpdate(
+            LauncherUpdateOutcome.Unchanged,
+            staleState,
+            LauncherProtocol.RuntimeLayoutPayloads));
+        Assert.True(AppPatchDownloadService.LauncherRequirementSatisfiedAfterUpdate(
+            LauncherUpdateOutcome.Unchanged,
+            capableState,
+            LauncherProtocol.RuntimeLayoutPayloads));
+    }
+
     /// <summary>补丁声明的启动器能力要求要被解析出来；老清单没有这个字段就是"不要求"。</summary>
     [Fact]
     public void ParseDescriptor_ReadsRequiredLauncherProtocol()

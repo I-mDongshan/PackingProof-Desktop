@@ -52,6 +52,19 @@ internal enum LauncherPackageApplyResult
     Deferred
 }
 
+/// <summary>
+/// 一次启动器自更新的结果。调用方（例如"补丁要求新启动器"那条路）需要知道启动器文件到底
+/// 有没有被换掉：刚换掉时能力状态文件里记的还是旧启动器的哈希，再读只会得到"最低能力"。
+/// </summary>
+internal enum LauncherUpdateOutcome
+{
+    /// <summary>这次没有替换启动器（不需要、没查到、或者被推迟）。</summary>
+    Unchanged,
+
+    /// <summary>启动器文件已经被换成本次更新包里的那一份（新启动器要等下次启动才写能力状态）。</summary>
+    Applied
+}
+
 internal sealed class LauncherUpdateService
 {
     internal const int SupportedProtocolVersion = 1;
@@ -85,18 +98,19 @@ internal sealed class LauncherUpdateService
     /// true = 忽略"上一次刚查过"的缓存，强制复查一遍。补丁要求新启动器时走这条路
     /// （见 AppPatchDownloadService）：不能因为六小时内查过就放弃更新启动器。
     /// </param>
-    public async Task CheckAndApplyAsync(bool enabled, CancellationToken cancellationToken, bool force = false)
+    /// <returns>启动器文件这次有没有被换掉（见 <see cref="LauncherUpdateOutcome"/>）。</returns>
+    public async Task<LauncherUpdateOutcome> CheckAndApplyAsync(bool enabled, CancellationToken cancellationToken, bool force = false)
     {
         if (!enabled)
         {
             RuntimeLog.Info("LauncherUpdate", "Automatic update is disabled");
-            return;
+            return LauncherUpdateOutcome.Unchanged;
         }
 
         if (!TryResolveInstalledLauncher(AppContext.BaseDirectory, out string launcherPath))
         {
             RuntimeLog.Info("LauncherUpdate", "Skip outside clean package layout");
-            return;
+            return LauncherUpdateOutcome.Unchanged;
         }
 
         try
@@ -108,15 +122,13 @@ internal sealed class LauncherUpdateService
                 updatesDirectory,
                 DownloadFailureStateFileName);
             string appVersion = GetCurrentAppVersion();
-            if (await TryApplyPendingPackageAsync(
+            LauncherUpdateOutcome? pendingOutcome = await TryApplyPendingPackageAsync(
                     pendingRoot,
                     checkStatePath,
                     appVersion,
                     launcherPath,
-                    cancellationToken))
-            {
-                return;
-            }
+                    cancellationToken);
+            if (pendingOutcome is not null) return pendingOutcome.Value;
 
             if (!force && ShouldSkipSuccessfulCheck(
                     checkStatePath,
@@ -124,7 +136,7 @@ internal sealed class LauncherUpdateService
                     launcherPath))
             {
                 RuntimeLog.Info("LauncherUpdate", "Skip repeated successful launcher check");
-                return;
+                return LauncherUpdateOutcome.Unchanged;
             }
 
             (LauncherPackageInfo? package, string packageManifestUrl) =
@@ -138,7 +150,7 @@ internal sealed class LauncherUpdateService
                     launcherPath,
                     "",
                     "");
-                return;
+                return LauncherUpdateOutcome.Unchanged;
             }
 
             if (File.Exists(launcherPath) &&
@@ -151,7 +163,7 @@ internal sealed class LauncherUpdateService
                     launcherPath,
                     package.ExecutableSha256,
                     package.Version);
-                return;
+                return LauncherUpdateOutcome.Unchanged;
             }
 
             // 反向时序：这个启动器包要求更新的主程序时，先别换——换了它可能不认当前主程序的配置/协议。
@@ -161,7 +173,7 @@ internal sealed class LauncherUpdateService
                     "LauncherUpdate",
                     $"启动器包 {package.Version} 要求主程序能力 {package.RequiredAppProtocol}，"
                     + $"当前主程序只有 {LauncherProtocol.CurrentAppProtocol}：本次不替换启动器");
-                return;
+                return LauncherUpdateOutcome.Unchanged;
             }
 
             string pendingDirectory = Path.Combine(
@@ -185,7 +197,7 @@ internal sealed class LauncherUpdateService
                 AppPaths.BackupsDir,
                 cancellationToken);
             if (result == LauncherPackageApplyResult.Deferred)
-                return;
+                return LauncherUpdateOutcome.Unchanged;
 
             TryDeleteDirectoryWithinRoot(pendingDirectory, pendingRoot);
             SaveSuccessfulCheck(
@@ -195,6 +207,7 @@ internal sealed class LauncherUpdateService
                 package.ExecutableSha256,
                 package.Version);
             RuntimeLog.Info("LauncherUpdate", $"Launcher updated silently version={package.Version}");
+            return LauncherUpdateOutcome.Applied;
         }
         catch (OperationCanceledException)
         {
@@ -203,9 +216,15 @@ internal sealed class LauncherUpdateService
         {
             RuntimeLog.Warn("LauncherUpdate", $"Launcher update deferred: {ex}");
         }
+
+        return LauncherUpdateOutcome.Unchanged;
     }
 
-    private static async Task<bool> TryApplyPendingPackageAsync(
+    /// <summary>
+    /// 装掉上次留下的 pending 启动器包。
+    /// 返回 null = 没有可处理的 pending 包（继续走常规检查），否则返回这次有没有换掉启动器。
+    /// </summary>
+    private static async Task<LauncherUpdateOutcome?> TryApplyPendingPackageAsync(
         string pendingRoot,
         string checkStatePath,
         string appVersion,
@@ -213,7 +232,7 @@ internal sealed class LauncherUpdateService
         CancellationToken cancellationToken)
     {
         if (!Directory.Exists(pendingRoot))
-            return false;
+            return null;
 
         foreach (string descriptorPath in Directory
                      .EnumerateDirectories(
@@ -260,9 +279,10 @@ internal sealed class LauncherUpdateService
                         launcherPath,
                         package.ExecutableSha256,
                         package.Version);
-                    return true;
+                    return LauncherUpdateOutcome.Unchanged;
                 }
 
+                LauncherUpdateOutcome outcome = LauncherUpdateOutcome.Unchanged;
                 LauncherPackageApplyResult result = await TryApplyPackageAsync(
                     package,
                     packagePath,
@@ -281,8 +301,10 @@ internal sealed class LauncherUpdateService
                     RuntimeLog.Info(
                         "LauncherUpdate",
                         $"Applied verified pending launcher package version={package.Version}");
+                    outcome = LauncherUpdateOutcome.Applied;
                 }
-                return true;
+
+                return outcome;
             }
             catch (OperationCanceledException)
             {
@@ -293,11 +315,11 @@ internal sealed class LauncherUpdateService
                 RuntimeLog.Warn(
                     "LauncherUpdate",
                     $"Pending launcher update deferred: {ex}");
-                return true;
+                return LauncherUpdateOutcome.Unchanged;
             }
         }
 
-        return false;
+        return null;
     }
 
     private static async Task<LauncherPackageApplyResult> TryApplyPackageAsync(

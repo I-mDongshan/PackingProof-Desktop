@@ -162,12 +162,13 @@ internal sealed class AppPatchDownloadService
                         descriptor.PatchPackage.RequiredLauncherProtocol))
                 {
                     progress?.Report(new AppPatchDownloadProgress("这次更新需要新版启动器，正在先更新启动器"));
-                    await new LauncherUpdateService().CheckAndApplyAsync(
+                    LauncherUpdateOutcome launcherOutcome = await new LauncherUpdateService().CheckAndApplyAsync(
                         enabled: true,
                         cancellationToken,
                         force: true);
 
-                    if (!LauncherProtocol.Satisfies(
+                    if (!LauncherRequirementSatisfiedAfterUpdate(
+                            launcherOutcome,
                             LauncherProtocol.ReadState(_updatesDirectory, launcherPath),
                             descriptor.PatchPackage.RequiredLauncherProtocol))
                     {
@@ -623,6 +624,20 @@ internal sealed class AppPatchDownloadService
     private static bool IsTransientDownloadFailure(Exception ex, CancellationToken cancellationToken)
         => !cancellationToken.IsCancellationRequested
             && ex is HttpRequestException or IOException or TaskCanceledException;
+
+    /// <summary>
+    /// 自动更新启动器之后，这份补丁要求的启动器能力算不算满足。
+    ///
+    /// 启动器文件刚被换掉时，能力状态文件里记的还是旧启动器那一份：哈希对不上，再读只会得到
+    /// "最低能力"，于是会把一次成功的启动器更新误报成失败。换掉了就按"已就绪"收尾——真正能不能装
+    /// 这份补丁，下一次启动由新启动器自己按能力号判定（要求高于自身能力时它会明确拒绝，不会装坏）。
+    /// </summary>
+    internal static bool LauncherRequirementSatisfiedAfterUpdate(
+        LauncherUpdateOutcome outcome,
+        LauncherProtocol.State installedLauncher,
+        int requiredLauncherProtocol) =>
+        outcome == LauncherUpdateOutcome.Applied
+        || LauncherProtocol.Satisfies(installedLauncher, requiredLauncherProtocol);
 
     internal static AppPatchDescriptor ParseDescriptor(string json, string fallbackVersion)
     {
