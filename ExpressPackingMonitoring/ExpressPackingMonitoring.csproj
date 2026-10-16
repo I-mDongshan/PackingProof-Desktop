@@ -31,15 +31,7 @@
     <FFmpegBaselineExecutable>..\package\dependency-cache\ffmpeg\$(FFmpegBaselineVersion)\ffmpeg.exe</FFmpegBaselineExecutable>
     <SatelliteResourceLanguages>en-US;zh-Hans;ja-JP</SatelliteResourceLanguages>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <GitCommitId Condition="'$(GitCommitId)' == ''">$(SourceRevisionId)</GitCommitId>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(GitCommitId)' != ''">
-    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
-      <_Parameter1>GitCommitId</_Parameter1>
-      <_Parameter2>$(GitCommitId)</_Parameter2>
-    </AssemblyAttribute>
-  </ItemGroup>
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">

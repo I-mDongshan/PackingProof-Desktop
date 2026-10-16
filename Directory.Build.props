@@ -10,4 +10,44 @@
     <Version>0.0.83</Version>
   </PropertyGroup>
 
+  <!--
+    提交号要让**每个**程序集都带上：界面显示的 Commit 读的是 AppVersion 所在程序集，
+    而 AppVersion.cs 被编进 Core（不是主程序），只写在主程序 csproj 里的话 Core 永远读不到，
+    "设置-关于"就一直显示"未知"（发布脚本还会去掉 InformationalVersion 的 +sha 后缀，更没人补得上）。
+  -->
+  <!-- 命令行/发布脚本显式传入时（评估阶段就有值）直接生成。 -->
+  <ItemGroup Condition="'$(GitCommitId)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>GitCommitId</_Parameter1>
+      <_Parameter2>$(GitCommitId)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!--
+    没传参数时自己去版本库问一次：SourceRevisionId 只有接了 SourceLink 提供程序才有值，
+    本项目没有，所以评估阶段和构建阶段都是空的。用 target 在生成程序集信息之前跑 git，
+    git 不存在或不是检出目录时只是没有这行元数据，不影响构建。
+  -->
+  <Target Name="AddGitCommitIdMetadata"
+          BeforeTargets="CoreGenerateAssemblyInfo"
+          Condition="'$(GitCommitId)' == ''">
+    <Exec Command="git rev-parse HEAD"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="low"
+          IgnoreExitCode="true"
+          ContinueOnError="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitCommitIdOutput" />
+    </Exec>
+    <PropertyGroup>
+      <_GitCommitIdFromGit>$([System.String]::Copy('$(_GitCommitIdOutput)').Trim())</_GitCommitIdFromGit>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(_GitCommitIdFromGit)' != ''">
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitCommitId</_Parameter1>
+        <_Parameter2>$(_GitCommitIdFromGit)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
 </Project>
