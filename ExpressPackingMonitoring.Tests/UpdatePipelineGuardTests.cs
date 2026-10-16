@@ -15,6 +15,11 @@ namespace ExpressPackingMonitoring.Tests;
 /// 清单与增量包附件域名也不可用，仍然必须挑到最新版并把增量包准备好；清单最后是从 gitee.com
 /// 的镜像附件下来的，增量包也就直接跟着走 Gitee，不再先去撞一遍打不开的慢源。
 /// </summary>
+/// <summary>
+/// 更新链路用例共用一把进程级命名互斥体（`Local\ExpressPackingMonitoring.Launcher.Update`），
+/// 两个用例类并行跑时会互相把对方判成"另一个更新任务正在运行"（Busy）。放进同一个 collection 串行执行。
+/// </summary>
+[Collection("Update pipeline")]
 public sealed class UpdatePipelineGuardTests
 {
     [Fact]

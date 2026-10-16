@@ -7,6 +7,12 @@ using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
 
+/// <summary>
+/// 增量包用例与 <see cref="UpdatePipelineGuardTests"/> 共用一把进程级命名互斥体
+/// （`Local\ExpressPackingMonitoring.Launcher.Update`），并行跑时会互相把对方判成
+/// "另一个更新任务正在运行"（Busy）。两个类放进同一个 collection 串行执行。
+/// </summary>
+[Collection("Update pipeline")]
 public sealed class AppPatchDownloadServiceTests
 {
     [Fact]
