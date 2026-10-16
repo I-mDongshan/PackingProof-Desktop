@@ -41,6 +41,7 @@
 - 换 .NET 大版本的那一版（0.0.83，自包含 .NET 10）保持 `-PatchBaselineVersion 0.0.18`；从下一版（0.0.84）起改成 `-PatchBaselineVersion 0.0.83`，把 0.0.83 定成所有老装机必须经过的补丁基线（低于它的机器引导下载完整包）
 - 自包含发布形态核对：`app\` 有 `coreclr.dll`/`hostfxr.dll`、包根没有 `runtime\`、`app\runtime-seed\layout.json` 与布局清单逐文件一致；`pwsh -NoProfile -File Tools\Test-RuntimeLayoutSeed.ps1` 全绿（含"框架依赖的探针带 DOTNET_ROOT 从落成的布局加载运行时"）
 - 升级时序字段核对：带 `root=runtime` 载荷的补丁必须声明 `required_launcher_protocol >= 2`；`launcher_package.required_app_protocol` 只在"新启动器需要更新的主程序"时才填
+- 清理列表核对：包内 `patch_manifest.json` 的 `deletes` 与 `Tools\app-patch-retire-list.json`（累计退役清单）一致、不含白名单（`tts_cache` / `ffmpeg.exe` / `libvlc`）、不含主程序核心文件；**退役清单若有变化要随发布一起提交**；用 `pwsh -NoProfile -File Tools\Test-UpgradeFromLegacyLauncher.ps1 -LegacyLauncherPath <新启动器> -PackageDir <产物目录> -SimulateSecondInstance` 验证"装完才启动 + 12 个旧文件确实清掉"
 - 发布流程顺序：改动经 PR 合并到主干并通过本地 CI → 在合并后的提交上创建本地 `vX.Y.Z` 标签 → 以标签身份完成一次 Release 构建、全量测试、自动验收和发布包校验 → 推送标签到 GitHub 与 Gitee → 创建并同步 Release（含 Mac 侧上传的 macOS DMG）→ 生成并上传 Gitee 专属的 no-runtime 安装向导；禁止普通 `main` push 触发发布包工作流
 - 发布笔记按 `RELEASE_NOTES_TEMPLATE.md` 填写：更新内容三类齐全、《问题修复》只写上一正式版就存在的缺陷（本版自己引入又修掉的不写）、下载与更新说明与实际上传资产一致（含 Gitee 的 no-runtime 安装向导与 macOS DMG，且不写已不存在的免安装整包）、且与 `update_vX.Y.Z.json` 的标题和说明同步
 - 预览版本必须在 GitHub 与 Gitee 上将 Release 标记为 prerelease，发布笔记正文首行注明“预览版”；正式版本不得标记 prerelease

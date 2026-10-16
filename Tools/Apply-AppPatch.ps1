@@ -501,6 +501,53 @@ try {
         }))
     }
 
+    # 清理列表：老版本留下、新版本已不再发布的文件。路径校验、目录边界、与写入列表的冲突检查
+    # 都跟 files 一条标准；实际删除前还会先备份，失败由下面的回滚把它放回去。
+    $validatedDeletes = New-Object System.Collections.Generic.List[object]
+    # 注意：清单里没有 deletes 时 Get-JsonProperty 返回 $null，@($null) 会变成"一个 null 元素"，
+    # 必须先滤掉；同时兼容写成字符串的条目（与启动器同一套语义）。
+    $manifestDeletes = @(Get-JsonProperty $manifest "deletes") | Where-Object { $null -ne $_ }
+    foreach ($entry in $manifestDeletes) {
+        $rawPath = if ($entry -is [string]) { [string]$entry } else { [string](Get-JsonProperty $entry "path") }
+        $relativePath = $rawPath.Trim().Replace("/", "\")
+        $segments = @($relativePath -split "[\\/]")
+        if ((Test-IsNullOrWhiteSpace $relativePath) -or
+            [System.IO.Path]::IsPathRooted($relativePath) -or
+            $segments -contains "." -or
+            $segments -contains "..") {
+            throw "补丁清理列表包含不安全路径：$relativePath"
+        }
+
+        $targetRootName = "app"
+        if ($null -ne $entry.PSObject.Properties["root"]) {
+            $targetRootName = ([string]$entry.root).Trim().ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace($targetRootName)) { $targetRootName = "app" }
+        }
+        if ($targetRootName -ne "app" -and $targetRootName -ne "runtime") {
+            throw "补丁清理列表包含不支持的安装位置：$targetRootName"
+        }
+
+        $conflict = @($validatedFiles | Where-Object {
+                $_.RootName -eq $targetRootName -and
+                [string]::Equals($_.RelativePath, $relativePath, [System.StringComparison]::OrdinalIgnoreCase)
+            })
+        if ($conflict.Count -gt 0) {
+            throw "补丁清理列表与写入列表冲突：$relativePath"
+        }
+
+        $targetBase = if ($targetRootName -eq "runtime") { $runtimeRoot } else { $appRoot }
+        $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $targetBase $relativePath))
+        if (-not (Test-PathWithinDirectory -Path $destinationPath -Directory $targetBase)) {
+            throw "补丁清理条目超出允许目录：$relativePath"
+        }
+
+        $validatedDeletes.Add((New-Object PSObject -Property @{
+                    RelativePath    = $relativePath
+                    RootName        = $targetRootName
+                    DestinationPath = $destinationPath
+                }))
+    }
+
     if (-not $SkipProcessCheck) {
         Stop-TargetApplication -TargetExePath $targetExePath
     }
@@ -562,6 +609,27 @@ try {
             catch {
             }
         }
+    }
+
+    $deletedCount = 0
+    foreach ($entry in $validatedDeletes) {
+        if (-not (Test-Path -LiteralPath $entry.DestinationPath -PathType Leaf)) { continue }
+        $backupPath = Join-Path $backupRoot (Join-Path $entry.RootName $entry.RelativePath)
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupPath) | Out-Null
+        Copy-Item -LiteralPath $entry.DestinationPath -Destination $backupPath -Force
+        Remove-ReadOnlyAttribute -Path $backupPath
+        $appliedFiles.Add((New-Object PSObject -Property @{
+                    DestinationPath      = $entry.DestinationPath
+                    BackupPath           = $backupPath
+                    DestinationExisted   = $true
+                    OriginalAttributes   = [System.IO.File]::GetAttributes($entry.DestinationPath)
+                }))
+        Remove-ReadOnlyAttribute -Path $entry.DestinationPath
+        Remove-Item -LiteralPath $entry.DestinationPath -Force
+        $deletedCount++
+    }
+    if ($deletedCount -gt 0) {
+        Write-UpdateLog -LogPath $logPath -Message "Manual patch cleaned $deletedCount obsolete files"
     }
 
     foreach ($file in $validatedFiles) {

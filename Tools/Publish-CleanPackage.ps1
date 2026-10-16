@@ -936,13 +936,55 @@ function New-AppPatchPackage {
     }
 
     $deletedFiles = @()
+    $newlyRetiredPaths = @()
     foreach ($baselineFile in Get-ChildItem -LiteralPath $BaselineDir -File -Recurse) {
         $relativePath = Get-RelativePath -BaseDir $BaselineDir -Path $baselineFile.FullName
         if ($currentRelativePaths.ContainsKey($relativePath)) { continue }
         if ($relativePath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        # 白名单里的（用户可替换的 ffmpeg / libvlc）既不入退役清单也不删；基线里没有、
+        # 当前目录故意不带的那批 libvlc 插件正是这一类，别让它们污染清单。
         if (Test-IsAppPatchManagedRuntimePath -RelativePath $relativePath) { continue }
+        $newlyRetiredPaths += $relativePath.Replace('\', '/')
+    }
+
+    # 退役清单是**累计**的，只增不减：清理列表按"基线 − 当前"算，而基线每换一次大版本就会抬升，
+    # 上一代没清掉的残留（例如老启动器不认 deletes、或用户走手动安装）不会再次出现在差集里。
+    # 所以把每次算出的条目并进这份文件、随发布一起提交，后面的补丁会继续带着它们。
+    $retireListPath = Join-Path $repoRoot "Tools\app-patch-retire-list.json"
+    $retiredPaths = [System.Collections.Generic.List[string]]::new()
+    if (Test-Path -LiteralPath $retireListPath -PathType Leaf) {
+        try {
+            $retireList = Get-Content -LiteralPath $retireListPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $retireList.PSObject.Properties['retired']) {
+                foreach ($existing in @($retireList.retired)) {
+                    $value = ([string]$existing).Trim()
+                    if ($value.Length -gt 0 -and -not $retiredPaths.Contains($value)) { $retiredPaths.Add($value) }
+                }
+            }
+        }
+        catch {
+            throw "退役清单读取失败：$retireListPath（$($_.Exception.Message)）"
+        }
+    }
+    foreach ($candidate in $newlyRetiredPaths) {
+        if (-not $retiredPaths.Contains($candidate)) {
+            $retiredPaths.Add($candidate)
+            Write-Host ("新增退役文件（本次随补丁清理，之后继续跟着补丁走）：{0}" -f $candidate)
+        }
+    }
+    $orderedRetiredPaths = @($retiredPaths | Sort-Object -Unique)
+    [System.IO.File]::WriteAllText(
+        $retireListPath,
+        (([ordered]@{ schemaVersion = 1; retired = $orderedRetiredPaths } | ConvertTo-Json -Depth 4) + "`n"),
+        (New-Object System.Text.UTF8Encoding($false)))
+
+    foreach ($relativePath in $orderedRetiredPaths) {
+        $normalizedPath = $relativePath.Replace('/', '\')
+        if ($currentRelativePaths.ContainsKey($normalizedPath)) { continue }
+        if ($normalizedPath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        if (Test-IsAppPatchManagedRuntimePath -RelativePath $normalizedPath) { continue }
         $deletedFiles += [ordered]@{
-            "path" = $relativePath.Replace('\', '/')
+            "path" = $relativePath
         }
     }
 
