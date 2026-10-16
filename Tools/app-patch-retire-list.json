@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "_comment": "累计退役清单：出包时把新算出的条目并进来（只增不减），随发布一起提交；白名单（tts_cache / ffmpeg / libvlc）不入此表。",
   "retired": [
+    "mscordaccore_amd64_amd64_8.0.2826.26413.dll",
     "Scripts/快递助手订单推送.user.js",
     "SharpDX.Direct3D11.dll",
-    "SharpDX.DXGI.dll",
     "SharpDX.dll",
+    "SharpDX.DXGI.dll",
     "System.Design.dll",
     "System.Drawing.Design.dll",
-    "System.Windows.Forms.Design.Editors.dll",
     "System.Windows.Forms.Design.dll",
+    "System.Windows.Forms.Design.Editors.dll",
     "WindowsFormsIntegration.dll",
-    "mscordaccore_amd64_amd64_8.0.2826.26413.dll",
     "zh-Hans/System.Windows.Forms.Design.resources.dll",
     "zh-Hans/WindowsFormsIntegration.resources.dll"
   ]
