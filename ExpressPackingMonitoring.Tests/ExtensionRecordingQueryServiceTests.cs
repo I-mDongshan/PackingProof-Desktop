@@ -160,6 +160,34 @@ public sealed class ExtensionRecordingDeliveryPassArgumentTests
         Assert.Equal(TimeSpan.FromMinutes(60), ExtensionRecordingDeliveryService.GetTranscodeTimeout(1200));
     }
 
+    /// <summary>
+    /// 看门狗的两个原因必须分开报：进度不推进是"卡住"，一直推进但超了硬超时是"压不完"。
+    /// 两者共用同一个错误码时，现场排查分不清是 ffmpeg 卡了还是机器不行。
+    /// </summary>
+    [Fact]
+    public void GetTranscodeWatchdogFailure_DistinguishesStallFromTimeout()
+    {
+        TimeSpan timeout = TimeSpan.FromMinutes(30);
+
+        Assert.Null(ExtensionRecordingDeliveryService.GetTranscodeWatchdogFailure(
+            elapsed: TimeSpan.FromMinutes(5),
+            sinceProgress: TimeSpan.FromMinutes(1),
+            timeout));
+        Assert.Equal(
+            "delivery_transcode_stalled",
+            ExtensionRecordingDeliveryService.GetTranscodeWatchdogFailure(
+                elapsed: TimeSpan.FromMinutes(40),
+                sinceProgress: TimeSpan.FromMinutes(11),
+                timeout));
+        // 进度一直在推、只是慢：这不是卡死，报超时。
+        Assert.Equal(
+            "delivery_transcode_timeout",
+            ExtensionRecordingDeliveryService.GetTranscodeWatchdogFailure(
+                elapsed: TimeSpan.FromMinutes(40),
+                sinceProgress: TimeSpan.FromSeconds(5),
+                timeout));
+    }
+
     [Fact]
     public void X265Pass_UsesX265StatsFileInsteadOfFfmpegPassOption()
     {

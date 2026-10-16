@@ -47,6 +47,11 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
     private const double X264SecondsPerSourceSecond = 0.8;
     private const string TranscodeFailedErrorCode = "delivery_transcode_failed";
     private const string TranscodeStalledErrorCode = "delivery_transcode_stalled";
+    /// <summary>
+    /// 进度还在推进，但超过了按预估耗时算的硬超时：这台机器就是压不完，
+    /// 跟"卡死"（下面那条）不是一回事，分开报才知道该换机器还是该查 ffmpeg。
+    /// </summary>
+    private const string TranscodeTimeoutErrorCode = "delivery_transcode_timeout";
     // 进度长时间不推进就判卡死；单次 ffmpeg 的硬超时按预估耗时的倍数算，并保留一个下限。
     private static readonly TimeSpan ProgressStallTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan MinimumTranscodeTimeout = TimeSpan.FromMinutes(30);
@@ -373,6 +378,21 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         return estimated > MinimumTranscodeTimeout ? estimated : MinimumTranscodeTimeout;
     }
 
+    /// <summary>
+    /// 单次 ffmpeg 的看门狗判定。两个原因分开报：进度长时间不推进是"卡住"，进度一直在推进
+    /// 但超过了硬超时是"这台机器压不完"——以前两者共用同一个错误码，排查时分不清该换机器还是该查 ffmpeg。
+    /// 返回 null 表示还在正常范围里。
+    /// </summary>
+    internal static string? GetTranscodeWatchdogFailure(
+        TimeSpan elapsed,
+        TimeSpan sinceProgress,
+        TimeSpan timeout)
+    {
+        if (sinceProgress > ProgressStallTimeout) return TranscodeStalledErrorCode;
+        if (elapsed > timeout) return TranscodeTimeoutErrorCode;
+        return null;
+    }
+
     /// <summary>只向前推进的进度写入，避免两遍之间来回跳。</summary>
     private static void SetProgress(DeliveryState state, int progress)
     {
@@ -421,11 +441,14 @@ internal sealed class ExtensionRecordingDeliveryService : IDisposable
         while (!process.WaitForExit(1000))
         {
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            bool stalled = now.UtcTicks - Interlocked.Read(ref lastProgressTicks[0]) > ProgressStallTimeout.Ticks;
-            if (stalled || now - startedAt > timeout)
+            string? watchdogFailure = GetTranscodeWatchdogFailure(
+                elapsed: now - startedAt,
+                sinceProgress: TimeSpan.FromTicks(now.UtcTicks - Interlocked.Read(ref lastProgressTicks[0])),
+                timeout);
+            if (watchdogFailure is not null)
             {
                 TryKill(process);
-                return TranscodeStalledErrorCode;
+                return watchdogFailure;
             }
         }
         try

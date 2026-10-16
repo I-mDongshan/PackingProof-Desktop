@@ -474,7 +474,7 @@ GET /api/extensions/v1/recording-queries/{queryId}/recordings/{recordingId}/deli
 
 `transcoding` 期间的响应会带上 `progress`（0–100 的百分比）、`attempt`（第一轮为 1，第一轮没压够、正在按更低码率重压时为 2）和 `estimatedSeconds`（按录像时长与编码器估算的耗时，用于提示「约需 X 分钟」；这是预估不是承诺）。创建接口的 `202` 响应里也已带上 `estimatedSeconds`，机器人可以在开始等待时就把估算合并进提示。
 
-转码期间主机按 ffmpeg 的进度输出监控推进：进度长时间不推进就判为卡死并以 `delivery_transcode_stalled` 失败，而不是一直停在 `transcoding`；单个 ffmpeg 进程另有按预估耗时计算的硬超时（最少 30 分钟）。
+转码期间主机按 ffmpeg 的进度输出监控推进：进度长时间不推进就判为卡死并以 `delivery_transcode_stalled` 失败，而不是一直停在 `transcoding`；进度还在推进、但单个 ffmpeg 进程超过按预估耗时计算的硬超时（最少 30 分钟）时按 `delivery_transcode_timeout` 失败。前者多半是进程卡住，后者是这台机器压不完，处理方式不同。
 
 ```http
 GET /api/extensions/v1/recording-queries/{queryId}/recordings/{recordingId}/deliveries/{deliveryId}/download
@@ -598,6 +598,7 @@ Content-Type: application/json
 - `delivery_cache_limit_exceeded`
 - `delivery_transcode_failed`
 - `delivery_transcode_stalled`
+- `delivery_transcode_timeout`
 - `delivery_size_limit_unreachable`
 - `archive_cache_limit_exceeded`
 
