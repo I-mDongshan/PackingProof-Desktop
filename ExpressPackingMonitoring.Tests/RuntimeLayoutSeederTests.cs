@@ -59,6 +59,8 @@ public sealed class RuntimeLayoutSeederTests : IDisposable
             Assert.Equal(expectedFiles, result.LinkedFiles);
         }
         Assert.True(SharedRuntimeLayout.IsUsable(SharedRuntimeLayout.TryReadLayout(_installRoot)));
+        // 落成标记跟布局一起落地：补丁安装时靠它认出"这份布局会被 app\ 的原地覆盖改掉内容"。
+        Assert.True(File.Exists(Path.Combine(LayoutDirectory, RuntimeLayoutSeeder.SeedMarkerFileName)));
         string linkedTarget = LayoutFile("shared", "Microsoft.NETCore.App", RuntimeVersion, "System.Private.CoreLib.dll");
         Assert.Equal(
             "core-lib",
@@ -103,6 +105,7 @@ public sealed class RuntimeLayoutSeederTests : IDisposable
         Assert.False(result.Materialized);
         Assert.Null(result.Error);
         Assert.False(Directory.Exists(LayoutDirectory));
+        Assert.False(File.Exists(Path.Combine(LayoutDirectory, RuntimeLayoutSeeder.SeedMarkerFileName)));
     }
 
     /// <summary>自称是布局、其实文件对不上（被改过的产物）：整份放弃，绝不留半成品布局。</summary>
@@ -119,6 +122,7 @@ public sealed class RuntimeLayoutSeederTests : IDisposable
         Assert.False(result.Materialized);
         Assert.NotNull(result.Error);
         Assert.False(Directory.Exists(LayoutDirectory));
+        Assert.False(File.Exists(Path.Combine(LayoutDirectory, RuntimeLayoutSeeder.SeedMarkerFileName)));
         Assert.Empty(Directory.GetDirectories(_installRoot, "runtime.seed-*"));
     }
 

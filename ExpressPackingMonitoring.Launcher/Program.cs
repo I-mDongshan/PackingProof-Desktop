@@ -863,29 +863,32 @@ internal static class Program
     }
 
     /// <summary>
-    /// 补丁换了运行时文件（按平铺文件名判定）就把落成的共享布局丢掉：布局是用硬链接落成的，
-    /// 原地覆盖会把 runtime\ 里的内容换掉而目录名与 layout.json 还是旧的；丢掉之后主程序
-    /// 下次启动会按新产物重新落成。布局是派生数据（可从 app\ 重算），丢了不会丢任何用户数据。
+    /// 补丁换了运行时载荷、而布局又是主程序用硬链接落成的那一种时，把布局丢掉：原地覆盖
+    /// 会把 runtime\ 里的内容换掉而目录名与 layout.json 还是旧的；丢掉之后主程序下次启动
+    /// 会按新产物重新落成。安装包装出来、过渡补丁投递过来的布局是独立副本，一律不动。
     /// </summary>
     private static void DropSeededRuntimeLayoutIfPatchReplacedRuntimeFiles(string baseDir, PatchManifest manifest)
     {
         string layoutDirectory = SharedRuntimeLayout.GetLayoutDirectory(baseDir);
         if (!Directory.Exists(layoutDirectory)) return;
 
-        SharedRuntimeLayoutInfo? layout = SharedRuntimeLayout.TryReadLayout(baseDir);
-        if (layout is null) return;
-
-        // 只看落在 app\ 里的条目：root=runtime 的正是"把布局投递过来"的过渡补丁，不能因此丢布局。
-        var deployedPaths = new List<string>(manifest.Files.Count);
+        // 过渡补丁自己就投递整份布局（老装机没有 runtime\），不能因为"它带了运行时载荷"就把布局丢掉。
+        bool patchDeliversRuntimeLayout = false;
+        var deployedAppPaths = new List<string>(manifest.Files.Count);
         foreach (PatchFile file in manifest.Files)
         {
-            if (!string.Equals(file.Root, "app", StringComparison.OrdinalIgnoreCase)) continue;
-            deployedPaths.Add(file.RelativePath);
+            if (string.Equals(file.Root, PatchRootRuntime, StringComparison.OrdinalIgnoreCase))
+            {
+                patchDeliversRuntimeLayout = true;
+                continue;
+            }
+            deployedAppPaths.Add(file.RelativePath);
         }
-        if (!SharedRuntimeLayout.PatchTouchesRuntimePayload(layout, deployedPaths)) return;
+
+        if (!SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(baseDir, patchDeliversRuntimeLayout, deployedAppPaths)) return;
 
         TryDeleteDirectory(layoutDirectory);
-        WriteLog("这份补丁替换了运行时文件，已丢弃落成的共享布局；主程序下次启动会按新产物重新落成");
+        WriteLog("这份补丁替换了运行时文件，已丢弃主程序落成的共享布局；下次启动会按新产物重新落成");
     }
 
     /// <summary>

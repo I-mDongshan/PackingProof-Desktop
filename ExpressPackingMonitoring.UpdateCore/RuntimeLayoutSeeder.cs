@@ -33,6 +33,13 @@ public static class RuntimeLayoutSeeder
 {
     public const string SeedDirectoryName = "runtime-seed";
 
+    /// <summary>
+    /// 落成布局时写下的标记文件：有这个标记才说明 `runtime\` 是"主程序用硬链接落成"的。
+    /// 补丁原地覆盖 app\ 里的运行时文件时，只有这种布局会被连带改掉内容、需要丢掉重落；
+    /// 安装包装出来的真实布局（含过渡补丁投递的）是独立副本，不能因为一次补丁就删掉。
+    /// </summary>
+    public const string SeedMarkerFileName = ".seeded-by-app";
+
     public static RuntimeLayoutSeedResult Ensure(string installRoot, string appDirectory)
     {
         if (string.IsNullOrWhiteSpace(installRoot) || string.IsNullOrWhiteSpace(appDirectory))
@@ -90,6 +97,13 @@ public static class RuntimeLayoutSeeder
                 Path.Combine(seedDirectory, SharedRuntimeLayout.ManifestFileName),
                 Path.Combine(stagingDirectory, SharedRuntimeLayout.ManifestFileName),
                 overwrite: true);
+
+            // 落成标记：只有带这个标记的布局才是"主程序用硬链接落成、与 app\ 共用同一份数据"的那种，
+            // 补丁原地覆盖 app\ 里的运行时文件时它会被连带改掉内容、必须丢掉重落
+            // （见 SharedRuntimeLayout.ShouldDropSeededRuntimeLayout）。安装包装出来的布局没有这个标记。
+            File.WriteAllText(
+                Path.Combine(stagingDirectory, SeedMarkerFileName),
+                "这个共享运行时布局由主程序用硬链接从 app\\ 落成；删除它会让补丁安装时不再丢弃这份布局。" + Environment.NewLine);
 
             if (!SharedRuntimeLayout.IsUsable(SharedRuntimeLayout.TryReadLayoutDirectory(stagingDirectory)))
                 throw new InvalidDataException("落成后的共享运行时布局自检未通过");

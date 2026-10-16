@@ -206,6 +206,37 @@ public static class SharedRuntimeLayout
     }
 
     /// <summary>
+    /// 这份布局是不是"主程序用硬链接落成"的（落成时会写下标记文件，见
+    /// <see cref="RuntimeLayoutSeeder.SeedMarkerFileName"/>）。只有这一种布局与 `app\` 共用同一份
+    /// 磁盘数据；安装包装出来、过渡补丁投递过来的布局都是独立副本。
+    /// </summary>
+    public static bool IsSeededLayout(string? layoutDirectory) =>
+        !string.IsNullOrWhiteSpace(layoutDirectory)
+        && File.Exists(Path.Combine(layoutDirectory, RuntimeLayoutSeeder.SeedMarkerFileName));
+
+    /// <summary>
+    /// 装完这份补丁之后，安装目录里的共享布局要不要丢掉重落。两条前置条件缺一不可：
+    ///
+    /// 1) 补丁自己**没有**投递整份布局（`root=runtime` 的正是"给老装机补上共享运行时"的过渡补丁，
+    ///    它落地后布局就已经是新产物那一份，丢了反而让老装机退回系统运行时）；
+    /// 2) 布局是**主程序落成**的那种。安装包装出来的独立副本不会被补丁改动，一次补丁就把整份
+    ///    运行时删掉、逼主程序重落一次是没必要的（自包含产物里的 app\hostfxr.dll 已经被迁移走的
+    ///    情况下还会落不回来）。
+    ///
+    /// 只有"主程序落成的硬链接布局 + 补丁换了运行时载荷"这一种组合会留下"名字旧、内容新"的布局，
+    /// 必须丢掉重落。布局是派生数据（可从 app\ 重算），丢掉不丢任何用户数据。
+    /// </summary>
+    public static bool ShouldDropSeededRuntimeLayout(
+        string installRoot,
+        bool patchDeliversRuntimeLayout,
+        IEnumerable<string> deployedAppRelativePaths)
+    {
+        if (patchDeliversRuntimeLayout) return false;
+        if (!IsSeededLayout(GetLayoutDirectory(installRoot))) return false;
+        return PatchTouchesRuntimePayload(TryReadLayout(installRoot), deployedAppRelativePaths);
+    }
+
+    /// <summary>
     /// 启动前的一站式处理：读布局 → 可用就设 DOTNET_ROOT → 迁移老装机的平铺运行时副本 →
     /// 连续两次正常启动后清理回滚备份。任何异常都只记录，不阻断启动。
     /// </summary>

@@ -327,6 +327,12 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
         File.WriteAllText(Path.Combine(_installRoot, "app", name), name, new UTF8Encoding(false));
     }
 
+    /// <summary>模拟主程序落成的布局（RuntimeLayoutSeeder 会在布局根写下这个标记）。</summary>
+    private void MarkLayoutAsSeeded() => File.WriteAllText(
+        Path.Combine(SharedRuntimeLayout.GetLayoutDirectory(_installRoot), RuntimeLayoutSeeder.SeedMarkerFileName),
+        "seeded",
+        new UTF8Encoding(false));
+
     /// <summary>
     /// 布局是硬链接落成的：补丁原地覆盖 app\ 里同名的运行时文件，会连带改掉 runtime\ 里的内容，
     /// 而目录名与 layout.json 还是旧的。判定必须认出这类补丁（按平铺文件名）。
@@ -344,6 +350,39 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
         Assert.False(SharedRuntimeLayout.PatchTouchesRuntimePayload(
             layout!, ["ExpressPackingMonitoring.dll", "app.ico"]));
         Assert.False(SharedRuntimeLayout.PatchTouchesRuntimePayload(null, ["hostfxr.dll"]));
+    }
+
+    /// <summary>
+    /// 只有"主程序用硬链接落成"的布局会被补丁原地覆盖改掉内容，才需要丢掉重落；
+    /// 安装包装出来、过渡补丁投递过来的布局都是独立副本，不该因为一次补丁就被删掉。
+    /// </summary>
+    [Fact]
+    public void ShouldDropSeededRuntimeLayout_OnlyForSeededLayoutsAndPayloadPatches()
+    {
+        WriteLayout(usable: true, appOwnedFiles: []);
+
+        // 没有落成标记（安装包装出来的布局）：不动。
+        Assert.False(SharedRuntimeLayout.IsSeededLayout(SharedRuntimeLayout.GetLayoutDirectory(_installRoot)));
+        Assert.False(SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(_installRoot, false, ["hostfxr.dll"]));
+
+        MarkLayoutAsSeeded();
+        Assert.True(SharedRuntimeLayout.IsSeededLayout(SharedRuntimeLayout.GetLayoutDirectory(_installRoot)));
+        Assert.True(SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(_installRoot, false, ["hostfxr.dll"]));
+        // 补丁自己就把整份布局投递过来（过渡补丁给老装机补运行时）：更不能丢。
+        Assert.False(SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(_installRoot, true, ["hostfxr.dll"]));
+        // 补丁没碰运行时载荷：不动。
+        Assert.False(SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(
+            _installRoot, false, ["ExpressPackingMonitoring.dll", "app.ico"]));
+    }
+
+    [Fact]
+    public void ShouldDropSeededRuntimeLayout_WithoutLayoutIsFalse()
+    {
+        Directory.CreateDirectory(Path.Combine(_installRoot, "app"));
+
+        Assert.False(SharedRuntimeLayout.IsSeededLayout(SharedRuntimeLayout.GetLayoutDirectory(_installRoot)));
+        Assert.False(SharedRuntimeLayout.IsSeededLayout(null));
+        Assert.False(SharedRuntimeLayout.ShouldDropSeededRuntimeLayout(_installRoot, false, ["hostfxr.dll"]));
     }
 
     public void Dispose()

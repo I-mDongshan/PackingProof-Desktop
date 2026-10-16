@@ -165,7 +165,10 @@ try {
         Assert-True $true "落成的布局通过逐文件自检"
         $seedManifest = Get-Content -Raw -Encoding UTF8 (Join-Path $installAppDir "runtime-seed\layout.json") | ConvertFrom-Json
         $expected = @($seedManifest.files).Count
-        $actual = @(Get-ChildItem -LiteralPath $layoutPath -Recurse -File).Count - 1
+        # 清单只管运行时载荷：layout.json 与主程序落成时写的落成标记都不在清单里，数文件时要排除。
+        $actual = @(Get-ChildItem -LiteralPath $layoutPath -Recurse -File | Where-Object {
+                $_.Name -ine $script:SharedRuntimeLayoutFileName -and
+                $_.Name -ine $script:SharedRuntimeLayoutSeedMarkerFileName }).Count
         Assert-True ($actual -eq $expected) "布局文件数与清单一致（$actual / $expected）"
     }
 

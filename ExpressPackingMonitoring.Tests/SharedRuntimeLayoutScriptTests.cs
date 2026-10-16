@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using ExpressPackingMonitoring.UpdateCore;
 using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
@@ -74,6 +75,25 @@ public sealed class SharedRuntimeLayoutScriptTests
 
         Assert.NotEqual(0, verify.ExitCode);
         Assert.Contains("清单之外的文件", verify.Output + verify.Error);
+    }
+
+    /// <summary>
+    /// 安装目录里那份布局是主程序用硬链接落成的，根目录会带一个落成标记。校验脚本必须认这个名字
+    /// （C# 侧的同一个常量），否则真机自检会把合法的落成布局判成"有清单之外的文件"。
+    /// </summary>
+    [Fact]
+    public void Verify_AllowsTheSeedMarkerWrittenByTheApp()
+    {
+        using var fixture = new Fixture();
+        Assert.True(fixture.Build().ExitCode == 0, "构建应成功");
+        File.WriteAllText(
+            Path.Combine(fixture.LayoutPath, RuntimeLayoutSeeder.SeedMarkerFileName),
+            "seeded",
+            new UTF8Encoding(false));
+
+        ProcessResult verify = fixture.Verify();
+
+        Assert.True(verify.ExitCode == 0, verify.Output + verify.Error);
     }
 
     [Fact]

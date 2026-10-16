@@ -12,6 +12,9 @@ Set-StrictMode -Version Latest
 
 $script:SharedRuntimeLayoutSchemaVersion = 1
 $script:SharedRuntimeLayoutFileName = 'layout.json'
+# 主程序用硬链接落成布局时写下的标记（ExpressPackingMonitoring.UpdateCore\RuntimeLayoutSeeder.cs 里的同名常量）。
+# 它不是布局载荷、不在清单里，但仍然算合法内容：安装目录里那份布局正是这样被落成的。
+$script:SharedRuntimeLayoutSeedMarkerFileName = '.seeded-by-app'
 
 function Get-SharedRuntimeRequirements {
     param([Parameter(Mandatory = $true)][string]$AppDir)
@@ -385,6 +388,7 @@ function Test-SharedRuntimeLayout {
     foreach ($file in Get-ChildItem -LiteralPath $layout -Recurse -File) {
         $relativePath = Get-RelativePosixPath -BasePath $layout -FullPath $file.FullName
         if ($relativePath -ieq $script:SharedRuntimeLayoutFileName) { continue }
+        if ($relativePath -ieq $script:SharedRuntimeLayoutSeedMarkerFileName) { continue }
         if (-not $listed.ContainsKey($relativePath)) {
             $failures.Add("布局里有清单之外的文件：$relativePath")
         }
