@@ -927,6 +927,25 @@ function New-AppPatchPackage {
         throw "AppPatch package has no changed files. Check BaselineAppDir or disable patch for this release."
     }
 
+    # 清理列表：基线里有、新版本已经不发布的文件（换大版本时版本号写进文件名的原生库、
+    # 已下线的旧程序集）。增量包一贯只新增或覆盖，不给出这份列表这些文件会一直留在 app\ 里。
+    # 白名单：tts_cache（缓存，可留可重建）与用户可替换的 ffmpeg / libvlc（Test-IsAppPatchManagedRuntimePath）。
+    $currentRelativePaths = @{}
+    foreach ($currentFile in Get-ChildItem -LiteralPath $CurrentAppDir -File -Recurse) {
+        $currentRelativePaths[(Get-RelativePath -BaseDir $CurrentAppDir -Path $currentFile.FullName)] = $true
+    }
+
+    $deletedFiles = @()
+    foreach ($baselineFile in Get-ChildItem -LiteralPath $BaselineDir -File -Recurse) {
+        $relativePath = Get-RelativePath -BaseDir $BaselineDir -Path $baselineFile.FullName
+        if ($currentRelativePaths.ContainsKey($relativePath)) { continue }
+        if ($relativePath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        if (Test-IsAppPatchManagedRuntimePath -RelativePath $relativePath) { continue }
+        $deletedFiles += [ordered]@{
+            "path" = $relativePath.Replace('\', '/')
+        }
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($RuntimeDir) -and (Test-Path -LiteralPath $RuntimeDir -PathType Container)) {
         # 运行时不与任何基线比对：老装机没有 runtime\，整份都要投递。
         # 物理位置放在 files\.runtime\ 下，避免与 app\ 里的同名文件冲突；清单用 root 标明落点。
@@ -953,6 +972,10 @@ function New-AppPatchPackage {
     $patchManifest["patch_baseline_version"] = $BaselineVersion
     $patchManifest["latest_version"] = $LatestVersion
     $patchManifest["files"] = $changedFiles
+    if ($deletedFiles.Count -gt 0) {
+        $patchManifest["deletes"] = $deletedFiles
+        Write-Host ("增量包将清理 {0} 个旧版本遗留文件" -f $deletedFiles.Count)
+    }
     $patchManifest |
         ConvertTo-Json -Depth 6 |
         Set-Content -LiteralPath (Join-Path $patchWorkDir "patch_manifest.json") -Encoding UTF8

@@ -794,6 +794,7 @@ internal static class Program
         Directory.CreateDirectory(backupRoot);
 
         var backups = new List<FileBackup>();
+        int deletedCount = 0;
         try
         {
             foreach (PatchFile file in manifest.Files)
@@ -813,6 +814,19 @@ internal static class Program
                 backups.Add(new FileBackup(targetPath, backupPath, existed, originalAttributes));
             }
 
+            foreach (PatchDelete entry in manifest.Deletes)
+            {
+                // 要清理的旧文件也先进备份：装到一半失败必须能整体还原，不能删了回不来。
+                string targetPath = GetSafeChildPath(ResolvePatchTargetRoot(baseDir, entry.Root), entry.RelativePath);
+                if (!File.Exists(targetPath)) continue;
+                string backupPath = GetSafeChildPath(Path.Combine(backupRoot, entry.Root), entry.RelativePath);
+                FileAttributes originalAttributes = File.GetAttributes(targetPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(backupPath)!);
+                File.Copy(targetPath, backupPath, overwrite: true);
+                RemoveReadOnlyAttribute(backupPath);
+                backups.Add(new FileBackup(targetPath, backupPath, Existed: true, originalAttributes));
+            }
+
             foreach (PatchFile file in manifest.Files)
             {
                 string sourcePath = ResolvePatchSourcePath(patchFilesDir, file);
@@ -823,6 +837,20 @@ internal static class Program
                 RemoveReadOnlyAttribute(targetPath);
             }
 
+            foreach (PatchDelete entry in manifest.Deletes)
+            {
+                string targetPath = GetSafeChildPath(ResolvePatchTargetRoot(baseDir, entry.Root), entry.RelativePath);
+                if (File.Exists(targetPath))
+                {
+                    RemoveReadOnlyAttribute(targetPath);
+                    File.Delete(targetPath);
+                    deletedCount++;
+                }
+            }
+            PruneEmptyDirectories(manifest, baseDir);
+            if (deletedCount > 0)
+                WriteLog($"已清理 {deletedCount} 个旧版本遗留文件");
+
             ValidateInstalledApp(baseDir, descriptor.LatestVersion);
             TryDeleteDirectory(backupRoot);
         }
@@ -830,6 +858,37 @@ internal static class Program
         {
             RollbackFiles(backups);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 清理旧文件后顺手收掉被清空的目录（只回收刚刚被删空的那些，遇到非空目录立刻停，
+    /// 且绝不越过安装目录的 app\ / runtime\ 边界）。
+    /// </summary>
+    private static void PruneEmptyDirectories(PatchManifest manifest, string baseDir)
+    {
+        if (manifest.Deletes.Count == 0) return;
+
+        foreach (PatchDelete entry in manifest.Deletes)
+        {
+            string targetRoot = ResolvePatchTargetRoot(baseDir, entry.Root);
+            string rootPrefix = Path.GetFullPath(targetRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string? directory = Path.GetDirectoryName(GetSafeChildPath(targetRoot, entry.RelativePath));
+            while (!string.IsNullOrEmpty(directory)
+                && directory.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (Directory.EnumerateFileSystemEntries(directory).Any()) break;
+                    Directory.Delete(directory);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    break;
+                }
+
+                directory = Path.GetDirectoryName(directory);
+            }
         }
     }
 
@@ -858,17 +917,55 @@ internal static class Program
             files.Add(new PatchFile(relativePath, sha256, size, targetRoot));
         }
 
+        // 可选：清理列表（老版本留下、新版本已经不再发布的文件）。
+        var deletes = new List<PatchDelete>();
+        var seenDeletes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (root.TryGetProperty("deletes", out JsonElement deletesElement) && deletesElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement deleteElement in deletesElement.EnumerateArray())
+            {
+                // 允许写成字符串（默认 app\）或对象（带 root），保持与 files 同一套语义。
+                string rawPath = deleteElement.ValueKind == JsonValueKind.String
+                    ? deleteElement.GetString() ?? ""
+                    : ReadString(deleteElement, "path");
+                string deleteRoot = deleteElement.ValueKind == JsonValueKind.Object
+                    ? NormalizePatchRoot(
+                        deleteElement.TryGetProperty("root", out JsonElement deleteRootElement)
+                            ? deleteRootElement.GetString()
+                            : null)
+                    : NormalizePatchRoot(null);
+                string relativePath = NormalizeRelativePath(rawPath);
+                if (string.IsNullOrWhiteSpace(relativePath))
+                    throw new InvalidOperationException("Patch manifest 清理条目缺少 path");
+                if (!seenDeletes.Add(deleteRoot + "|" + relativePath))
+                    throw new InvalidOperationException($"Patch manifest 清理条目重复：{relativePath}");
+
+                deletes.Add(new PatchDelete(relativePath, deleteRoot));
+            }
+        }
+
         return new PatchManifest(
             ReadString(root, "type"),
             NormalizeVersion(ReadString(root, "patch_baseline_version")),
             NormalizeVersion(ReadString(root, "latest_version")),
-            files);
+            files,
+            deletes);
     }
 
     private static void ValidatePatchManifest(PatchManifest manifest, UpdateDescriptor descriptor)
     {
         if (!string.Equals(manifest.Type, PatchPackageType, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Patch manifest 类型不支持");
+
+        // 同一个路径不能既写入又删除（脚本算出来的清理列表不该包含新版本仍发布的东西）。
+        var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (PatchFile file in manifest.Files)
+            written.Add(file.Root + "|" + file.RelativePath);
+        foreach (PatchDelete entry in manifest.Deletes)
+        {
+            if (!written.Add(entry.Root + "|" + entry.RelativePath))
+                throw new InvalidOperationException($"Patch manifest 里同一个路径既写入又清理：{entry.RelativePath}");
+        }
 
         if (!string.Equals(manifest.LatestVersion, descriptor.LatestVersion, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Patch manifest 最新版本与更新描述不一致");
@@ -1915,9 +2012,17 @@ internal static class Program
         string Type,
         string PatchBaselineVersion,
         string LatestVersion,
-        List<PatchFile> Files);
+        List<PatchFile> Files,
+        List<PatchDelete> Deletes);
 
     private sealed record PatchFile(string RelativePath, string Sha256, long Size, string Root);
+
+    /// <summary>
+    /// 补丁要清理的旧文件：只允许落在安装目录的 app\ 或 runtime\ 内（GetSafeChildPath 兜底），
+    /// 删除前先进备份、失败整体回滚。升级是累计覆盖、从不删除，不清理的话旧版本的运行时与 DLL
+    /// 会在 app\ 里越攒越多。
+    /// </summary>
+    private sealed record PatchDelete(string RelativePath, string Root);
 
     private sealed record FileBackup(
         string TargetPath,
