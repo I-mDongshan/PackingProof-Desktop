@@ -123,6 +123,32 @@ try {
     }
     Assert-True (Test-Path -LiteralPath (Join-Path $installAppDir "coreclr.dll")) "升级后 app\ 是自包含形态（有 coreclr.dll）"
 
+    # 清理列表：补丁声明的 deletes 必须在升级后真的不在了，且不能误删别的东西。
+    $patchManifestPath = Join-Path $workspace "patch_manifest.json"
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $patchZip = [System.IO.Compression.ZipFile]::OpenRead(
+        (Join-Path $PackageDir "PackingProof_AppPatch_$releaseTag.zip"))
+    try {
+        $manifestEntry = $patchZip.Entries | Where-Object { $_.FullName -eq "patch_manifest.json" }
+        if ($null -eq $manifestEntry) { throw "补丁里没有 patch_manifest.json" }
+        $reader = New-Object System.IO.StreamReader($manifestEntry.Open(), [System.Text.Encoding]::UTF8)
+        try { $patchManifest = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+    }
+    finally {
+        $patchZip.Dispose()
+    }
+    $deletes = @()
+    if ($null -ne $patchManifest.PSObject.Properties['deletes']) { $deletes = @($patchManifest.deletes) }
+    Assert-True ($deletes.Count -gt 0) "补丁带上了清理列表（$($deletes.Count) 个）"
+    $survivors = @()
+    foreach ($entry in $deletes) {
+        $relative = ([string]$entry.path) -replace '/', '\'
+        if (Test-Path -LiteralPath (Join-Path $installAppDir $relative)) { $survivors += $relative }
+    }
+    Assert-True ($survivors.Count -eq 0) "清理列表里的旧文件升级后都不在了（残留 $($survivors.Count) 个：$($survivors -join ', ')）"
+    Assert-True (Test-Path -LiteralPath $appDll) "清理没有误删主程序 dll"
+    Assert-True (Test-Path -LiteralPath (Join-Path $installAppDir "tools\ffmpeg.exe")) "清理走白名单：ffmpeg 仍在"
+
     $layoutPath = Join-Path $installRoot "runtime"
     Assert-True (Test-Path -LiteralPath (Join-Path $layoutPath "layout.json")) "主程序启动后落成了共享运行时布局"
     if (Test-Path -LiteralPath (Join-Path $layoutPath "layout.json")) {
