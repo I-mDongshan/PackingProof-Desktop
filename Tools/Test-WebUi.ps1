@@ -68,13 +68,14 @@ try {
     }
 
     # 目标框架升级后这里不能再写死 net8.0-*：旧目录还在时会把上一次的产物当成新的跑。
-    $hostExecutable = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration") `
+    $hostCandidates = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration") `
             -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -like 'net*-windows*' } |
         Sort-Object -Property @{ Expression = { [version]([regex]::Match($_.Name, '\d+\.\d+').Value) } } -Descending |
         ForEach-Object { Join-Path $_.FullName 'win-x64\ExpressPackingMonitoring.AutomationHost.exe' } |
         Where-Object { Test-Path -LiteralPath $_ } |
         Select-Object -First 1)
+    $hostExecutable = if ($hostCandidates.Count -gt 0) { [string]$hostCandidates[0] } else { "" }
     if (-not $hostExecutable) {
         throw "找不到自动化宿主（先执行 dotnet build）：Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration\net*-windows*\win-x64\ExpressPackingMonitoring.AutomationHost.exe"
     }
