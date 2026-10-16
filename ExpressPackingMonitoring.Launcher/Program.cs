@@ -847,9 +847,9 @@ internal static class Program
                     deletedCount++;
                 }
             }
-            PruneEmptyDirectories(manifest, baseDir);
-            if (deletedCount > 0)
-                WriteLog($"已清理 {deletedCount} 个旧版本遗留文件");
+            int prunedDirectoryCount = PruneEmptyDirectories(manifest, baseDir);
+            if (deletedCount > 0 || prunedDirectoryCount > 0)
+                WriteLog($"已清理 {deletedCount} 个旧版本遗留文件、{prunedDirectoryCount} 个空目录");
 
             ValidateInstalledApp(baseDir, descriptor.LatestVersion);
             TryDeleteDirectory(backupRoot);
@@ -865,10 +865,11 @@ internal static class Program
     /// 清理旧文件后顺手收掉被清空的目录（只回收刚刚被删空的那些，遇到非空目录立刻停，
     /// 且绝不越过安装目录的 app\ / runtime\ 边界）。
     /// </summary>
-    private static void PruneEmptyDirectories(PatchManifest manifest, string baseDir)
+    private static int PruneEmptyDirectories(PatchManifest manifest, string baseDir)
     {
-        if (manifest.Deletes.Count == 0) return;
+        if (manifest.Deletes.Count == 0) return 0;
 
+        int prunedDirectoryCount = 0;
         foreach (PatchDelete entry in manifest.Deletes)
         {
             string targetRoot = ResolvePatchTargetRoot(baseDir, entry.Root);
@@ -881,6 +882,7 @@ internal static class Program
                 {
                     if (Directory.EnumerateFileSystemEntries(directory).Any()) break;
                     Directory.Delete(directory);
+                    prunedDirectoryCount++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
@@ -890,6 +892,8 @@ internal static class Program
                 directory = Path.GetDirectoryName(directory);
             }
         }
+
+        return prunedDirectoryCount;
     }
 
     private static PatchManifest ReadPatchManifest(string manifestPath)
@@ -920,8 +924,13 @@ internal static class Program
         // 可选：清理列表（老版本留下、新版本已经不再发布的文件）。
         var deletes = new List<PatchDelete>();
         var seenDeletes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (root.TryGetProperty("deletes", out JsonElement deletesElement) && deletesElement.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("deletes", out JsonElement deletesElement))
         {
+            // 字段存在却不是数组时直接报错：静默忽略会让一份写坏的清单悄悄跳过清理，
+            // 而 files 走的是抛错路线，两者不该一个严一个松。
+            if (deletesElement.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("Patch manifest 的 deletes 不是数组");
+
             foreach (JsonElement deleteElement in deletesElement.EnumerateArray())
             {
                 // 允许写成字符串（默认 app\）或对象（带 root），保持与 files 同一套语义。
