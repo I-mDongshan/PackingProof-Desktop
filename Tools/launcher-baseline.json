@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "protocol_version": 1,
-  "version": "0.0.82",
-  "tag": "launcher-v0.0.82",
-  "release_tag": "v0.0.82",
+  "version": "0.0.83",
+  "tag": "launcher-v0.0.83",
+  "release_tag": "v0.0.83",
   "runtime": "win-x64",
   "update_check_url": "https://gitee.com/api/v5/repos/PackingProof/PackingProof-Desktop/releases/latest",
-  "source_fingerprint": "62aa666cb7f21a2fbb9b1917d2ed26f382c6c725f65b3f77d7b4cbc6c2788e58",
+  "source_fingerprint": "5ffa1d706348d2b58a5850b2bd2c551ec83dea60102739e040586bda6282decd",
   "fingerprint_files": [
     "ExpressPackingMonitoring.Launcher/Program.cs",
     "ExpressPackingMonitoring.Launcher/ExpressPackingMonitoring.Launcher.csproj",
@@ -14,8 +14,10 @@
     "ExpressPackingMonitoring/app.ico",
     "Tools/Install-LauncherPatch.cmd",
     "Tools/Apply-LauncherPatch.ps1",
+    "ExpressPackingMonitoring.UpdateCore/LauncherProtocol.cs",
     "ExpressPackingMonitoring.UpdateCore/PackageDownloadRoutePolicy.cs",
     "ExpressPackingMonitoring.UpdateCore/ResumableFileDownload.cs",
+    "ExpressPackingMonitoring.UpdateCore/RuntimeLayoutSeeder.cs",
     "ExpressPackingMonitoring.UpdateCore/SharedRuntimeLayout.cs",
     "ExpressPackingMonitoring.UpdateCore/UpdateChannelPolicy.cs",
     "ExpressPackingMonitoring.UpdateCore/UpdateCheckThrottle.cs",
@@ -24,10 +26,10 @@
     "ExpressPackingMonitoring.UpdateCore/UpdateReleaseSelection.cs"
   ],
   "package": {
-    "file": "PackingProof_LauncherPatch_v0.0.82.zip",
-    "size": 3150413,
-    "sha256": "0316c8f8dc2a504f647083eff879ebd9209e9041282e51aa5cc8fc60c196989f",
-    "executable_size": 6875648,
-    "executable_sha256": "c081fa07a2f1f026664f145bfed2b39f01bf101df7db852542373e7a6d9bec7d"
+    "file": "PackingProof_LauncherPatch_v0.0.83.zip",
+    "size": 3224799,
+    "sha256": "5bf12b330a845cf841e989d6778f9c87d4de3be7b866b51995dadf2ff6ef94bf",
+    "executable_size": 7049216,
+    "executable_sha256": "f621d85e949838395d7e25faf0387f9209a3f3c0d810ca5e794c79018dd5723e"
   }
 }
