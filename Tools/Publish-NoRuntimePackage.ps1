@@ -7,8 +7,8 @@
 #   只有显式加 -IncludeZip 时才生成并上传。
 # - 根启动器是 AOT 原生程序，不需要运行时，直接复用已发布清爽包里的那一份（保证字节一致）；
 # - `app\` 直接复用正式包里的框架依赖产物（正式包从这一版起就是 `--self-contained false`），
-#   并**不带**包根的 `runtime\`：这一版就是给愿意自己装 .NET 8 Desktop Runtime 的用户准备的；
-# - 目标机器必须已安装 .NET 8 Desktop Runtime (x64)，包内附说明文件；
+#   并**不带**包根的 `runtime\`：这一版就是给愿意自己装 .NET 10 Desktop Runtime 的用户准备的；
+# - 目标机器必须已安装 .NET 10 Desktop Runtime (x64)，包内附说明文件；
 # - 更新方式和标准包一致：增量包只包含与基线不同的应用文件，运行时没变时不含运行时，
 #   所以 no-runtime 安装目录同样能被启动器的 AppPatch 正常更新。
 param(
@@ -43,19 +43,15 @@ if (-not (Test-Path -LiteralPath $launcherExe -PathType Leaf)) {
     throw "找不到已发布清爽包里的根启动器：$launcherExe（先生成正式包）"
 }
 
-$gitCommitId = (git rev-parse HEAD).Trim()
-$appProject = Join-Path $repoRoot "ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
 $workRoot = Join-Path $repoRoot "package\.no-runtime-work"
-$publishDir = Join-Path $workRoot "publish"
 $packageDir = Join-Path $workRoot "package"
-$buildArtifacts = Join-Path $workRoot "build-artifacts"
 $zipName = "PackingProof_no-runtime_$releaseTag.zip"
 $zipPath = Join-Path $packageRoot $zipName
 
 if (Test-Path -LiteralPath $workRoot) {
     Remove-Item -LiteralPath $workRoot -Recurse -Force
 }
-New-Item -ItemType Directory -Force -Path $publishDir, $packageDir | Out-Null
+New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
 
 Write-Host "==> 复用正式包的应用文件（框架依赖，不含 runtime\）"
 if (-not (Test-Path -LiteralPath $sourceAppDir -PathType Container)) {
@@ -66,17 +62,18 @@ foreach ($runtimeOnlyFile in @("coreclr.dll", "hostfxr.dll", "System.Private.Cor
         throw "正式包里的 app\$runtimeOnlyFile 说明它还是自包含发布；无运行时包必须复用框架依赖产物"
     }
 }
-Copy-Item -LiteralPath $sourceAppDir -Destination $publishDir -Recurse -Force
 
 Write-Host "==> 组装清爽包（根启动器 + app\）"
 Copy-Item -LiteralPath $launcherExe -Destination (Join-Path $packageDir "ExpressPackingMonitoring.exe") -Force
-Copy-Item -LiteralPath $publishDir -Destination (Join-Path $packageDir "app") -Recurse -Force
+# 直接铺到还不存在的 $packageDir\app：多绕一层已存在的目录会让 Copy-Item 多套一层 app\app，
+# 组装结果就不是 Installer 期望的形状了（0.0.82 的 Gitee 专属安装包曾经因此生成失败）。
+Copy-Item -LiteralPath $sourceAppDir -Destination (Join-Path $packageDir "app") -Recurse -Force
 if (Test-Path -LiteralPath (Join-Path $packageDir "runtime")) {
     throw "无运行时包不得包含 runtime\：$packageDir"
 }
 Set-Content -LiteralPath (Join-Path $packageDir "使用前必读.txt") -Encoding UTF8 -Value @"
 本包不包含 .NET 运行时，运行前请先安装：
-  .NET 8 Desktop Runtime (x64)  https://dotnet.microsoft.com/download/dotnet/8.0
+  .NET 10 Desktop Runtime (x64)  https://dotnet.microsoft.com/download/dotnet/10.0
 
 安装后双击根目录的 ExpressPackingMonitoring.exe 启动。
 这份安装向导仅供 Gitee 下载（Gitee 单附件上限 100MB，自包含安装包放不下）。
