@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.IO;
 using ExpressPackingMonitoring.Logging;
 
@@ -16,8 +15,10 @@ namespace ExpressPackingMonitoring.Services;
 /// </summary>
 internal static class RecordingFileAccessGate
 {
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> PathLocks =
-        new(StringComparer.OrdinalIgnoreCase);
+    // 路径 → 门锁条目。用一把普通锁加引用计数管理，而不是 ConcurrentDictionary：
+    // 每次录像都是一条新路径，只增不回收会让这张表跟着磁盘上的录像数量一直涨。
+    private static readonly object RegistryGate = new();
+    private static readonly Dictionary<string, PathEntry> PathLocks = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly TimeSpan ReleasePollInterval = TimeSpan.FromMilliseconds(50);
 
@@ -27,9 +28,37 @@ internal static class RecordingFileAccessGate
         string key = NormalizePath(filePath);
         if (key.Length == 0) return null;
 
-        SemaphoreSlim gate = PathLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-        if (!gate.Wait(timeout)) return null;
-        return new Lease(gate);
+        PathEntry entry;
+        lock (RegistryGate)
+        {
+            if (!PathLocks.TryGetValue(key, out PathEntry? existing))
+            {
+                existing = new PathEntry();
+                PathLocks[key] = existing;
+            }
+            entry = existing;
+            // 先登记"我要用这一条"，再出去排队：只有这样回收时才敢断定"没人持有、也没人在等"。
+            entry.Users++;
+        }
+
+        if (!entry.Gate.Wait(timeout))
+        {
+            ReleaseReference(key, entry);
+            return null;
+        }
+
+        return new Lease(key, entry);
+    }
+
+    /// <summary>这条路径现在还在门锁表里吗（回收只发生在没人持有、也没人排队时）。给回归测试用。</summary>
+    internal static bool IsTracked(string filePath)
+    {
+        string key = NormalizePath(filePath);
+        if (key.Length == 0) return false;
+        lock (RegistryGate)
+        {
+            return PathLocks.ContainsKey(key);
+        }
     }
 
     /// <summary>
@@ -90,12 +119,50 @@ internal static class RecordingFileAccessGate
         }
     }
 
+    /// <summary>
+    /// 放掉一次登记：引用计数归零（没人持有、也没人在等）时把这条从表里摘掉。
+    /// 摘除与计数都在同一把注册表锁里，所以不存在"刚摘掉又被别的线程拿到同一把旧门"的窗口。
+    /// </summary>
+    private static void ReleaseReference(string key, PathEntry entry)
+    {
+        lock (RegistryGate)
+        {
+            entry.Users--;
+            if (entry.Users <= 0
+                && PathLocks.TryGetValue(key, out PathEntry? current)
+                && ReferenceEquals(current, entry))
+            {
+                PathLocks.Remove(key);
+            }
+        }
+    }
+
+    private sealed class PathEntry
+    {
+        internal SemaphoreSlim Gate { get; } = new(1, 1);
+
+        /// <summary>正在持有 + 正在排队等这把门的数量（只在注册表锁里改）。</summary>
+        internal int Users { get; set; }
+    }
+
     private sealed class Lease : IDisposable
     {
-        private SemaphoreSlim? _gate;
+        private readonly string _key;
+        private PathEntry? _entry;
 
-        internal Lease(SemaphoreSlim gate) => _gate = gate;
+        internal Lease(string key, PathEntry entry)
+        {
+            _key = key;
+            _entry = entry;
+        }
 
-        public void Dispose() => Interlocked.Exchange(ref _gate, null)?.Release();
+        public void Dispose()
+        {
+            PathEntry? entry = Interlocked.Exchange(ref _entry, null);
+            if (entry is null) return;
+
+            entry.Gate.Release();
+            ReleaseReference(_key, entry);
+        }
     }
 }
