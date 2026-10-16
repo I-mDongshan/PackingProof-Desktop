@@ -32,6 +32,8 @@ internal static class Program
     private const string PrintStationRole = "PrintStation";
     /// <summary>本启动器装不了的 pending 补丁挪到这里：不再每次启动重试（补丁本身不删，换新启动器后还能用）。</summary>
     private const string RejectedPendingDirectoryName = "pending-rejected";
+    /// <summary>等另一个启动器装完补丁的上限。装一份 73MB 过渡包约 20 秒，给足余量即可；拿不到就不启动主程序。</summary>
+    private static readonly TimeSpan PendingInstallLockWait = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan NetworkUpdateTimeout = TimeSpan.FromSeconds(75);
     // 增量包预算：只给"检查元数据"用 75 秒是不够下 75MB 的，下载单独放宽（停滞判据仍然生效）。
     private static readonly TimeSpan PatchDownloadBudget = TimeSpan.FromMinutes(30);
@@ -68,7 +70,24 @@ internal static class Program
         if (appAlreadyRunning && hasPendingUpdate)
             WriteLog("主程序正在运行，跳过 pending 安装，等待下次完全关闭主程序后再安装");
 
-        UpdateNotification? notification = appAlreadyRunning ? null : RunExclusivePendingInstall(baseDir);
+        // 拿不到更新锁时必须**等**另一个启动器把补丁装完，绝不能跳过安装直接启动主程序：
+        // 0.0.83 现场就是这样把主程序拉到"文件正在被覆盖"的目录上启动，主程序起不来，用户只能手动再开一次。
+        PendingInstallOutcome pendingInstall = appAlreadyRunning
+            ? new PendingInstallOutcome(null, Deferred: false)
+            : RunExclusivePendingInstall(baseDir);
+        if (pendingInstall.Deferred)
+        {
+            WriteLog("另一个启动器正在安装更新，本次不启动主程序");
+            ShowTimedMessageAsync(
+                _useChinese ? "正在安装更新" : "Update in progress",
+                _useChinese
+                    ? "另一个启动器正在安装更新，请等它完成后重新打开本软件"
+                    : "Another launcher is installing the update. Reopen the app after it finishes.",
+                InfoIcon).Join();
+            return 0;
+        }
+
+        UpdateNotification? notification = pendingInstall.Notification;
 
         // 共享运行时布局：主程序没在跑时才迁移老装机的平铺运行时副本（运行中搬文件会失败）。
         SharedRuntimeLaunchContext runtimeContext = SharedRuntimeLayout.PrepareForLaunch(baseDir, allowMigration: !appAlreadyRunning);
@@ -208,7 +227,40 @@ internal static class Program
         return true;
     }
 
-    private static UpdateNotification? RunExclusivePendingInstall(string baseDir)
+    private static PendingInstallOutcome RunExclusivePendingInstall(string baseDir)
+    {
+        using var mutex = new Mutex(initiallyOwned: false, UpdateMutexName);
+        bool hasLock = false;
+        try
+        {
+            try
+            {
+                // 这里等而不是跳过：另一个启动器正在覆盖 app\ 时启动主程序，会把它拉到半新半旧的目录上。
+                hasLock = mutex.WaitOne(PendingInstallLockWait);
+            }
+            catch (AbandonedMutexException)
+            {
+                hasLock = true;
+            }
+
+            if (!hasLock)
+            {
+                WriteLog($"等了 {PendingInstallLockWait.TotalMinutes:0} 分钟仍拿不到更新锁，本次不启动主程序");
+                return new PendingInstallOutcome(null, Deferred: true);
+            }
+
+            return new PendingInstallOutcome(InstallPendingUpdateQuietly(baseDir), Deferred: false);
+        }
+        finally
+        {
+            if (hasLock)
+            {
+                try { mutex.ReleaseMutex(); } catch { }
+            }
+        }
+    }
+
+    private static UpdateNotification? InstallPendingUpdateQuietly(string baseDir)
     {
         return RunExclusiveUpdateWork("pending 安装", () =>
         {
@@ -1872,6 +1924,12 @@ internal static class Program
         string BackupPath,
         bool Existed,
         FileAttributes OriginalAttributes);
+
+    /// <summary>
+    /// pending 安装的结果：Deferred=true 表示另一个启动器正在安装更新、本次刻意不启动主程序
+    /// （启动器直接退出，让用户等它装完再开）。
+    /// </summary>
+    private sealed record PendingInstallOutcome(UpdateNotification? Notification, bool Deferred);
 
     private enum ManualUpdateReason
     {

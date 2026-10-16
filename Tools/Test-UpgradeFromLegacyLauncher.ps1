@@ -5,6 +5,7 @@ param(
     [string]$PackageDir = "",
     [string]$Version = "0.0.83",
     [int]$AppStartupSeconds = 90,
+    [switch]$SimulateSecondInstance,
     [switch]$KeepWorkspace
 )
 
@@ -78,6 +79,17 @@ try {
 
     $launcher = Start-Process -FilePath (Join-Path $installRoot "ExpressPackingMonitoring.exe") `
         -PassThru -WorkingDirectory $installRoot
+    if ($SimulateSecondInstance) {
+        # 现场形态：用户在安装过程中又点了一次（或主程序把直接启动重定向到根启动器），
+        # 于是第二个启动器实例进来。老代码会"跳过安装、直接启动主程序"，把主程序拉到
+        # 正在被覆盖的目录上 —— 0.0.83 现场就是这么起不来的。
+        Start-Sleep -Milliseconds 1500
+        Write-Host "再启动一次启动器，模拟安装过程中的第二次点击"
+        $second = Start-Process -FilePath (Join-Path $installRoot "ExpressPackingMonitoring.exe") `
+            -PassThru -WorkingDirectory $installRoot
+        $second | Wait-Process -Timeout ($AppStartupSeconds + 120) -ErrorAction SilentlyContinue
+        if (-not $second.HasExited) { $second.Kill() }
+    }
     $launcher | Wait-Process -Timeout ($AppStartupSeconds + 60) -ErrorAction SilentlyContinue
     if (-not $launcher.HasExited) { $launcher.Kill() }
     # 主程序是被启动器拉起来的：留足时间让它跑完启动早期的布局落成。
@@ -88,6 +100,20 @@ try {
     $logText = if (Test-Path -LiteralPath $launcherLog) { Get-Content -Raw -LiteralPath $launcherLog -Encoding UTF8 } else { "" }
     Assert-True ($logText -notlike "*Patch 文件不存在*") "老启动器没有报「Patch 文件不存在」（0.0.82 现场就是这么失败的）"
     Assert-True ($logText -like "*pending Patch 更新完成*") "老启动器成功应用了 pending 补丁"
+
+    # 关键不变量：补丁装完之前不许启动主程序（装到一半启动 = 主程序拉到半新半旧的目录上起不来）。
+    $logLines = @(Get-Content -LiteralPath $launcherLog -Encoding UTF8)
+    $installedAt = -1
+    $startedAt = -1
+    for ($index = 0; $index -lt $logLines.Count; $index++) {
+        if ($installedAt -lt 0 -and $logLines[$index] -like "*pending Patch 更新完成*") { $installedAt = $index }
+        if ($startedAt -lt 0 -and $logLines[$index] -like "*已启动主程序*") { $startedAt = $index }
+    }
+    Assert-True ($installedAt -ge 0) "日志里能看到补丁安装完成"
+    Assert-True ($startedAt -ge 0) "日志里能看到启动主程序"
+    if ($installedAt -ge 0 -and $startedAt -ge 0) {
+        Assert-True ($startedAt -gt $installedAt) "第一条「已启动主程序」在「pending Patch 更新完成」之后（没有在覆盖文件时启动主程序）"
+    }
 
     $appDll = Join-Path $installAppDir "ExpressPackingMonitoring.dll"
     Assert-True (Test-Path -LiteralPath $appDll) "app\ExpressPackingMonitoring.dll 在"
