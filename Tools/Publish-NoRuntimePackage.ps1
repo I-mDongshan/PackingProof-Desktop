@@ -53,24 +53,46 @@ if (Test-Path -LiteralPath $workRoot) {
 }
 New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
 
-Write-Host "==> 复用正式包的应用文件（框架依赖，不含 runtime\）"
+Write-Host "==> 自己构建一份框架依赖产物（正式包是自包含发布，直接复用会把运行时也带进去）"
 if (-not (Test-Path -LiteralPath $sourceAppDir -PathType Container)) {
     throw "找不到正式包里的 app 目录：$sourceAppDir（先生成正式包）"
 }
+$runtimePackageAppDir = Join-Path $packageDir "app"
+New-Item -ItemType Directory -Force -Path $runtimePackageAppDir | Out-Null
+$appProject = Join-Path $repoRoot "ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
+$publishOutput = & dotnet publish $appProject -c $Configuration -r $Runtime --nologo `
+    --self-contained false -p:PublishSingleFile=false `
+    -p:InformationalVersion=$normalizedVersion `
+    -p:IncludeSourceRevisionInInformationalVersion=false `
+    -o $runtimePackageAppDir 2>&1
+if (-not (Test-Path -LiteralPath (Join-Path $runtimePackageAppDir "ExpressPackingMonitoring.dll") -PathType Leaf)) {
+    throw "框架依赖发布失败：$([Environment]::NewLine)$($publishOutput -join [Environment]::NewLine)"
+}
 foreach ($runtimeOnlyFile in @("coreclr.dll", "hostfxr.dll", "System.Private.CoreLib.dll")) {
-    if (Test-Path -LiteralPath (Join-Path $sourceAppDir $runtimeOnlyFile)) {
-        throw "正式包里的 app\$runtimeOnlyFile 说明它还是自包含发布；无运行时包必须复用框架依赖产物"
+    if (Test-Path -LiteralPath (Join-Path $runtimePackageAppDir $runtimeOnlyFile)) {
+        throw "框架依赖产物里不该有 $runtimeOnlyFile：$runtimePackageAppDir"
     }
+}
+$seedDirectory = Join-Path $runtimePackageAppDir "runtime-seed"
+if (Test-Path -LiteralPath $seedDirectory) {
+    [System.IO.Directory]::Delete($seedDirectory, $true)
+}
+
+# 正式包里由发布流程额外铺进去的资源，这里按同样的形态补上（没有的就跳过）。
+foreach ($sharedAsset in @("tools\ffmpeg.exe", "ExpressPackingMonitoring.WinTts.dll", "Microsoft.Windows.SDK.NET.dll", "WinRT.Runtime.dll")) {
+    $assetSource = Join-Path $sourceAppDir $sharedAsset
+    if (-not (Test-Path -LiteralPath $assetSource -PathType Leaf)) { continue }
+    $assetDestination = Join-Path $runtimePackageAppDir $sharedAsset
+    [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($assetDestination)) | Out-Null
+    Copy-Item -LiteralPath $assetSource -Destination $assetDestination -Force
+}
+$ttsCacheSource = Join-Path $sourceAppDir "tts_cache"
+if (Test-Path -LiteralPath $ttsCacheSource -PathType Container) {
+    Copy-Item -LiteralPath $ttsCacheSource -Destination (Join-Path $runtimePackageAppDir "tts_cache") -Recurse -Force
 }
 
 Write-Host "==> 组装清爽包（根启动器 + app\）"
 Copy-Item -LiteralPath $launcherExe -Destination (Join-Path $packageDir "ExpressPackingMonitoring.exe") -Force
-# 直接铺到还不存在的 $packageDir\app：多绕一层已存在的目录会让 Copy-Item 多套一层 app\app，
-# 组装结果就不是 Installer 期望的形状了（0.0.82 的 Gitee 专属安装包曾经因此生成失败）。
-Copy-Item -LiteralPath $sourceAppDir -Destination (Join-Path $packageDir "app") -Recurse -Force
-if (Test-Path -LiteralPath (Join-Path $packageDir "runtime")) {
-    throw "无运行时包不得包含 runtime\：$packageDir"
-}
 Set-Content -LiteralPath (Join-Path $packageDir "使用前必读.txt") -Encoding UTF8 -Value @"
 本包不包含 .NET 运行时，运行前请先安装：
   .NET 10 Desktop Runtime (x64)  https://dotnet.microsoft.com/download/dotnet/10.0
