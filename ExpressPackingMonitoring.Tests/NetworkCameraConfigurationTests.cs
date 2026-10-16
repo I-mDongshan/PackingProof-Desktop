@@ -232,6 +232,26 @@ public sealed class NetworkCameraConfigurationTests
         Assert.Equal(MainViewModel.CameraRestartAction.None, action);
     }
 
+    /// <summary>
+    /// 网络摄像头的分辨率只有开流之后才知道。向导既然预览过（用户正看着画面），就该把真实尺寸
+    /// 存进配置，而不是把"向导没跑完 / 上一台摄像头留下"的旧值写进去、留给运行期再自愈改一次
+    /// （那正是"配置和画面分辨率对不上"的现场来源）。向导窗口在测试里不构造（见
+    /// WindowConstructionTests 的 KnownGaps），所以这里按源码守卫这两步。
+    /// </summary>
+    [Fact]
+    public void SetupWizard_StoresTheRealNetworkStreamSizeIntoConfig()
+    {
+        string source = File.ReadAllText(FindRepositoryFile(
+            "ExpressPackingMonitoring",
+            "UI",
+            "FirstUseSetupWizardWindow.xaml.cs"));
+
+        Assert.Contains("source.StreamInfoReady += NetworkPreviewSource_StreamInfoReady;", source, StringComparison.Ordinal);
+        Assert.Contains("_networkPreviewWidth = e.Width;", source, StringComparison.Ordinal);
+        Assert.Contains("_config.FrameWidth = _networkPreviewWidth;", source, StringComparison.Ordinal);
+        Assert.Contains("_config.FrameHeight = _networkPreviewHeight;", source, StringComparison.Ordinal);
+    }
+
     private static AppConfig CreateNetworkConfig(string host, string transport = "tcp")
     {
         var config = new AppConfig
@@ -266,5 +286,17 @@ public sealed class NetworkCameraConfigurationTests
         };
         AppConfig.NormalizeAfterLoad(config);
         return config;
+    }
+
+    private static string FindRepositoryFile(params string[] relativeParts)
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            string candidate = Path.Combine([current.FullName, .. relativeParts]);
+            if (File.Exists(candidate)) return candidate;
+            current = current.Parent;
+        }
+        throw new FileNotFoundException(string.Join(Path.DirectorySeparatorChar, relativeParts));
     }
 }

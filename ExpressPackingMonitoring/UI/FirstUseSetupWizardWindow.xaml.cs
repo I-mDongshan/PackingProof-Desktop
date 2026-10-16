@@ -42,6 +42,14 @@ public partial class FirstUseSetupWizardWindow : Window
     /// <summary>识别预览里最近一帧的尺寸（已是旋转后的口径），默认方形取景框按它算。</summary>
     private int _recognitionFrameWidth;
     private int _recognitionFrameHeight;
+    /// <summary>
+    /// 向导预览时从流信息读到的真实尺寸（未旋转的口径，与配置里存的口径一致）。
+    /// 网络摄像头的分辨率由摄像头决定，向导既然已经开过一次流，就顺手把真值记下来存进配置，
+    /// 别把"向导没跑完/上一台摄像头留下"的旧值写进去、留给运行期再自愈改一次。
+    /// </summary>
+    private int _networkPreviewWidth;
+    private int _networkPreviewHeight;
+    private int _networkPreviewFps;
     private WasapiCapture _micCapture;
     // 测试条码要能让普通扫码枪在屏幕上扫出来：值越短模块越宽，这里只留 10 个字符。
     private readonly string _testBarcodeValue = BuildTestBarcodeValue(DateTime.Now);
@@ -881,6 +889,7 @@ public partial class FirstUseSetupWizardWindow : Window
             _config.Fps > 0 ? _config.Fps : 15);
         _networkPreviewSource = source;
         source.FrameReady += NetworkPreviewSource_FrameReady;
+        source.StreamInfoReady += NetworkPreviewSource_StreamInfoReady;
 
         bool connected = await source.StartAsync();
         NetworkCameraTestButton.IsEnabled = true;
@@ -894,6 +903,21 @@ public partial class FirstUseSetupWizardWindow : Window
         if (enableRecognition)
             CameraRecognitionSelectedCameraText.Text = AppLanguage.Get("网络摄像头（手动地址）");
         SetCameraPreviewStatus("正在等待网络摄像头画面...");
+    }
+
+    /// <summary>
+    /// 开流后才知道的真实分辨率与帧率：记下来给 <see cref="ApplySelections"/> 用。
+    /// 这里用流信息的原始口径（不是旋转后的帧尺寸），与配置里 FrameWidth/FrameHeight 的含义一致。
+    /// </summary>
+    private void NetworkPreviewSource_StreamInfoReady(object sender, NetworkCameraStreamInfoEventArgs e)
+    {
+        if (e.Width <= 0 || e.Height <= 0) return;
+        _networkPreviewWidth = e.Width;
+        _networkPreviewHeight = e.Height;
+        _networkPreviewFps = e.Fps;
+        RuntimeLog.Info(
+            "CameraSetup",
+            $"向导读到网络摄像头流信息 {e.Width}x{e.Height}@{e.Fps}，保存配置时按它写");
     }
 
     private void NetworkPreviewSource_FrameReady(object sender, NetworkCameraFrameEventArgs e)
@@ -969,6 +993,7 @@ public partial class FirstUseSetupWizardWindow : Window
         if (source == null)
             return;
         source.FrameReady -= NetworkPreviewSource_FrameReady;
+        source.StreamInfoReady -= NetworkPreviewSource_StreamInfoReady;
         try
         {
             source.Stop();
@@ -1426,6 +1451,14 @@ public partial class FirstUseSetupWizardWindow : Window
         {
             if (NetworkCameraUrlPolicy.TryNormalize(NetworkCameraUrlTextBox.Text, out string networkUrl, out _))
             {
+                // 网络摄像头的真实分辨率由摄像头决定：向导预览时已经读到就按真值写，
+                // 别把向导/上一台摄像头留下的旧值存进配置，留给运行期再自愈改一次。
+                if (_networkPreviewWidth > 0 && _networkPreviewHeight > 0)
+                {
+                    _config.FrameWidth = _networkPreviewWidth;
+                    _config.FrameHeight = _networkPreviewHeight;
+                    if (_networkPreviewFps > 0) _config.Fps = _networkPreviewFps;
+                }
                 _config.CameraSourceKind = "network";
                 _config.NetworkCameraUrl = networkUrl;
                 _config.CameraMonikerString = "";
