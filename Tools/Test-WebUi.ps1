@@ -67,8 +67,17 @@ try {
             "-c", $Configuration, "--nologo")
     }
 
-    $hostExecutable = Join-Path $repoRoot "Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration\net8.0-windows10.0.19041.0\win-x64\ExpressPackingMonitoring.AutomationHost.exe"
-    if (-not (Test-Path $hostExecutable)) { throw "找不到自动化宿主：$hostExecutable（先执行 dotnet build）" }
+    # 目标框架升级后这里不能再写死 net8.0-*：旧目录还在时会把上一次的产物当成新的跑。
+    $hostExecutable = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration") `
+            -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'net*-windows*' } |
+        Sort-Object -Property @{ Expression = { [version]([regex]::Match($_.Name, '\d+\.\d+').Value) } } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'win-x64\ExpressPackingMonitoring.AutomationHost.exe' } |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1)
+    if (-not $hostExecutable) {
+        throw "找不到自动化宿主（先执行 dotnet build）：Tools\ExpressPackingMonitoring.AutomationHost\bin\$Configuration\net*-windows*\win-x64\ExpressPackingMonitoring.AutomationHost.exe"
+    }
 
     # 测试录像：优先用仓库钉死的 FFmpeg 缓存，其次用 PATH 里的 ffmpeg
     $ffmpeg = Join-Path $repoRoot "package\dependency-cache\ffmpeg\4.4.1\ffmpeg.exe"

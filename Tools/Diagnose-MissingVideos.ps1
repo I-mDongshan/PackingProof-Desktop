@@ -24,12 +24,17 @@ function Resolve-ExistingPath {
 function Find-AppDirectory {
     param([string]$ExplicitPath)
 
+    # 目标框架会升（0.0.82 起是 net10.0-windows），这里按当前 bin 下的实际输出找，不写死版本。
+    $buildOutputs = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "..\ExpressPackingMonitoring\bin") `
+            -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'net*-windows*' } |
+        Sort-Object -Property @{ Expression = { [version]([regex]::Match($_.Name, '\d+\.\d+').Value) } } -Descending |
+        ForEach-Object { $_.FullName; (Join-Path $_.FullName 'win-x64') })
     $candidates = @(
         $ExplicitPath,
         (Join-Path $PSScriptRoot "app"),
-        (Join-Path $PSScriptRoot "..\app"),
-        (Join-Path $PSScriptRoot "..\ExpressPackingMonitoring\bin\Release\net8.0-windows")
-    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        (Join-Path $PSScriptRoot "..\app")
+    ) + $buildOutputs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
     foreach ($candidate in $candidates) {
         if (Test-Path -LiteralPath (Join-Path $candidate "Microsoft.Data.Sqlite.dll")) {

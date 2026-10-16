@@ -6,8 +6,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($AssemblyPath)) {
-    $candidates = @(
-        (Join-Path $PSScriptRoot "..\ExpressPackingMonitoring\bin\Debug\net8.0-windows\win-x64\ExpressPackingMonitoring.dll"),
+    # 目标框架会升（0.0.82 起是 net10.0-windows），按 bin 下的实际输出找，不写死版本。
+    $debugCandidates = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "..\ExpressPackingMonitoring\bin\Debug") `
+            -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'net*-windows*' } |
+        Sort-Object -Property @{ Expression = { [version]([regex]::Match($_.Name, '\d+\.\d+').Value) } } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'win-x64\ExpressPackingMonitoring.dll' })
+    $candidates = @($debugCandidates) + @(
         (Join-Path $PSScriptRoot "..\TestResults\ReleaseBuild\Release\bin\ExpressPackingMonitoring\release_win-x64\ExpressPackingMonitoring.dll")
     )
     $AssemblyPath = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
