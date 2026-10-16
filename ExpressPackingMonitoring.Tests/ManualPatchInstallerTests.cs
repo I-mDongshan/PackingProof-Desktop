@@ -110,6 +110,28 @@ public sealed class ManualPatchInstallerTests
         Assert.False(File.Exists(obsoletePath), "清理列表里的旧文件必须被删掉");
     }
 
+    /// <summary>
+    /// 清理列表不能碰用户可替换的运行时文件：清单来自网络，放行一条就可能删掉用户自己换过的 ffmpeg。
+    /// 打包侧已经拒绝生成这种清单，安装侧必须再拦一次。
+    /// </summary>
+    [Fact]
+    public async Task Installer_RejectsDeleteListThatTouchesUserManagedRuntimeFiles()
+    {
+        using var fixture = new ManualPatchFixture();
+        string ffmpegPath = fixture.CreateObsoleteFile(Path.Combine("tools", "ffmpeg.exe"));
+        fixture.CreatePatch(
+            "new-content",
+            useValidHash: true,
+            deletes: [new { path = "tools/ffmpeg.exe" }]);
+
+        ProcessResult result = await fixture.RunInstallerAsync();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Patch 载荷不合规", result.StandardOutput + result.StandardError);
+        Assert.True(File.Exists(ffmpegPath), "用户自己换过的 ffmpeg 不能被补丁删掉");
+        Assert.Equal("old-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+    }
+
     /// <summary>同一个相对路径不能既在写入列表又在清理列表里：清单自相矛盾时当场拒绝，别装出一半。</summary>
     [Fact]
     public async Task Installer_RejectsDeleteListThatConflictsWithWrittenFiles()

@@ -265,6 +265,40 @@ function Test-PathWithinDirectory {
     return $Path.StartsWith($directoryPrefix, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
+# 载荷白名单：与打包侧（AppPatchRuntimeCompatibility.Common.ps1 的 Test-IsAppPatchManagedRuntimePath
+# 与 Publish-CleanPackage.ps1 里 New-AppPatchPackage 的守卫）和启动器侧
+# （UpdateCore\AppPatchPayloadPolicy.cs）保持同一套规则。清单来自网络，安装前必须再校验一次：
+# 放行一条就可能删掉用户自己换过的 ffmpeg / libvlc，或者把 runtime-seed 删掉导致共享布局再也落不成。
+function Get-AppPatchPayloadViolation {
+    param(
+        [string]$RelativePath,
+        [switch]$IsDelete
+    )
+
+    if (Test-IsNullOrWhiteSpace $RelativePath) { return "Patch 条目缺少相对路径" }
+    $normalized = $RelativePath.Trim().Replace('/', '\').Trim([char[]]'\/')
+    if ([string]::Equals($normalized, 'tools\ffmpeg.exe', [System.StringComparison]::OrdinalIgnoreCase) -or
+        [string]::Equals($normalized, 'libvlc', [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalized.StartsWith('libvlc\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return "用户可替换的运行时文件不能由增量包改动：$RelativePath"
+    }
+    if (-not $IsDelete) { return "" }
+    foreach ($protected in @(
+            "ExpressPackingMonitoring.exe",
+            "ExpressPackingMonitoring.dll",
+            "ExpressPackingMonitoring.deps.json",
+            "ExpressPackingMonitoring.runtimeconfig.json")) {
+        if ([string]::Equals($normalized, $protected, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return "清理列表不得包含主程序核心文件：$RelativePath"
+        }
+    }
+    if ([string]::Equals($normalized, 'runtime-seed', [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalized.StartsWith('runtime-seed\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return "清理列表不得包含运行时种子：$RelativePath"
+    }
+    return ""
+}
+
 function Get-VersionNumber {
     param([string]$Value)
 
@@ -470,6 +504,11 @@ try {
         $sourceBase = if ($targetRootName -eq "runtime") { $runtimeFilesRoot } else { $patchFilesRoot }
         $targetBase = if ($targetRootName -eq "runtime") { $runtimeRoot } else { $appRoot }
 
+        $payloadViolation = Get-AppPatchPayloadViolation -RelativePath $relativePath -IsDelete:$false
+        if (-not (Test-IsNullOrWhiteSpace $payloadViolation)) {
+            throw "Patch 载荷不合规：$payloadViolation"
+        }
+
         $sourcePath = [System.IO.Path]::GetFullPath((Join-Path $sourceBase $relativePath))
         $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $targetBase $relativePath))
         if (-not (Test-PathWithinDirectory -Path $sourcePath -Directory $sourceBase) -or
@@ -525,6 +564,11 @@ try {
         }
         if ($targetRootName -ne "app" -and $targetRootName -ne "runtime") {
             throw "补丁清理列表包含不支持的安装位置：$targetRootName"
+        }
+
+        $payloadViolation = Get-AppPatchPayloadViolation -RelativePath $relativePath -IsDelete
+        if (-not (Test-IsNullOrWhiteSpace $payloadViolation)) {
+            throw "Patch 载荷不合规：$payloadViolation"
         }
 
         $conflict = @($validatedFiles | Where-Object {

@@ -1014,6 +1014,22 @@ internal static class Program
         {
             throw new InvalidOperationException("Patch manifest 基线版本与更新描述不一致");
         }
+
+        // 载荷白名单（安装那一刻的纵深防御）：打包侧已经拦过一遍，但清单来自网络，
+        // 放行一条就可能删掉用户自己换的 ffmpeg 或运行时种子。见 AppPatchPayloadPolicy。
+        foreach (PatchFile file in manifest.Files)
+        {
+            string? violation = AppPatchPayloadPolicy.DescribeViolation(file.RelativePath, isDelete: false);
+            if (violation is not null)
+                throw new InvalidOperationException("Patch 载荷不合规：" + violation);
+        }
+
+        foreach (PatchDelete entry in manifest.Deletes)
+        {
+            string? violation = AppPatchPayloadPolicy.DescribeViolation(entry.RelativePath, isDelete: true);
+            if (violation is not null)
+                throw new InvalidOperationException("Patch 载荷不合规：" + violation);
+        }
     }
 
     private static void ValidatePatchDescriptor(UpdateDescriptor descriptor)
