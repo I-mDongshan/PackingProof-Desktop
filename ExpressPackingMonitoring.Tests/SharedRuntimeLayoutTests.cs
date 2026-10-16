@@ -327,6 +327,25 @@ public sealed class SharedRuntimeLayoutTests : IDisposable
         File.WriteAllText(Path.Combine(_installRoot, "app", name), name, new UTF8Encoding(false));
     }
 
+    /// <summary>
+    /// 布局是硬链接落成的：补丁原地覆盖 app\ 里同名的运行时文件，会连带改掉 runtime\ 里的内容，
+    /// 而目录名与 layout.json 还是旧的。判定必须认出这类补丁（按平铺文件名）。
+    /// </summary>
+    [Fact]
+    public void PatchTouchesRuntimePayload_DetectsDeployedRuntimeFiles()
+    {
+        WriteLayout(usable: true, appOwnedFiles: []);
+        SharedRuntimeLayoutInfo? layout = SharedRuntimeLayout.TryReadLayout(_installRoot);
+
+        Assert.NotNull(layout);
+        Assert.True(SharedRuntimeLayout.PatchTouchesRuntimePayload(
+            layout!, ["shared/Microsoft.NETCore.App/10.0.13/hostfxr.dll"]));
+        Assert.True(SharedRuntimeLayout.PatchTouchesRuntimePayload(layout!, ["System.Private.CoreLib.dll"]));
+        Assert.False(SharedRuntimeLayout.PatchTouchesRuntimePayload(
+            layout!, ["ExpressPackingMonitoring.dll", "app.ico"]));
+        Assert.False(SharedRuntimeLayout.PatchTouchesRuntimePayload(null, ["hostfxr.dll"]));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_installRoot, recursive: true); } catch { }

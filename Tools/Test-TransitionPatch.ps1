@@ -127,7 +127,8 @@ try {
         -InstallerCmdPath (Join-Path $PSScriptRoot "Install-AppPatch.cmd") `
         -InstallerScriptPath (Join-Path $PSScriptRoot "Apply-AppPatch.ps1") `
         -ExcludeCompatibleRuntimes `
-        -RuntimeDir $newLayout
+        -RuntimeDir $newLayout `
+        -RetireListPath (Join-Path $workspace "app-patch-retire-list.json")
 
     $patchInfo = Get-Item -LiteralPath $patchZip
     Write-Host ("补丁包：{0:N1} MB" -f ($patchInfo.Length / 1MB))

@@ -872,7 +872,9 @@ function New-AppPatchPackage {
         [string]$InstallerScriptPath,
         [switch]$ExcludeCompatibleRuntimes,
         # 过渡补丁专用：把共享运行时整份投递给老装机（它们没有 runtime\，只靠增量包升不上来）。
-        [string]$RuntimeDir = ""
+        [string]$RuntimeDir = "",
+        # 累计退役清单的路径。测试夹具要指向临时文件，别让它把合成条目写回仓库里那份。
+        [string]$RetireListPath = ""
     )
 
     if (-not (Test-Path $BaselineDir)) {
@@ -937,6 +939,14 @@ function New-AppPatchPackage {
 
     $deletedFiles = @()
     $newlyRetiredPaths = @()
+    # 布局里的文件（共享运行时载荷）绝不能进清理列表：老装机那边它们要由启动器"迁移进
+    # runtime\.legacy\（可回滚）"，直接删掉就绕过了回滚；而且它们本来就会被迁移处理掉。
+    $runtimePayloadNames = @{}
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeDir) -and (Test-Path -LiteralPath $RuntimeDir -PathType Container)) {
+        foreach ($layoutFile in Get-ChildItem -LiteralPath $RuntimeDir -File -Recurse) {
+            $runtimePayloadNames[$layoutFile.Name] = $true
+        }
+    }
     foreach ($baselineFile in Get-ChildItem -LiteralPath $BaselineDir -File -Recurse) {
         $relativePath = Get-RelativePath -BaseDir $BaselineDir -Path $baselineFile.FullName
         if ($currentRelativePaths.ContainsKey($relativePath)) { continue }
@@ -944,17 +954,25 @@ function New-AppPatchPackage {
         # 白名单里的（用户可替换的 ffmpeg / libvlc）既不入退役清单也不删；基线里没有、
         # 当前目录故意不带的那批 libvlc 插件正是这一类，别让它们污染清单。
         if (Test-IsAppPatchManagedRuntimePath -RelativePath $relativePath) { continue }
+        if ($runtimePayloadNames.ContainsKey([System.IO.Path]::GetFileName($relativePath))) { continue }
         $newlyRetiredPaths += $relativePath.Replace('\', '/')
     }
 
     # 退役清单是**累计**的，只增不减：清理列表按"基线 − 当前"算，而基线每换一次大版本就会抬升，
     # 上一代没清掉的残留（例如老启动器不认 deletes、或用户走手动安装）不会再次出现在差集里。
     # 所以把每次算出的条目并进这份文件、随发布一起提交，后面的补丁会继续带着它们。
-    $retireListPath = Join-Path $repoRoot "Tools\app-patch-retire-list.json"
+    if ([string]::IsNullOrWhiteSpace($RetireListPath)) {
+        $RetireListPath = Join-Path $repoRoot "Tools\app-patch-retire-list.json"
+    }
+    $retireListPath = $RetireListPath
     $retiredPaths = [System.Collections.Generic.List[string]]::new()
+    $retireListComment = ""
     if (Test-Path -LiteralPath $retireListPath -PathType Leaf) {
         try {
             $retireList = Get-Content -LiteralPath $retireListPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $retireList.PSObject.Properties['_comment']) {
+                $retireListComment = [string]$retireList._comment
+            }
             if ($null -ne $retireList.PSObject.Properties['retired']) {
                 foreach ($existing in @($retireList.retired)) {
                     $value = ([string]$existing).Trim()
@@ -973,16 +991,30 @@ function New-AppPatchPackage {
         }
     }
     $orderedRetiredPaths = @($retiredPaths | Sort-Object -Unique)
-    [System.IO.File]::WriteAllText(
-        $retireListPath,
-        (([ordered]@{ schemaVersion = 1; retired = $orderedRetiredPaths } | ConvertTo-Json -Depth 4) + "`n"),
-        (New-Object System.Text.UTF8Encoding($false)))
+    $retireListPayload = [ordered]@{ schemaVersion = 1 }
+    if ($retireListComment.Length -gt 0) { $retireListPayload["_comment"] = $retireListComment }
+    $retireListPayload["retired"] = $orderedRetiredPaths
+    $retireListJson = ($retireListPayload | ConvertTo-Json -Depth 4) + "`n"
+    $existingRetireListJson = if (Test-Path -LiteralPath $retireListPath -PathType Leaf) {
+        [System.IO.File]::ReadAllText($retireListPath, [System.Text.Encoding]::UTF8)
+    }
+    else {
+        ""
+    }
+    # 内容没变就不写：出包/测试都不该无谓地把一个"必须随发布提交"的文件改脏。
+    if (-not [string]::Equals($existingRetireListJson, $retireListJson, [System.StringComparison]::Ordinal)) {
+        [System.IO.File]::WriteAllText(
+            $retireListPath,
+            $retireListJson,
+            (New-Object System.Text.UTF8Encoding($false)))
+    }
 
     foreach ($relativePath in $orderedRetiredPaths) {
         $normalizedPath = $relativePath.Replace('/', '\')
         if ($currentRelativePaths.ContainsKey($normalizedPath)) { continue }
         if ($normalizedPath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
         if (Test-IsAppPatchManagedRuntimePath -RelativePath $normalizedPath) { continue }
+        if ($runtimePayloadNames.ContainsKey([System.IO.Path]::GetFileName($normalizedPath))) { continue }
         $deletedFiles += [ordered]@{
             "path" = $relativePath
         }

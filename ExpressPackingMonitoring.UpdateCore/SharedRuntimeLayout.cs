@@ -184,6 +184,28 @@ public static class SharedRuntimeLayout
     }
 
     /// <summary>
+    /// 这批补丁文件是否动了布局里的运行时载荷（按平铺文件名判定）。
+    ///
+    /// 落成共享布局用的是**硬链接**：补丁原地覆盖 `app\` 里的同名文件时，
+    /// `runtime\shared\...\*.dll` 的内容会跟着变，而目录名与 `layout.json` 还是旧的，
+    /// 于是布局变成"名字旧、内容新"且没人会修。判到这种补丁就要把布局丢掉、按新产物重新落。
+    /// </summary>
+    public static bool PatchTouchesRuntimePayload(
+        SharedRuntimeLayoutInfo? layout,
+        IEnumerable<string> relativePaths)
+    {
+        if (layout is null || layout.AppFileMap.Count == 0) return false;
+
+        foreach (string relativePath in relativePaths)
+        {
+            string name = Path.GetFileName((relativePath ?? "").Replace('\\', '/'));
+            if (name.Length > 0 && layout.AppFileMap.ContainsKey(name)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// 启动前的一站式处理：读布局 → 可用就设 DOTNET_ROOT → 迁移老装机的平铺运行时副本 →
     /// 连续两次正常启动后清理回滚备份。任何异常都只记录，不阻断启动。
     /// </summary>

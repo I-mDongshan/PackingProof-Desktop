@@ -850,6 +850,7 @@ internal static class Program
             int prunedDirectoryCount = PruneEmptyDirectories(manifest, baseDir);
             if (deletedCount > 0 || prunedDirectoryCount > 0)
                 WriteLog($"已清理 {deletedCount} 个旧版本遗留文件、{prunedDirectoryCount} 个空目录");
+            DropSeededRuntimeLayoutIfPatchReplacedRuntimeFiles(baseDir, manifest);
 
             ValidateInstalledApp(baseDir, descriptor.LatestVersion);
             TryDeleteDirectory(backupRoot);
@@ -859,6 +860,32 @@ internal static class Program
             RollbackFiles(backups);
             throw;
         }
+    }
+
+    /// <summary>
+    /// 补丁换了运行时文件（按平铺文件名判定）就把落成的共享布局丢掉：布局是用硬链接落成的，
+    /// 原地覆盖会把 runtime\ 里的内容换掉而目录名与 layout.json 还是旧的；丢掉之后主程序
+    /// 下次启动会按新产物重新落成。布局是派生数据（可从 app\ 重算），丢了不会丢任何用户数据。
+    /// </summary>
+    private static void DropSeededRuntimeLayoutIfPatchReplacedRuntimeFiles(string baseDir, PatchManifest manifest)
+    {
+        string layoutDirectory = SharedRuntimeLayout.GetLayoutDirectory(baseDir);
+        if (!Directory.Exists(layoutDirectory)) return;
+
+        SharedRuntimeLayoutInfo? layout = SharedRuntimeLayout.TryReadLayout(baseDir);
+        if (layout is null) return;
+
+        // 只看落在 app\ 里的条目：root=runtime 的正是"把布局投递过来"的过渡补丁，不能因此丢布局。
+        var deployedPaths = new List<string>(manifest.Files.Count);
+        foreach (PatchFile file in manifest.Files)
+        {
+            if (!string.Equals(file.Root, "app", StringComparison.OrdinalIgnoreCase)) continue;
+            deployedPaths.Add(file.RelativePath);
+        }
+        if (!SharedRuntimeLayout.PatchTouchesRuntimePayload(layout, deployedPaths)) return;
+
+        TryDeleteDirectory(layoutDirectory);
+        WriteLog("这份补丁替换了运行时文件，已丢弃落成的共享布局；主程序下次启动会按新产物重新落成");
     }
 
     /// <summary>
