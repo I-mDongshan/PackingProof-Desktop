@@ -1191,10 +1191,8 @@ public sealed class CameraBarcodeRecognitionTests
         int confirmedCount = 0;
         service.BarcodeConfirmed += _ => Interlocked.Increment(ref confirmedCount);
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        // 这两帧要真的处理完再断言"没有确认"：固定延时在满载时会提前断言，等于把守卫测成假的。
+        await SubmitFramesAndWaitAsync(service, frame, count: 2, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, Volatile.Read(ref confirmedCount));
     }
@@ -1212,16 +1210,13 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.BarcodeRecognized += recognized.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
+        await SubmitFramesAndWaitAsync(service, frame, count: 2, TestContext.Current.CancellationToken);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Single(recognized);
 
-        service.TrySubmitFrame(blank, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
+        await SubmitFramesAndWaitAsync(service, blank, count: 1, TestContext.Current.CancellationToken);
+        await SubmitFramesAndWaitAsync(service, frame, count: 2, TestContext.Current.CancellationToken);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, recognized.Count);
@@ -1238,9 +1233,11 @@ public sealed class CameraBarcodeRecognitionTests
             qrCodeEnabledProvider: () => true);
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => confirmed.Count > 0,
+            TestContext.Current.CancellationToken);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Equal("YT123456789012", Assert.Single(confirmed));
@@ -1255,10 +1252,7 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValid(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await SubmitFramesAndWaitAsync(service, frame, count: 2, TestContext.Current.CancellationToken);
 
         Assert.Empty(confirmed);
     }
@@ -1278,9 +1272,11 @@ public sealed class CameraBarcodeRecognitionTests
         service.InvalidCandidate += invalid.Add;
         service.BarcodeConfirmed += confirmed.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => invalid.Count > 0,
+            TestContext.Current.CancellationToken);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
         Assert.Empty(confirmed);
@@ -1369,12 +1365,21 @@ public sealed class CameraBarcodeRecognitionTests
         service.BarcodeRecognized += recognized.Add;
         service.BarcodeConfirmed += _ => Interlocked.Increment(ref confirmedCount);
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        service.TrySubmitFrame(frame, forceDecode: true);
+        // 识别的解码跑在后台线程上：整机满载跑整套用例时可能被拖到几百毫秒以上，
+        // 固定 400ms 等待会让断言在事件发出来之前执行（门禁里出现过偶发失败）。
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => recognized.Count > 0,
+            TestContext.Current.CancellationToken);
+        Assert.Contains(command, recognized);
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => Volatile.Read(ref confirmedCount) > 0,
+            TestContext.Current.CancellationToken);
         await Task.Delay(400, TestContext.Current.CancellationToken);
 
-        Assert.Contains(command, recognized);
         Assert.Equal(1, Volatile.Read(ref confirmedCount));
     }
 
@@ -1392,17 +1397,23 @@ public sealed class CameraBarcodeRecognitionTests
             utcNowProvider: () => now);
         service.InvalidCandidate += received.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => received.Count > 0,
+            TestContext.Current.CancellationToken);
         Assert.Single(received);
 
-        service.TrySubmitFrame(movedFrame);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        // 这一帧必须真的被处理过，再断言"节流窗口内不重复"。
+        await SubmitFramesAndWaitAsync(service, movedFrame, count: 1, TestContext.Current.CancellationToken);
         Assert.Single(received); // 同码且注入时钟未推进，节流窗口内不重复
 
         now = now.AddSeconds(4); // 注入时钟越过节流窗口
-        service.TrySubmitFrame(movedFrame2);
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await SubmitUntilAsync(
+            service,
+            movedFrame2,
+            () => received.Count > 1,
+            TestContext.Current.CancellationToken);
         Assert.Equal(2, received.Count);
     }
 
@@ -1415,8 +1426,11 @@ public sealed class CameraBarcodeRecognitionTests
             value => CameraBarcodeCandidatePolicy.IsValidForWorkScan(value, "^[a-zA-Z0-9-]{12,25}$"));
         service.InvalidCandidate += received.Add;
 
-        service.TrySubmitFrame(frame, forceDecode: true);
-        await Task.Delay(600, TestContext.Current.CancellationToken);
+        await SubmitUntilAsync(
+            service,
+            frame,
+            () => received.Count > 0,
+            TestContext.Current.CancellationToken);
 
         Assert.Contains("6901234567892", received);
     }
@@ -1771,6 +1785,64 @@ public sealed class CameraBarcodeRecognitionTests
         tracker.Observe(trackingNumber, Start);
         tracker.Observe(trackingNumber, Start.AddMilliseconds(250));
         return tracker;
+    }
+
+    /// <summary>
+    /// 反复提交同一帧，直到 condition 成立或 30 秒到点（到点就把现场交给断言报错）。
+    ///
+    /// 识别服务把解码放在后台线程上，整套用例满载并行时可能被拖到几百毫秒以上，固定
+    /// <c>Task.Delay(400)</c> 的写法会让断言在事件发出来之前执行；帧率闸门又会丢掉太密的帧，
+    /// 所以这里"提交 + 轮询"而不是"提交一次 + 固定等待"。
+    /// </summary>
+    private static async Task SubmitUntilAsync(
+        CameraBarcodeRecognitionService service,
+        Mat frame,
+        Func<bool> condition,
+        CancellationToken cancellationToken)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        while (!condition() && DateTimeOffset.UtcNow < deadline)
+        {
+            service.TrySubmitFrame(frame, forceDecode: true);
+            await Task.Delay(25, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// 提交 count 帧并等到这批帧真的处理完：处理一帧会发一次 StatusChanged（命中与未命中两条分支都发）。
+    /// </summary>
+    private static async Task SubmitFramesAndWaitAsync(
+        CameraBarcodeRecognitionService service,
+        Mat frame,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        int processedCount = 0;
+        void OnStatusChanged(CameraBarcodeRecognitionStatus _) =>
+            Interlocked.Increment(ref processedCount);
+        service.StatusChanged += OnStatusChanged;
+        try
+        {
+            DateTimeOffset deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+            int accepted = 0;
+            while (DateTimeOffset.UtcNow < deadline)
+            {
+                if (accepted < count)
+                {
+                    if (service.TrySubmitFrame(frame, forceDecode: true)) accepted++;
+                }
+                else if (Volatile.Read(ref processedCount) >= accepted)
+                {
+                    return;
+                }
+
+                await Task.Delay(20, cancellationToken);
+            }
+        }
+        finally
+        {
+            service.StatusChanged -= OnStatusChanged;
+        }
     }
 
     private static Mat CreateFrameWithBarcode(string value, BarcodeFormat format, bool inGuide, bool rotate90 = false)
