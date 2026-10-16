@@ -87,6 +87,81 @@ public sealed class ManualPatchInstallerTests
         Assert.Contains("增量更新完成", result.StandardOutput);
     }
 
+    /// <summary>
+    /// 清理列表（deletes）：老版本留下、新版本已不再发布的文件必须在安装时删掉。升级一贯只新增
+    /// 或覆盖，没有这一步这些文件（旧版本号写进文件名的原生库、已下线的旧程序集）会一直留在 app\ 里。
+    /// </summary>
+    [Fact]
+    public async Task Installer_RemovesObsoleteFilesListedInDeletes()
+    {
+        using var fixture = new ManualPatchFixture();
+        string obsoletePath = fixture.CreateObsoleteFile(Path.Combine("old", "retired.dll"));
+        fixture.CreatePatch(
+            "new-content",
+            useValidHash: true,
+            deletes: [new { path = "old/retired.dll" }]);
+
+        ProcessResult result = await fixture.RunInstallerAsync();
+
+        Assert.True(
+            result.ExitCode == 0,
+            $"exit={result.ExitCode}{Environment.NewLine}stdout={result.StandardOutput}{Environment.NewLine}stderr={result.StandardError}");
+        Assert.Equal("new-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+        Assert.False(File.Exists(obsoletePath), "清理列表里的旧文件必须被删掉");
+    }
+
+    /// <summary>同一个相对路径不能既在写入列表又在清理列表里：清单自相矛盾时当场拒绝，别装出一半。</summary>
+    [Fact]
+    public async Task Installer_RejectsDeleteListThatConflictsWithWrittenFiles()
+    {
+        using var fixture = new ManualPatchFixture();
+        fixture.CreatePatch(
+            "new-content",
+            useValidHash: true,
+            deletes: [new { path = "Web/index.html" }]);
+
+        ProcessResult result = await fixture.RunInstallerAsync();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("补丁清理列表与写入列表冲突", result.StandardOutput + result.StandardError);
+        Assert.Equal("old-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+    }
+
+    /// <summary>
+    /// 清理列表的条目也要能回滚：删到一半失败时，已经被删掉的文件必须从备份里放回来，
+    /// 不能留下"包没装成、旧文件也没了"的安装目录。
+    /// </summary>
+    [Fact]
+    public async Task Installer_RollBackRestoresObsoleteFileDeletedBeforeAFailure()
+    {
+        using var fixture = new ManualPatchFixture();
+        string deletedPath = fixture.CreateObsoleteFile(Path.Combine("old", "gone.dll"));
+        string lockedPath = fixture.CreateObsoleteFile(Path.Combine("old", "locked.dll"));
+        fixture.CreatePatch(
+            "new-content",
+            useValidHash: true,
+            deletes:
+            [
+                new { path = "old/gone.dll" },
+                new { path = "old/locked.dll" },
+            ]);
+
+        // 占住第二个待删文件的句柄：它删不掉，前面的删除就得整体回滚。
+        using (File.Open(lockedPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            ProcessResult result = await fixture.RunInstallerAsync();
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("正在恢复原文件", result.StandardOutput);
+            Assert.Equal("old-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+            Assert.True(File.Exists(deletedPath), "已经被删掉的旧文件必须被放回来");
+            // 备份目录在失败时保留：里面得有它，才证明这个文件真的走到过"删前先备份"那一步，
+            // 而不是因为删到它之前就失败了。
+            string backupRoot = Path.Combine(fixture.UserDataRoot, "cache", "manual_updates");
+            Assert.NotEmpty(Directory.EnumerateFiles(backupRoot, "gone.dll", SearchOption.AllDirectories));
+        }
+    }
+
     /// <summary>比已安装版本更旧的增量包仍然要拦住，避免把程序降级。</summary>
     [Fact]
     public async Task Installer_SkipsPatchOlderThanInstalledVersion()
@@ -174,6 +249,9 @@ public sealed class ManualPatchInstallerTests
 
         public string TargetFilePath { get; private set; }
 
+        /// <summary>假装的用户数据目录（配置、日志与手动更新的备份都在它下面）。</summary>
+        public string UserDataRoot => Path.GetDirectoryName(_configPath)!;
+
         public ManualPatchFixture()
         {
             _root = Path.Combine(Path.GetTempPath(), "epm-manual-patch-tests", Guid.NewGuid().ToString("N"));
@@ -221,7 +299,8 @@ public sealed class ManualPatchInstallerTests
             string content,
             bool useValidHash,
             string latestVersion = "0.0.2",
-            string baselineVersion = "0.0.1")
+            string baselineVersion = "0.0.1",
+            object[]? deletes = null)
         {
             string sourcePath = Path.Combine(_patchRoot, "files", "Web", "index.html");
             Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
@@ -241,7 +320,17 @@ public sealed class ManualPatchInstallerTests
                 }
             ],
             latestVersion,
-            baselineVersion);
+            baselineVersion,
+            deletes);
+        }
+
+        /// <summary>在安装目录的 app\ 下造一个"老版本遗留"的文件，返回它的完整路径。</summary>
+        public string CreateObsoleteFile(string relativePath)
+        {
+            string path = Path.Combine(_appRoot, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "obsolete-content", Encoding.UTF8);
+            return path;
         }
 
         public void CreatePartiallyFailingPatch()
@@ -378,7 +467,8 @@ public sealed class ManualPatchInstallerTests
         private void WriteManifest(
             object[] files,
             string latestVersion = "0.0.2",
-            string baselineVersion = "0.0.1")
+            string baselineVersion = "0.0.1",
+            object[]? deletes = null)
         {
             var manifest = new
             {
@@ -388,9 +478,19 @@ public sealed class ManualPatchInstallerTests
                 files
             };
             Directory.CreateDirectory(_patchRoot);
+            string manifestJson = deletes is null
+                ? JsonSerializer.Serialize(manifest)
+                : JsonSerializer.Serialize(new
+                {
+                    type = "baseline_patch",
+                    patch_baseline_version = baselineVersion,
+                    latest_version = latestVersion,
+                    files,
+                    deletes
+                });
             File.WriteAllText(
                 Path.Combine(_patchRoot, "patch_manifest.json"),
-                JsonSerializer.Serialize(manifest),
+                manifestJson,
                 Encoding.UTF8);
         }
 
