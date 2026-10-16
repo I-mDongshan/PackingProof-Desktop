@@ -10,6 +10,7 @@ namespace ExpressPackingMonitoring.UI
         private readonly AppPatchDownloadService _downloadService;
         private readonly Func<bool> _isRecordingProvider;
         private bool _openFullDownloadPage;
+        private bool _restartForLauncherUpdate;
 
         public bool OpenFullDownloadPageRequested { get; private set; }
         public bool RestartRequested { get; private set; }
@@ -44,6 +45,15 @@ namespace ExpressPackingMonitoring.UI
             if (_openFullDownloadPage)
             {
                 OpenFullDownloadPageRequested = true;
+                DialogResult = true;
+                Close();
+                return;
+            }
+
+            if (_restartForLauncherUpdate)
+            {
+                // 启动器已经换好了，但只有它下次启动才会应用新载荷：直接走"重启升级"，别在这里空等。
+                RestartRequested = true;
                 DialogResult = true;
                 Close();
                 return;
@@ -112,6 +122,15 @@ namespace ExpressPackingMonitoring.UI
                     DownloadButton.Content = "打开完整更新页面";
                     DownloadButton.IsEnabled = true;
                     LaterButton.IsEnabled = true;
+                    break;
+
+                case AppPatchPreparationStatus.LauncherUpdateRequired:
+                    DownloadProgressBar.Visibility = Visibility.Collapsed;
+                    DownloadStatusText.Text = preparation.Message;
+                    DownloadButton.Content = "立即重启升级";
+                    DownloadButton.IsEnabled = true;
+                    LaterButton.IsEnabled = true;
+                    _restartForLauncherUpdate = true;
                     break;
 
                 default:

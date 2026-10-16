@@ -23,7 +23,9 @@ internal sealed record LauncherPackageInfo(
     string Sha256,
     long ExecutableSize,
     string ExecutableSha256,
-    string GiteeUrl = "");
+    string GiteeUrl = "",
+    /// <summary>这个启动器包要求主程序至少具备的能力号（0 = 不要求）。见 <see cref="UpdateCore.LauncherProtocol"/>。</summary>
+    int RequiredAppProtocol = 0);
 
 internal sealed record LauncherDownloadFailureState(
     string PackageVersion,
@@ -41,7 +43,8 @@ internal sealed record LauncherUpdateCheckState(
     long LauncherLength,
     long LauncherLastWriteUtcTicks,
     string LauncherSha256,
-    string PackageVersion);
+    string PackageVersion,
+    DateTimeOffset CheckedAtUtc = default);
 
 internal enum LauncherPackageApplyResult
 {
@@ -62,6 +65,12 @@ internal sealed class LauncherUpdateService
     internal const string CheckStateFileName = "launcher-check-state.json";
     internal const string DownloadFailureStateFileName = "launcher-download-failures.json";
     internal const int GithubDownloadFailureFallbackThreshold = 3;
+
+    /// <summary>
+    /// 启动器自更新的"成功检查"缓存窗口。上一次判成功之后这么久会重新查一遍——
+    /// 没有窗口的话，应用版本与启动器文件都不变的机器会永久跳过，永远拿不到新启动器。
+    /// </summary>
+    internal static readonly TimeSpan SuccessfulCheckWindow = TimeSpan.FromHours(6);
     internal const string DefaultGithubDownloadBaseUrl =
         "https://github.com/PackingProof/PackingProof-Desktop/releases/download";
     internal const int MaxRetainedBackups = 3;
@@ -72,7 +81,11 @@ internal sealed class LauncherUpdateService
         Timeout = TimeSpan.FromSeconds(20)
     };
 
-    public async Task CheckAndApplyAsync(bool enabled, CancellationToken cancellationToken)
+    /// <param name="force">
+    /// true = 忽略"上一次刚查过"的缓存，强制复查一遍。补丁要求新启动器时走这条路
+    /// （见 AppPatchDownloadService）：不能因为六小时内查过就放弃更新启动器。
+    /// </param>
+    public async Task CheckAndApplyAsync(bool enabled, CancellationToken cancellationToken, bool force = false)
     {
         if (!enabled)
         {
@@ -105,7 +118,7 @@ internal sealed class LauncherUpdateService
                 return;
             }
 
-            if (ShouldSkipSuccessfulCheck(
+            if (!force && ShouldSkipSuccessfulCheck(
                     checkStatePath,
                     appVersion,
                     launcherPath))
@@ -138,6 +151,16 @@ internal sealed class LauncherUpdateService
                     launcherPath,
                     package.ExecutableSha256,
                     package.Version);
+                return;
+            }
+
+            // 反向时序：这个启动器包要求更新的主程序时，先别换——换了它可能不认当前主程序的配置/协议。
+            if (package.RequiredAppProtocol > LauncherProtocol.CurrentAppProtocol)
+            {
+                RuntimeLog.Warn(
+                    "LauncherUpdate",
+                    $"启动器包 {package.Version} 要求主程序能力 {package.RequiredAppProtocol}，"
+                    + $"当前主程序只有 {LauncherProtocol.CurrentAppProtocol}：本次不替换启动器");
                 return;
             }
 
@@ -374,7 +397,8 @@ internal sealed class LauncherUpdateService
             ReadString(package, "sha256"),
             ReadInt64(package, "executable_size"),
             ReadString(package, "executable_sha256"),
-            ReadString(package, "gitee_url"));
+            ReadString(package, "gitee_url"),
+            Math.Max(0, ReadInt32(package, "required_app_protocol")));
 
         return IsValid(result) ? result : null;
     }
@@ -636,7 +660,10 @@ internal sealed class LauncherUpdateService
             return state != null
                 && string.Equals(state.AppVersion, appVersion, StringComparison.Ordinal)
                 && state.LauncherLength == launcher.Length
-                && state.LauncherLastWriteUtcTicks == launcher.LastWriteTimeUtc.Ticks;
+                && state.LauncherLastWriteUtcTicks == launcher.LastWriteTimeUtc.Ticks
+                // 必须有复查窗口：0.0.82 现场就是"应用版本没变 + 启动器文件没动"于是永久跳过，
+                // 结果老机器永远拿不到新启动器，需要新启动器的补丁也就永远装不上。
+                && DateTimeOffset.UtcNow - state.CheckedAtUtc < SuccessfulCheckWindow;
         }
         catch
         {
@@ -665,7 +692,8 @@ internal sealed class LauncherUpdateService
                 launcher.Length,
                 launcher.LastWriteTimeUtc.Ticks,
                 launcherSha256 ?? "",
-                packageVersion ?? "");
+                packageVersion ?? "",
+                DateTimeOffset.UtcNow);
             File.WriteAllText(temporaryPath, JsonSerializer.Serialize(state));
             File.Move(temporaryPath, statePath, overwrite: true);
         }

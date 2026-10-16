@@ -1464,6 +1464,8 @@ $launcherPackageInfo["size"] = $launcherPackageSize
 $launcherPackageInfo["sha256"] = $launcherPackageHash
 $launcherPackageInfo["executable_size"] = $launcherExecutableSize
 $launcherPackageInfo["executable_sha256"] = $launcherExecutableHash
+# 反向时序：换了新启动器、而它需要更新的主程序时才填（0 = 不要求）。见 UpdateCore\LauncherProtocol.cs。
+$launcherPackageInfo["required_app_protocol"] = 0
 $updateManifest["launcher_package"] = $launcherPackageInfo
 if ($patchSupported) {
     $patchPackageInfo = [ordered]@{}
@@ -1473,6 +1475,14 @@ if ($patchSupported) {
     $patchPackageInfo["gitee_url"] = $appPatchGiteeUrl
     $patchPackageInfo["sha256"] = $appPatchHash
     $patchPackageInfo["size"] = $appPatchSize
+    # 这份补丁要求启动器至少具备的能力号：带 runtime 落点/载荷的补丁只有新启动器装得上，
+    # 必须显式声明，客户端（主程序与启动器）据此判定"要不要先把启动器更新掉"。
+    # 自包含发布（0.0.83 起）的补丁全是 app\ 内的条目、老启动器也能装，所以这里是 0。
+    $requiredLauncherProtocol = if ($IncludeRuntimeInPatch) { 2 } else { 0 }
+    $patchPackageInfo["required_launcher_protocol"] = $requiredLauncherProtocol
+    if ($IncludeRuntimeInPatch -and $requiredLauncherProtocol -lt 2) {
+        throw "带运行时的过渡补丁必须声明 required_launcher_protocol >= 2"
+    }
     $updateManifest["patch_package"] = $patchPackageInfo
     $updateManifest["notes"] = @(
         "请填写本版本最重要的用户可见变化"

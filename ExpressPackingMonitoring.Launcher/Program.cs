@@ -30,6 +30,8 @@ internal static class Program
     private const string InstanceNamePrefix = "ExpressPackingMonitoring";
     private const string CameraMonitorRole = "CameraMonitor";
     private const string PrintStationRole = "PrintStation";
+    /// <summary>本启动器装不了的 pending 补丁挪到这里：不再每次启动重试（补丁本身不删，换新启动器后还能用）。</summary>
+    private const string RejectedPendingDirectoryName = "pending-rejected";
     private static readonly TimeSpan NetworkUpdateTimeout = TimeSpan.FromSeconds(75);
     // 增量包预算：只给"检查元数据"用 75 秒是不够下 75MB 的，下载单独放宽（停滞判据仍然生效）。
     private static readonly TimeSpan PatchDownloadBudget = TimeSpan.FromMinutes(30);
@@ -82,6 +84,13 @@ internal static class Program
             WriteLog("未发现共享运行时布局，按系统 .NET 运行时启动");
         if (runtimeContext.RepairedMisplacedLayout)
             WriteLog("运行时装在了 app\\runtime\\（老启动器应用过渡补丁的结果），已搬回安装根目录 runtime\\");
+
+        // 写下"本启动器具备哪些能力"，主程序据此判断这份补丁到底装不装得上。
+        // 老启动器不写这个文件，主程序会按最低能力处理——这正是 0.0.81 机器的正确判定。
+        LauncherProtocol.WriteState(
+            GetUpdatesCacheDir(),
+            Environment.ProcessPath ?? Path.Combine(baseDir, "ExpressPackingMonitoring.exe"),
+            typeof(Program).Assembly.GetName().Version?.ToString() ?? "");
 
         if (appAlreadyRunning)
         {
@@ -294,6 +303,30 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// 把这份启动器装不了的 pending 补丁挪到 pending-rejected\&lt;版本&gt;：补丁本身是合法的，
+    /// 换成新启动器后还能用，所以不删；挪走是为了不再每次启动都失败一遍（0.0.82 现场就是那样循环的）。
+    /// </summary>
+    private static void RejectPendingPatch(string pendingDir, string version)
+    {
+        try
+        {
+            string rejectedRoot = Path.Combine(GetUpdatesCacheDir(), RejectedPendingDirectoryName);
+            string segment = string.IsNullOrWhiteSpace(version) ? "unknown" : version.Trim();
+            string rejectedDirectory = Path.Combine(rejectedRoot, segment);
+            if (Directory.Exists(rejectedDirectory))
+            {
+                Directory.Delete(rejectedDirectory, true);
+            }
+            Directory.CreateDirectory(rejectedRoot);
+            Directory.Move(pendingDir, rejectedDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            WriteLog("挪走装不了的 pending 补丁失败：" + ex.Message);
+        }
+    }
+
     private static UpdateNotification? InstallPendingUpdate(string baseDir)
     {
         string pendingDir = GetPendingUpdateDir();
@@ -317,6 +350,18 @@ internal static class Program
             using JsonDocument document = JsonDocument.Parse(File.ReadAllText(manifestPath, Encoding.UTF8));
             UpdateDescriptor descriptor = ReadUpdateDescriptor(document.RootElement, "");
             ValidatePatchDescriptor(descriptor);
+            if (descriptor.PatchPackage.RequiredLauncherProtocol > LauncherProtocol.CurrentLauncherProtocol)
+            {
+                // 装不了就明确说清、并把这一份挪出 pending：留在原地会变成"每次启动都失败一次"的死循环
+                // （0.0.82 现场的“Patch 文件不存在：dotnet.exe”就是这样反复刷出来的）。
+                string requirement =
+                    $"这份补丁要求启动器能力 {descriptor.PatchPackage.RequiredLauncherProtocol}，"
+                    + $"本启动器只有 {LauncherProtocol.CurrentLauncherProtocol}，本机还不能装";
+                WriteLog("pending Patch " + requirement + $"，已挪到 {RejectedPendingDirectoryName}，等主程序更新启动器后再试");
+                RejectPendingPatch(pendingDir, descriptor.LatestVersion);
+                return BuildManualUpdateNotification(descriptor, ManualUpdateReason.LauncherUpdateRequired);
+            }
+
             string currentVersion = ReadInstalledAppVersion(baseDir);
             WriteLog($"准备安装 pending Patch：current={currentVersion}, latest={descriptor.LatestVersion}, baseline={descriptor.PatchBaselineVersion}");
             if (string.IsNullOrWhiteSpace(currentVersion))
@@ -565,6 +610,15 @@ internal static class Program
         UpdateDescriptor descriptor,
         string manifestSourceUrl)
     {
+        if (descriptor.PatchPackage.RequiredLauncherProtocol > LauncherProtocol.CurrentLauncherProtocol)
+        {
+            // 本启动器装不了这一份：不要白下几十兆，等主程序把启动器换掉之后再来。
+            WriteLog(
+                $"这份补丁要求启动器能力 {descriptor.PatchPackage.RequiredLauncherProtocol}，"
+                + $"本启动器只有 {LauncherProtocol.CurrentLauncherProtocol}，本次不下载（等主程序更新启动器）");
+            return;
+        }
+
         string updatesDir = GetUpdatesCacheDir();
         string pendingDir = GetPendingUpdateDir();
         string partialDir = Path.Combine(updatesDir, "partial");
@@ -1083,7 +1137,7 @@ internal static class Program
     private static PatchPackageInfo ReadPatchPackageInfo(JsonElement manifestRoot)
     {
         if (!manifestRoot.TryGetProperty("patch_package", out JsonElement package) || package.ValueKind != JsonValueKind.Object)
-            return new PatchPackageInfo("", "", "", -1, "", "");
+            return new PatchPackageInfo("", "", "", -1, "", "", 0);
 
         return new PatchPackageInfo(
             ReadString(package, "type"),
@@ -1091,7 +1145,8 @@ internal static class Program
             ReadString(package, "sha256"),
             ReadInt64(package, "size"),
             ReadString(package, "github_url"),
-            ReadString(package, "gitee_url"));
+            ReadString(package, "gitee_url"),
+            Math.Max(0, ReadInt32(package, "required_launcher_protocol")));
     }
 
     private static string[] ReadNotes(JsonElement manifestRoot)
@@ -1114,11 +1169,15 @@ internal static class Program
             ManualUpdateReason.PatchNotSupported => "本版本未提供可用的主程序增量包，需要下载完整包后解压覆盖安装",
             ManualUpdateReason.VersionBelowBaseline => "当前版本过旧，不能直接使用本次增量更新，需要下载完整包后解压覆盖安装",
             ManualUpdateReason.PatchDescriptorUnavailable => "本版本需要完整更新，需要下载完整包后解压覆盖安装",
+            ManualUpdateReason.LauncherUpdateRequired =>
+                "这份增量包需要新版启动器才能安装。请完全退出本软件后重新从快捷方式启动，让主程序先把启动器更新掉，再更新主程序",
             _ => "本版本需要完整更新，需要下载完整包后解压覆盖安装"
         } : reason switch
         {
             ManualUpdateReason.PatchNotSupported => "No compatible main-app patch is available for this release. Download and extract the full package.",
             ManualUpdateReason.VersionBelowBaseline => "The installed version is too old for this patch. Download and extract the full package.",
+            ManualUpdateReason.LauncherUpdateRequired =>
+                "This patch needs a newer launcher. Fully exit and start the app again so the main program updates the launcher first.",
             _ => "This release requires a full update. Download and extract the full package."
         };
 
@@ -1785,7 +1844,8 @@ internal static class Program
         string Sha256,
         long Size,
         string GithubUrl,
-        string GiteeUrl);
+        string GiteeUrl,
+        int RequiredLauncherProtocol = 0);
 
     private sealed record UpdateDescriptor(
         string LatestVersion,
@@ -1817,7 +1877,8 @@ internal static class Program
     {
         PatchNotSupported,
         VersionBelowBaseline,
-        PatchDescriptorUnavailable
+        PatchDescriptorUnavailable,
+        LauncherUpdateRequired
     }
 
     private sealed class PatchDownloadFailureState

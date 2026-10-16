@@ -16,6 +16,8 @@ internal enum AppPatchPreparationStatus
     AlreadyReady,
     FullPackageRequired,
     Busy,
+    /// <summary>这次补丁要求更新的启动器：启动器已经先更新好了，需要重启软件让新启动器接手。</summary>
+    LauncherUpdateRequired,
     Failed
 }
 
@@ -141,6 +143,47 @@ internal sealed class AppPatchDownloadService
                 return new AppPatchPreparationResult(
                     AppPatchPreparationStatus.AlreadyReady,
                     "当前版本已不低于更新版本");
+            }
+
+            // 这份补丁要求更新的启动器（例如载荷只能由新启动器落盘）时：先把启动器更新掉，绝不先下几十兆。
+            if (descriptor.PatchPackage.RequiredLauncherProtocol > 0)
+            {
+                if (!LauncherUpdateService.TryResolveInstalledLauncher(_appBaseDirectory, out string launcherPath))
+                {
+                    return FullPackage(
+                        update,
+                        "无法确定已安装的启动器，不能自动准备这次增量更新",
+                        fallbackUrl,
+                        descriptor.FullDownloadFallbackUrl);
+                }
+
+                if (!LauncherProtocol.Satisfies(
+                        LauncherProtocol.ReadState(_updatesDirectory, launcherPath),
+                        descriptor.PatchPackage.RequiredLauncherProtocol))
+                {
+                    progress?.Report(new AppPatchDownloadProgress("这次更新需要新版启动器，正在先更新启动器"));
+                    await new LauncherUpdateService().CheckAndApplyAsync(
+                        enabled: true,
+                        cancellationToken,
+                        force: true);
+
+                    if (!LauncherProtocol.Satisfies(
+                            LauncherProtocol.ReadState(_updatesDirectory, launcherPath),
+                            descriptor.PatchPackage.RequiredLauncherProtocol))
+                    {
+                        return new AppPatchPreparationResult(
+                            AppPatchPreparationStatus.Failed,
+                            "这次更新需要新版启动器，但启动器自动更新没有成功；请重启软件后重试，或改用完整包升级",
+                            fallbackUrl,
+                            descriptor.FullDownloadFallbackUrl);
+                    }
+
+                    return new AppPatchPreparationResult(
+                        AppPatchPreparationStatus.LauncherUpdateRequired,
+                        "这次更新需要新版启动器，已自动更新完成（约 3MB）。重启软件后由新启动器完成这次升级",
+                        fallbackUrl,
+                        descriptor.FullDownloadFallbackUrl);
+                }
             }
 
             return await DownloadAndPublishAsync(
@@ -603,7 +646,8 @@ internal sealed class AppPatchDownloadService
                 ReadString(packageElement, "sha256"),
                 ReadInt64(packageElement, "size"),
                 ReadString(packageElement, "github_url"),
-                ReadString(packageElement, "gitee_url"));
+                ReadString(packageElement, "gitee_url"),
+                Math.Max(0, ReadInt32(packageElement, "required_launcher_protocol")));
         }
 
         return new AppPatchDescriptor(
@@ -768,6 +812,15 @@ internal sealed class AppPatchDownloadService
             : -1;
     }
 
+    /// <summary>缺省按 0 处理：老清单没有这个字段，等于"不要求新启动器"。</summary>
+    private static int ReadInt32(JsonElement element, string name)
+    {
+        return element.TryGetProperty(name, out JsonElement value)
+            && value.TryGetInt32(out int result)
+            ? result
+            : 0;
+    }
+
     private static void TryDeleteOwnedDirectory(string path)
     {
         try
@@ -797,4 +850,6 @@ internal sealed record AppPatchPackageInfo(
     string Sha256,
     long Size,
     string GithubUrl = "",
-    string GiteeUrl = "");
+    string GiteeUrl = "",
+    /// <summary>这份补丁要求启动器至少具备的能力号（0 = 不要求）。见 <see cref="LauncherProtocol"/>。</summary>
+    int RequiredLauncherProtocol = 0);
