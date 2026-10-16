@@ -193,17 +193,26 @@ internal sealed class VideoFolderImportService
         return true;
     }
 
+    /// <summary>
+    /// 老记录没有内容哈希时的兜底：同名同大小，且原路径在本机已经不可用。
+    ///
+    /// 必须**唯一**命中才认。同一段录像可能在别的盘/别的机器上另有一份同名同大小的文件，
+    /// 挑错了就是把这条记录指到别的录像上——内容对不上、时长和订单也跟着串。命中不唯一时返回
+    /// null，让调用方按新录像导入：宁可多一条记录，也不要指错。
+    /// </summary>
     private VideoRecord? FindMissingRecordByNameAndSize(string filePath, long sizeBytes)
     {
         if (sizeBytes <= 0) return null;
         string fileName = Path.GetFileName(filePath);
         if (string.IsNullOrWhiteSpace(fileName)) return null;
 
-        return _database
+        List<VideoRecord> candidates = _database
             .FindVideoRecordsByFileSize(sizeBytes)
-            .FirstOrDefault(record =>
+            .Where(record =>
                 string.Equals(Path.GetFileName(record.FilePath), fileName, StringComparison.OrdinalIgnoreCase)
-                && !File.Exists(record.FilePath));
+                && !File.Exists(record.FilePath))
+            .ToList();
+        return candidates.Count == 1 ? candidates[0] : null;
     }
 
     private bool TryGetManagedRoot(string path, out string managedRoot)

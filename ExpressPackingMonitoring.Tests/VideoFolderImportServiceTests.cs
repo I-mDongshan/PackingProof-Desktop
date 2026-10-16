@@ -196,6 +196,56 @@ public sealed class VideoFolderImportServiceTests
         }
     }
 
+    /// <summary>
+    /// 同名同大小的兜底等于"把记录指到别处"，所以只在唯一命中时才敢用：剩两条同名同大小的
+    /// 缺失记录时，宁可按新录像插一条，也不能随手挑一条把它的路径改到这次导入的文件上。
+    /// </summary>
+    [Fact]
+    public async Task ImportAsync_DoesNotRelinkWhenSameNameAndSizeIsAmbiguous()
+    {
+        string root = CreateTempDirectory();
+        string databasePath = Path.Combine(root, "videos.db");
+        string firstMissingPath = Path.Combine(root, "old-disk-a", "ORDER-11.mp4");
+        string secondMissingPath = Path.Combine(root, "old-disk-b", "ORDER-11.mp4");
+        string newDiskFolder = Directory.CreateDirectory(Path.Combine(root, "new-disk")).FullName;
+        string movedFile = Path.Combine(newDiskFolder, "ORDER-11.mp4");
+        File.WriteAllBytes(movedFile, [7, 8, 9, 10, 11]);
+
+        try
+        {
+            using var database = new VideoDatabase(databasePath);
+            foreach (string missingPath in new[] { firstMissingPath, secondMissingPath })
+            {
+                long recordId = database.InsertVideoRecord(
+                    "ORDER-11", "发货", "", "", missingPath, DateTime.Now.AddDays(-2));
+                database.UpdateVideoRecordOnStop(
+                    recordId, DateTime.Now.AddDays(-2).AddMinutes(1), 30, 5, "手动");
+            }
+
+            var service = CreateService(database, root);
+            VideoImportResult result = await service.ImportAsync(
+                newDiskFolder,
+                "发货",
+                progress: null,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(1, result.Imported);
+            Assert.Equal(0, result.Skipped);
+            List<VideoRecord> records = database.QueryVideos(null, null);
+            // 两条老记录都保持原样（谁都没被改到新盘上），新盘那份按新录像入账。
+            Assert.Contains(records, record => record.FilePath == firstMissingPath);
+            Assert.Contains(records, record => record.FilePath == secondMissingPath);
+            Assert.Contains(
+                records,
+                record => string.Equals(record.FilePath, movedFile, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            SqliteTestPool.ClearPoolFor(root);
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void PlaybackWindow_ShowsOneImportEntryAndDialogOwnsModeActions()
     {
