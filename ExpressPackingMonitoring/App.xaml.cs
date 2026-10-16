@@ -5,6 +5,7 @@ using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Themes;
+using ExpressPackingMonitoring.UpdateCore;
 using ExpressPackingMonitoring.ViewModels;
 using System;
 using System.Threading.Tasks;
@@ -60,6 +61,7 @@ namespace ExpressPackingMonitoring
             RuntimeLog.Info("App", "Application startup");
             RuntimeLog.LogSessionStart(e.Args);
             RuntimeLog.LogBuildInfo();
+            SeedSharedRuntimeLayout();
             RuntimeLog.Info(
                 "Rendering",
                 $"WPF process render mode={RenderOptions.ProcessRenderMode}, softwareForced={SoftwareRenderingForced}");
@@ -229,6 +231,36 @@ namespace ExpressPackingMonitoring
 
         private static void ApplyConfiguredWpfRenderingMode() =>
             ApplyWpfRenderingMode(SoftwareRenderingForced);
+
+        /// <summary>
+        /// 自包含产物把运行时平铺在 app\ 里，市场里的扩展要靠共享布局（安装根目录的 runtime\）
+        /// 才能复用它。这里在启动早期落一次：有种子才动作，已经有布局就跳过，失败只记录不阻断启动。
+        /// </summary>
+        private static void SeedSharedRuntimeLayout()
+        {
+            try
+            {
+                string appDirectory = System.IO.Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+                string? installRoot = System.IO.Path.GetDirectoryName(appDirectory);
+                if (string.IsNullOrEmpty(installRoot)) return;
+
+                RuntimeLayoutSeedResult result = RuntimeLayoutSeeder.Ensure(installRoot, appDirectory);
+                if (result.Materialized)
+                {
+                    RuntimeLog.Info(
+                        "Runtime",
+                        $"已从自包含产物落成共享运行时布局：硬链接 {result.LinkedFiles} 个，复制 {result.CopiedFiles} 个");
+                }
+                else if (result.Error is not null)
+                {
+                    RuntimeLog.Warn("Runtime", "落成共享运行时布局失败：" + result.Error);
+                }
+            }
+            catch (Exception exception)
+            {
+                RuntimeLog.Warn("Runtime", "落成共享运行时布局异常：" + exception.Message);
+            }
+        }
 
         private static void ApplyWpfRenderingMode(bool forceSoftwareRendering)
         {

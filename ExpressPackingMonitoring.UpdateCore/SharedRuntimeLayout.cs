@@ -5,12 +5,16 @@ namespace ExpressPackingMonitoring.UpdateCore;
 
 public sealed record SharedRuntimeFrameworkInfo(string Name, string Version);
 
+/// <summary>布局里的一个文件条目：相对布局根目录的路径、大小与 SHA256。</summary>
+public sealed record SharedRuntimeLayoutFileInfo(string RelativePath, long Size, string Sha256);
+
 /// <summary>共享运行时布局的元数据（来自安装目录下的 runtime\layout.json）。</summary>
 public sealed record SharedRuntimeLayoutInfo(
     string LayoutDirectory,
     string HostFxrVersion,
     IReadOnlyList<SharedRuntimeFrameworkInfo> Frameworks,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> AppFileMap)
+    IReadOnlyDictionary<string, IReadOnlyList<string>> AppFileMap,
+    IReadOnlyList<SharedRuntimeLayoutFileInfo> Files)
 {
     public string DisplayText =>
         HostFxrVersion + "；" + string.Join(", ", Frameworks.Select(framework => framework.Name + " " + framework.Version));
@@ -111,7 +115,28 @@ public static class SharedRuntimeLayout
                 }
             }
 
-            return new SharedRuntimeLayoutInfo(layoutDirectory, hostFxrVersion, frameworks, appFileMap);
+            var files = new List<SharedRuntimeLayoutFileInfo>();
+            if (root.TryGetProperty("files", out JsonElement filesElement)
+                && filesElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement entry in filesElement.EnumerateArray())
+                {
+                    string path = entry.TryGetProperty("path", out JsonElement pathElement)
+                        ? pathElement.GetString() ?? ""
+                        : "";
+                    string hash = entry.TryGetProperty("sha256", out JsonElement hashElement)
+                        ? hashElement.GetString() ?? ""
+                        : "";
+                    long size = entry.TryGetProperty("size", out JsonElement sizeElement)
+                        && sizeElement.TryGetInt64(out long value)
+                            ? value
+                            : -1;
+                    if (path.Length > 0 && hash.Length > 0)
+                        files.Add(new SharedRuntimeLayoutFileInfo(path, size, hash.ToLowerInvariant()));
+                }
+            }
+
+            return new SharedRuntimeLayoutInfo(layoutDirectory, hostFxrVersion, frameworks, appFileMap, files);
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {
