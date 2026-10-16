@@ -234,6 +234,93 @@ function New-SharedRuntimeLayout {
     }
 }
 
+function New-RuntimeLayoutSeed {
+    <#
+      .SYNOPSIS
+      从生成的共享运行时布局推导"运行时种子"，放进自包含产物的 app\runtime-seed\。
+
+      .DESCRIPTION
+      自包含发布把运行时平铺在 app\ 里，主程序首次启动时会按布局清单给这些文件在安装根目录
+      runtime\ 下建硬链接（RuntimeLayoutSeeder），扩展就能复用同一份 .NET。种子里只需要放
+      **自包含产物里没有**的那些文件（框架的 deps/runtimeconfig、宿主附属文件等）：布局文件在
+      app\ 里能找到同名且哈希一致的文件时就不进种子，首次启动直接建硬链接，不重复占空间。
+
+      这里同时是构建期守卫：任何布局文件既没有同名同哈希来源、布局里又找不到时直接抛错，
+      避免发出一个"种子不全、布局落不成"的包。
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$LayoutPath,
+        [Parameter(Mandatory = $true)][string]$AppDir
+    )
+
+    $layout = [System.IO.Path]::GetFullPath($LayoutPath)
+    $app = [System.IO.Path]::GetFullPath($AppDir)
+    if (-not (Test-Path -LiteralPath $layout -PathType Container)) {
+        throw "共享运行时布局不存在：$layout"
+    }
+    if (-not (Test-Path -LiteralPath $app -PathType Container)) {
+        throw "应用发布目录不存在：$app"
+    }
+
+    $manifestPath = Join-Path $layout $script:SharedRuntimeLayoutFileName
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "布局清单不存在：$manifestPath"
+    }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($null -eq $manifest.PSObject.Properties['files'] -or @($manifest.files).Count -eq 0) {
+        throw "布局清单里没有文件条目：$manifestPath"
+    }
+
+    $seedDirectory = Join-Path $app 'runtime-seed'
+    if (Test-Path -LiteralPath $seedDirectory) {
+        [System.IO.Directory]::Delete($seedDirectory, $true)
+    }
+    [System.IO.Directory]::CreateDirectory($seedDirectory) | Out-Null
+
+    $fromAppDir = 0
+    $fromSeed = 0
+    foreach ($entry in @($manifest.files)) {
+        $relativePath = [string]$entry.path
+        $expectedSize = [long]$entry.size
+        $expectedHash = ([string]$entry.sha256).ToLowerInvariant()
+        $name = [System.IO.Path]::GetFileName($relativePath)
+        $appLocal = Join-Path $app $name
+        if ((Test-Path -LiteralPath $appLocal -PathType Leaf) -and
+            ((Get-Item -LiteralPath $appLocal).Length -eq $expectedSize) -and
+            ((Get-FileHash -LiteralPath $appLocal -Algorithm SHA256).Hash.ToLowerInvariant() -eq $expectedHash)) {
+            $fromAppDir++
+            continue
+        }
+
+        $source = Join-Path $layout ($relativePath -replace '/', '\')
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "布局文件既没有同名同哈希的自包含来源、布局里也找不到：$relativePath"
+        }
+        $destination = Join-Path $seedDirectory ($relativePath -replace '/', '\')
+        [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($destination)) | Out-Null
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+        $fromSeed++
+    }
+
+    Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $seedDirectory $script:SharedRuntimeLayoutFileName) -Force
+
+    # 反向守卫：种子里写的文件必须和布局清单里的哈希一致（复制出错当场拦住）。
+    foreach ($entry in @($manifest.files)) {
+        $seedFile = Join-Path $seedDirectory ([string]$entry.path -replace '/', '\')
+        if (-not (Test-Path -LiteralPath $seedFile -PathType Leaf)) { continue }
+        if ((Get-FileHash -LiteralPath $seedFile -Algorithm SHA256).Hash.ToLowerInvariant() -ne ([string]$entry.sha256).ToLowerInvariant()) {
+            throw "运行时种子里的文件与布局清单不一致：$($entry.path)"
+        }
+    }
+
+    return [pscustomobject]@{
+        SeedDirectory = $seedDirectory
+        LayoutFiles   = @($manifest.files).Count
+        FromAppDir    = $fromAppDir
+        FromSeed      = $fromSeed
+    }
+}
+
 function Test-SharedRuntimeLayout {
     param([Parameter(Mandatory = $true)][string]$LayoutPath)
 

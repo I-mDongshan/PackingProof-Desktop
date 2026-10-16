@@ -1134,8 +1134,9 @@ Invoke-DotNetPublish -Arguments @(
     $appProject,
     "-c", $Configuration,
     "-r", $Runtime,
-    # 应用本身改为框架依赖发布：运行时统一放在包根的 runtime\，由启动器通过 DOTNET_ROOT 复用。
-    "--self-contained", "false",
+    # 自包含发布：老启动器只能装 app\ 内的条目（它不认 root 落点），所以增量包里的应用必须自带运行时；
+    # 共享布局由主程序首次启动时按 app\runtime-seed\ 用硬链接落成（见 RuntimeLayoutSeeder）。
+    "--self-contained", "true",
     "-p:InformationalVersion=$informationalVersion",
     "-p:IncludeSourceRevisionInInformationalVersion=false",
     "-p:GitCommitId=$gitCommitId",
@@ -1220,18 +1221,29 @@ foreach ($runtimeFile in $requiredAppRuntimeFiles) {
     }
 }
 
-# 应用是框架依赖发布，运行时必须是包根这份共享布局；漏了它整包都起不来，所以这里强校验。
-$sharedRuntimeLayoutPath = Join-Path $outputFullPath "runtime"
-Write-Host "生成共享运行时布局：$sharedRuntimeLayoutPath"
-$sharedRuntimeLayout = New-SharedRuntimeLayout -AppDir $appPublishDir -DestinationPath $sharedRuntimeLayoutPath
+# 自包含发布：运行时平铺在 app\ 里。老启动器只认 app\ 内的条目（它不认 root 落点），所以补丁里的应用
+# 必须自带运行时；包根**不再**放 runtime\，共享布局由主程序首次启动时用硬链接从 app\ 落成
+# （ExpressPackingMonitoring.UpdateCore\RuntimeLayoutSeeder.cs）。这里把自包含特征与"种子"一起强校验。
+foreach ($selfContainedMarker in @("coreclr.dll", "hostfxr.dll", "System.Private.CoreLib.dll")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $appPublishDir $selfContainedMarker) -PathType Leaf)) {
+        throw "Clean package validation failed: app\$selfContainedMarker 缺失，说明这次不是自包含发布"
+    }
+}
+
+$runtimeSeedSourcePath = Join-Path $outputFullPath ".runtime-seed-source"
+if (Test-Path -LiteralPath $runtimeSeedSourcePath) {
+    [System.IO.Directory]::Delete($runtimeSeedSourcePath, $true)
+}
+Write-Host "生成共享运行时布局（用于推导运行时种子）：$runtimeSeedSourcePath"
+$sharedRuntimeLayout = New-SharedRuntimeLayout -AppDir $appPublishDir -DestinationPath $runtimeSeedSourcePath
 $verifiedLayout = Test-SharedRuntimeLayout -LayoutPath $sharedRuntimeLayout.LayoutPath
 Write-Host ("共享运行时布局自检通过：hostfxr {0}，文件 {1}，迁移映射 {2} 项" -f `
         $sharedRuntimeLayout.HostFxrVersion, $sharedRuntimeLayout.FileCount, $sharedRuntimeLayout.LegacyMappedFiles)
-foreach ($runtimeOwnedFile in @("coreclr.dll", "hostfxr.dll", "System.Private.CoreLib.dll")) {
-    if (Test-Path -LiteralPath (Join-Path $appPublishDir $runtimeOwnedFile)) {
-        throw "Clean package validation failed: app\$runtimeOwnedFile 说明应用又变成自包含发布了，运行时必须只在 runtime\"
-    }
-}
+
+$runtimeSeed = New-RuntimeLayoutSeed -LayoutPath $sharedRuntimeLayout.LayoutPath -AppDir $appPublishDir
+Write-Host ("运行时种子：布局 {0} 个文件，app\ 里已有同名同哈希 {1} 个（首次启动建硬链接），种子自带 {2} 个" -f `
+        $runtimeSeed.LayoutFiles, $runtimeSeed.FromAppDir, $runtimeSeed.FromSeed)
+[System.IO.Directory]::Delete($runtimeSeedSourcePath, $true)
 
 $packageRoot = $packageArtifactRoot
 $legacyAppFullZipPath = Join-Path $packageRoot "ExpressPackingMonitoring_AppFull_$releaseTag.zip"
