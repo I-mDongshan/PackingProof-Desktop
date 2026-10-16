@@ -15,6 +15,9 @@ $script:SharedRuntimeLayoutFileName = 'layout.json'
 # 主程序用硬链接落成布局时写下的标记（ExpressPackingMonitoring.UpdateCore\RuntimeLayoutSeeder.cs 里的同名常量）。
 # 它不是布局载荷、不在清单里，但仍然算合法内容：安装目录里那份布局正是这样被落成的。
 $script:SharedRuntimeLayoutSeedMarkerFileName = '.seeded-by-app'
+# 运行时自己写的辅助文件/目录（对应 SharedRuntimeLayout.cs 的 StateFileName 与 LegacyBackupDirectoryName）。
+$script:SharedRuntimeLayoutStateFileName = 'layout-state.json'
+$script:SharedRuntimeLayoutLegacyDirName = '.legacy'
 
 function Get-SharedRuntimeRequirements {
     param([Parameter(Mandatory = $true)][string]$AppDir)
@@ -389,6 +392,12 @@ function Test-SharedRuntimeLayout {
         $relativePath = Get-RelativePosixPath -BasePath $layout -FullPath $file.FullName
         if ($relativePath -ieq $script:SharedRuntimeLayoutFileName) { continue }
         if ($relativePath -ieq $script:SharedRuntimeLayoutSeedMarkerFileName) { continue }
+        # 运行时自己写的辅助文件不算"清单之外"：启动器每次处理布局都会写 layout-state.json
+        # （迁移计数与启动次数），搬走的老装机平铺副本放在 .legacy\ 里留作回滚。
+        # 真机上装好跑过的布局本来就有它们，拿这份自检去核安装目录时必须放行。
+        if ($relativePath -ieq $script:SharedRuntimeLayoutStateFileName) { continue }
+        if ($relativePath -ieq $script:SharedRuntimeLayoutLegacyDirName -or
+            $relativePath.StartsWith(($script:SharedRuntimeLayoutLegacyDirName + '/'), [System.StringComparison]::OrdinalIgnoreCase)) { continue }
         if (-not $listed.ContainsKey($relativePath)) {
             $failures.Add("布局里有清单之外的文件：$relativePath")
         }
