@@ -6,6 +6,9 @@ param(
     [string]$Version = "0.0.83",
     [int]$AppStartupSeconds = 90,
     [switch]$SimulateSecondInstance,
+    # 老启动器（0.0.83 基线之前）不认补丁的 deletes 字段：这是预期边界，不是缺陷，
+    # 所以用它跑时要反过来断言"旧文件仍在"，别把边界当成 bug 报出来。
+    [switch]$LauncherPredatesDeleteList,
     [switch]$KeepWorkspace
 )
 
@@ -145,9 +148,15 @@ try {
         $relative = ([string]$entry.path) -replace '/', '\'
         if (Test-Path -LiteralPath (Join-Path $installAppDir $relative)) { $survivors += $relative }
     }
-    Assert-True ($survivors.Count -eq 0) "清理列表里的旧文件升级后都不在了（残留 $($survivors.Count) 个：$($survivors -join ', ')）"
-    Assert-True (Test-Path -LiteralPath $appDll) "清理没有误删主程序 dll"
-    Assert-True (Test-Path -LiteralPath (Join-Path $installAppDir "tools\ffmpeg.exe")) "清理走白名单：ffmpeg 仍在"
+    if ($LauncherPredatesDeleteList) {
+        Assert-True ($survivors.Count -eq $deletes.Count) `
+            "老启动器不认清理列表：旧文件都还在（$($survivors.Count)/$($deletes.Count)），这是预期边界"
+    }
+    else {
+        Assert-True ($survivors.Count -eq 0) "清理列表里的旧文件升级后都不在了（残留 $($survivors.Count) 个：$($survivors -join ', ')）"
+        Assert-True (Test-Path -LiteralPath $appDll) "清理没有误删主程序 dll"
+        Assert-True (Test-Path -LiteralPath (Join-Path $installAppDir "tools\ffmpeg.exe")) "清理走白名单：ffmpeg 仍在"
+    }
 
     $layoutPath = Join-Path $installRoot "runtime"
     Assert-True (Test-Path -LiteralPath (Join-Path $layoutPath "layout.json")) "主程序启动后落成了共享运行时布局"

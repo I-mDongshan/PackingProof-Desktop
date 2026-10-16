@@ -946,6 +946,37 @@ function New-AppPatchPackage {
         }
     }
 
+    # 清理列表的生成期守卫：清单本身有冲突或越界时，客户端会在安装那一刻才报错（用户侧一次安装失败）。
+    foreach ($deleted in $deletedFiles) {
+        $relativePath = ([string]$deleted.path).Replace('/', '\')
+        foreach ($written in $changedFiles) {
+            if ([string]::Equals(
+                    ([string]$written.path).Replace('/', '\'),
+                    $relativePath,
+                    [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "清理列表与写入列表冲突：$relativePath"
+            }
+        }
+        if (Test-IsAppPatchManagedRuntimePath -RelativePath $relativePath) {
+            throw "清理列表命中了受管运行时路径（用户可替换，不能删）：$relativePath"
+        }
+        foreach ($protected in @(
+                "ExpressPackingMonitoring.exe",
+                "ExpressPackingMonitoring.dll",
+                "ExpressPackingMonitoring.deps.json",
+                "ExpressPackingMonitoring.runtimeconfig.json")) {
+            if ([string]::Equals($relativePath, $protected, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "清理列表不得包含主程序核心文件：$relativePath"
+            }
+        }
+        if ($relativePath.StartsWith("runtime-seed\", [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "清理列表不得包含运行时种子：$relativePath"
+        }
+    }
+    if ($deletedFiles.Count -gt 2000) {
+        Write-Warning ("清理列表条目异常多（{0} 个），请确认基线目录是否选错" -f $deletedFiles.Count)
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($RuntimeDir) -and (Test-Path -LiteralPath $RuntimeDir -PathType Container)) {
         # 运行时不与任何基线比对：老装机没有 runtime\，整份都要投递。
         # 物理位置放在 files\.runtime\ 下，避免与 app\ 里的同名文件冲突；清单用 root 标明落点。
