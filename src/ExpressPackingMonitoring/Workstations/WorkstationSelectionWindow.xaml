@@ -98,10 +98,17 @@
                         CornerRadius="10"
                         Padding="14,11"
                         Margin="0,0,0,14">
-                    <TextBlock Text="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机"
-                               FontSize="13"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextSecondary}"/>
+                    <StackPanel>
+                        <TextBlock Text="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock Text="本次选择会保存为以后默认用途"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
                 </Border>
                 <TextBlock Text="1. 这台电脑要用来录像吗？"
                            FontSize="17"

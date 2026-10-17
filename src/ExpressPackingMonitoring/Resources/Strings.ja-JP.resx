@@ -1723,4 +1723,22 @@
   <data name="另一个 PackingProof 实例已经把当前电脑作为保存主机。两个版本可以同时运行，但同一时间只能有一个保存主机；请关闭其中一个，或把当前版本改为查看端/录像从机" xml:space="preserve"><value>別の PackingProof インスタンスがこのパソコンを保存ホストとして使用中です。2 つのエディションは同時に実行できますが、保存ホストにできるのは 1 つだけです。どちらかを終了するか、このエディションをビューアーまたは録画ワークステーションに切り替えてください</value></data>
   <data name="不能同时作为保存主机" xml:space="preserve"><value>保存ホストは 1 つだけです</value></data>
   <data name="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机" xml:space="preserve"><value>別のエディションが保存ホストとして使用中です。このパソコンはビューアーまたは録画ワークステーションのみ選択でき、保存ホストにはできません</value></data>
+  <data name="商店版更新由 Microsoft Store 统一管理，请打开 Microsoft Store 的“库”页面检查更新" xml:space="preserve"><value>ストア版の更新は Microsoft Store で管理されます。Microsoft Store の [ライブラリ] ページで更新を確認してください</value></data>
+  <data name="请先关闭旧版本" xml:space="preserve"><value>旧バージョンを終了してください</value></data>
+  <data name="检测到旧版本仍在运行。请先关闭旧版本，再打开新版本，避免两个进程同时写入同一份配置和录像数据库" xml:space="preserve"><value>旧バージョンが実行中です。同じ設定と録画データベースに 2 つのプロセスが書き込まないよう、旧バージョンを終了してから開いてください</value></data>
+  <data name="提示：" xml:space="preserve"><value>お知らせ:</value></data>
+  <data name="扩展脚本已导入，可在安装订单联动中选择" xml:space="preserve"><value>拡張スクリプトをインポートしました。注文連携で選択できます</value></data>
+  <data name="外部扩展已安装。PackingProof 不会自动运行它，关闭此提示后将打开安装目录" xml:space="preserve"><value>外部拡張をインストールしました。PackingProof は自動実行しません。この通知を閉じるとインストール フォルダーが開きます</value></data>
+  <data name="安装完成" xml:space="preserve"><value>インストール完了</value></data>
+  <data name="已打开表格所在文件夹，但系统未能自动选中导出文件" xml:space="preserve"><value>エクスポート先フォルダーを開きましたが、システムがファイルを自動選択できませんでした</value></data>
+  <data name="定位导出文件" xml:space="preserve"><value>エクスポートしたファイルを表示</value></data>
+  <data name="已打开文件所在文件夹，但系统未能自动选中录像文件" xml:space="preserve"><value>録画フォルダーを開きましたが、システムが録画ファイルを自動選択できませんでした</value></data>
+  <data name="缓存上限设置为 {Config.RecordingCacheMaxGB} GB；此磁盘当前建议最多 {FormatGb(snapshot.EffectiveLimitBytes)}。系统会自动采用较小值，不会预占或强占磁盘空间" xml:space="preserve"><value>キャッシュ上限を {0} GB に設定しました。このディスクの推奨上限は {1} です。小さい方の値が自動的に使われ、ディスク領域を予約または占有しません</value></data>
+  <data name="已按磁盘安全空间调整" xml:space="preserve"><value>ディスクの安全な空き容量に合わせて調整しました</value></data>
+  <data name="请换一个磁盘，或直接调整已有路径的容量和列表顺序" xml:space="preserve"><value>別のディスクを選択するか、既存パスの容量と順序を調整してください</value></data>
+  <data name="请换一个磁盘，或直接调整已有路径的容量和列表顺序。" xml:space="preserve"><value>別のディスクを選択するか、既存パスの容量と順序を調整してください</value></data>
+  <data name="请换一个共享，或直接调整已有路径的容量和列表顺序。" xml:space="preserve"><value>別の共有を選択するか、既存パスの容量と順序を調整してください</value></data>
+  <data name="磁盘已存在" xml:space="preserve"><value>ディスクはすでに追加されています</value></data>
+  <data name="网络位置已存在" xml:space="preserve"><value>ネットワークの場所はすでに追加されています</value></data>
+  <data name="本次选择会保存为以后默认用途" xml:space="preserve"><value>この選択は今後の既定の用途として保存されます</value></data>
 </root>

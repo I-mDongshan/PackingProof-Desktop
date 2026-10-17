@@ -2628,8 +2628,8 @@ namespace ExpressPackingMonitoring.UI
             {
                 AppDialog.Information(
                     this,
-                    "商店版更新由 Microsoft Store 统一管理，请打开 Microsoft Store 的“库”页面检查更新",
-                    "检查更新");
+                    AppLanguage.Get("商店版更新由 Microsoft Store 统一管理，请打开 Microsoft Store 的“库”页面检查更新"),
+                    AppLanguage.Get("检查更新"));
                 return;
             }
 

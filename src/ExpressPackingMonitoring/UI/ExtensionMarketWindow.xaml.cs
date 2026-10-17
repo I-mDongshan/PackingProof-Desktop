@@ -466,13 +466,13 @@ public partial class ExtensionMarketWindow : Window
     {
         string warnings = result.Warnings.Count == 0
             ? ""
-            : $"\n\n提示：\n· {string.Join("\n· ", result.Warnings)}";
+            : $"\n\n{AppLanguage.Get("提示：")}\n· {string.Join("\n· ", result.Warnings.Select(AppLanguage.Translate))}";
         AppDialog.Information(
             this,
             result.Record.Type == "userscript"
-                ? "扩展脚本已导入，可在安装订单联动中选择" + warnings
-                : "外部扩展已安装。PackingProof 不会自动运行它，关闭此提示后将打开安装目录" + warnings,
-            "安装完成");
+                ? AppLanguage.Get("扩展脚本已导入，可在安装订单联动中选择") + warnings
+                : AppLanguage.Get("外部扩展已安装。PackingProof 不会自动运行它，关闭此提示后将打开安装目录") + warnings,
+            AppLanguage.Get("安装完成"));
     }
 
     private void OpenInstalledExtensionDirectory(InstalledExtensionRecord record)

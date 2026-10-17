@@ -1723,4 +1723,22 @@
   <data name="另一个 PackingProof 实例已经把当前电脑作为保存主机。两个版本可以同时运行，但同一时间只能有一个保存主机；请关闭其中一个，或把当前版本改为查看端/录像从机" xml:space="preserve"><value>Another PackingProof instance is already the save host on this computer. Both editions can run at the same time, but only one can be the save host. Close one instance or switch this edition to Viewer or Recording workstation</value></data>
   <data name="不能同时作为保存主机" xml:space="preserve"><value>Cannot use two save hosts</value></data>
   <data name="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机" xml:space="preserve"><value>Another edition is already the save host. This computer can only use Viewer or Recording workstation; it cannot become another save host</value></data>
+  <data name="商店版更新由 Microsoft Store 统一管理，请打开 Microsoft Store 的“库”页面检查更新" xml:space="preserve"><value>The Store edition updates through Microsoft Store. Open the Microsoft Store Library page to check for updates</value></data>
+  <data name="请先关闭旧版本" xml:space="preserve"><value>Close the old version first</value></data>
+  <data name="检测到旧版本仍在运行。请先关闭旧版本，再打开新版本，避免两个进程同时写入同一份配置和录像数据库" xml:space="preserve"><value>An older version is still running. Close it before opening this version so both processes do not write to the same settings and recording database</value></data>
+  <data name="提示：" xml:space="preserve"><value>Notice:</value></data>
+  <data name="扩展脚本已导入，可在安装订单联动中选择" xml:space="preserve"><value>The extension script was imported. You can select it in order integration</value></data>
+  <data name="外部扩展已安装。PackingProof 不会自动运行它，关闭此提示后将打开安装目录" xml:space="preserve"><value>The external extension was installed. PackingProof will not run it automatically; the installation folder will open after you close this notice</value></data>
+  <data name="安装完成" xml:space="preserve"><value>Installation complete</value></data>
+  <data name="已打开表格所在文件夹，但系统未能自动选中导出文件" xml:space="preserve"><value>The export folder was opened, but the system could not select the exported file automatically</value></data>
+  <data name="定位导出文件" xml:space="preserve"><value>Locate export file</value></data>
+  <data name="已打开文件所在文件夹，但系统未能自动选中录像文件" xml:space="preserve"><value>The recording folder was opened, but the system could not select the recording automatically</value></data>
+  <data name="缓存上限设置为 {Config.RecordingCacheMaxGB} GB；此磁盘当前建议最多 {FormatGb(snapshot.EffectiveLimitBytes)}。系统会自动采用较小值，不会预占或强占磁盘空间" xml:space="preserve"><value>Cache limit set to {0} GB; this disk currently allows up to {1}. The smaller value will be used automatically, without reserving or monopolizing disk space</value></data>
+  <data name="已按磁盘安全空间调整" xml:space="preserve"><value>Adjusted for safe disk space</value></data>
+  <data name="请换一个磁盘，或直接调整已有路径的容量和列表顺序" xml:space="preserve"><value>Choose another disk, or adjust the capacity and order of the existing path</value></data>
+  <data name="请换一个磁盘，或直接调整已有路径的容量和列表顺序。" xml:space="preserve"><value>Choose another disk, or adjust the capacity and order of the existing path.</value></data>
+  <data name="请换一个共享，或直接调整已有路径的容量和列表顺序。" xml:space="preserve"><value>Choose another share, or adjust the capacity and order of the existing path</value></data>
+  <data name="磁盘已存在" xml:space="preserve"><value>Disk already added</value></data>
+  <data name="网络位置已存在" xml:space="preserve"><value>Network location already added</value></data>
+  <data name="本次选择会保存为以后默认用途" xml:space="preserve"><value>This choice will be saved as the default purpose</value></data>
 </root>

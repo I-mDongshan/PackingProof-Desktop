@@ -1,4 +1,6 @@
 using ExpressPackingMonitoring.UI;
+using ExpressPackingMonitoring.Localization;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -102,6 +104,65 @@ public sealed class AppDialogTests
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// AppDialog 的弹窗文本依赖资源表自动翻译；中文写在这里必须能在英文资源里找到，
+    /// 否则商店版更新提示这种只在特定入口出现的文案会长期漏翻。
+    /// </summary>
+    [Fact]
+    public void AppDialogInformation_MessagesAndTitlesHaveEnglishResources()
+    {
+        string projectDirectory = FindRepositoryPath("src", "ExpressPackingMonitoring");
+        var missing = new List<string>();
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            foreach ((string file, int line, string block) in FindCallBlocks(projectDirectory, "Information"))
+            {
+                string[] arguments = SplitTopLevelArguments(block);
+                if (arguments.Length < 3)
+                    continue;
+
+                foreach (string argument in arguments.Skip(1).Take(2))
+                {
+                    foreach (Match match in Regex.Matches(
+                                 argument,
+                                 "\"((?:\\\\.|[^\"\\\\])*)\""))
+                    {
+                        string literal;
+                        try
+                        {
+                            literal = Regex.Unescape(match.Groups[1].Value);
+                        }
+                        catch (ArgumentException)
+                        {
+                            literal = match.Groups[1].Value;
+                        }
+
+                        if (!Regex.IsMatch(literal, "[\\p{IsCJKUnifiedIdeographs}]"))
+                            continue;
+
+                        string sample = Regex.Replace(literal, "\\{[^{}]+\\}", "1");
+                        if (Regex.IsMatch(
+                                AppLanguage.Translate(sample),
+                                "[\\p{IsCJKUnifiedIdeographs}]"))
+                        {
+                            missing.Add($"{Path.GetFileName(file)}:{line}: {literal}");
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+
+        Assert.True(
+            missing.Count == 0,
+            "Missing English resources for AppDialog.Information: " + string.Join(" | ", missing));
     }
 
     [Fact]
