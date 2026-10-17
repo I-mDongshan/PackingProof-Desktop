@@ -34,7 +34,7 @@
 - 完整包不包含配置、数据库、日志、录像和其他本机运行状态
 - 完整包必须包含 `app/tools/ffmpeg.exe`，并与 `tools/ffmpeg-baseline.json` 中锁定的版本、大小和 SHA256 一致；缓存缺失时允许从两个固定来源下载，任何校验失败均阻止发布
 - 使用包内 FFmpeg 验证 H.264/H.265 软编码、三类显卡硬件探测、MKV 封装、MP4 转换、缩略图、Web 转码和剪辑；无可用 AV1 硬件编码器时必须明确回退 H.265
-- 发布包的 LibVLC 只移除网络访问、推流、复用、服务发现、可视化和 Lua 组件；必须保留本地文件访问、全部解码器、解复用器、封包解析器、字幕、音视频输出、滤镜和 HRTF
+- 发布包的 LibVLC 按 `ExpressPackingMonitoring.csproj` 白名单发布；必须保留 `filesystem`、`imem`、解码器、解封装器、封包解析器、字幕和音视频输出。UNC NAS 回放通过 `StreamMediaInput` + `imem`，不依赖 `smb` 插件；发布前必须用发布包实际播放仅存 NAS 归档的 UNC 录像并拖动进度条
 - 默认使用 7z 等级 5 与 ZIP/AppPatch `Optimal` 均衡压缩，Setup 保持 `lzma2/ultra64`；仅在明确需要对比时才手动指定 7z 等级 9 或 ZIP `SmallestSize`
 - Setup 从同一干净发布目录生成，不包含配置、数据库、日志、缓存或录像；固定 AppId、当前用户 x64 模式和固定安装目录均正确
 - 完整包包含预生成的默认 Edge TTS 语音缓存，首次使用固定文案不需要现场生成

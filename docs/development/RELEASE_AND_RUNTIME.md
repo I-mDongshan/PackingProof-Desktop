@@ -16,7 +16,7 @@
 - 市场里的框架依赖扩展（QQ 机器人）不能用在没有 `runtime\` 的桌面端上：那种机器只能靠系统 .NET，而老桌面端是自包含的、不提供新大版本运行时。所以插件发布时要把 manifest 的 `minPackingProofVersion` 抬到**第一个带 `runtime\` 的桌面端版本**；扩展跟着桌面端抬 .NET 大版本时，门槛要跟着抬到**第一个该大版本的桌面端**。当前 QQ 机器人是 .NET 10，并且配置目录改用扩展 API 规范（桌面端注入 `PACKINGPROOF_EXTENSION_DATA_DIR`、卸载清理 `extension-data` 都从 `0.0.85` 起），所以门槛为 `0.0.85`；0.0.63~0.0.81 的布局是 .NET 8、0.0.82~0.0.84 没有数据目录注入与卸载清理，市场不会把扩展推给这些版本。
 - 打包后按这三条核产物：`app\` **有** `coreclr.dll`/`hostfxr.dll`（证明是自包含发布）、`app\runtime-seed\layout.json` 在且种子逐文件与布局清单一致、包根**没有** `runtime\`（共享布局由主程序首次启动落成）；`pwsh -NoProfile -File tools\Test-RuntimeLayoutSeed.ps1` 会一次跑完这几条并验证子进程确实从落成的布局加载运行时。安装器冒烟：`Setup /SILENT /SUPPRESSMSGBOXES /NORESTART /DIR=<临时目录>` 装完确认 `app\coreclr.dll` 在、包根没有 `runtime\`，再用 `unins000.exe /SILENT /SUPPRESSMSGBOXES` 卸载，确认安装目录连同 `app\` 一起清空、且 `%LOCALAPPDATA%\ExpressPackingMonitoring` 未被动过（静默卸载不带 `/EPMUNINSTALLOPTIONS` 不会删设置与录像）。
 - `ffmpeg.exe` 可从 `app\tools\ffmpeg.exe`、应用运行目录或系统 `PATH` 解析。AppPatch 不携带 FFmpeg，因此应用逻辑必须兼容用户机器长期保留的旧版本。
-- LibVLC 收录播放所需的解码、解封装、字幕、滤镜和输出插件，只排除 `access_output`、`mux`、`services_discovery`、`stream_out`、`visualization`、`lua`；规则集中在 `ExpressPackingMonitoring.csproj`。发布时移除设计时程序集。
+- LibVLC 按 `ExpressPackingMonitoring.csproj` 的显式白名单发布：保留 `filesystem`（本地/映射盘）、`imem`（UNC NAS 通过 `StreamMediaInput` 读取）、解码、解封装、字幕、音视频输出等必要插件；不包含 `smb`、HTTP 等网络访问插件，也不包含推流、复用、服务发现、可视化和 Lua 组件。UNC NAS 回放由 .NET `FileStream` 使用 Windows SMB 凭据，不能把 UNC 直接当 `file://` URI，也不能删除 `imem` 插件。
 - Edge TTS 是默认在线语音；Kokoro 模型和运行时默认不随包发布。完整包包含生成的默认 Edge TTS 缓存，AppPatch 必须排除 TTS 缓存。
 
 ## FFmpeg 兼容基线

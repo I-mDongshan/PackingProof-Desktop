@@ -4,7 +4,7 @@ using Xunit;
 namespace ExpressPackingMonitoring.Tests;
 
 /// <summary>
-/// LibVLC 插件按白名单发布：回放只支持本地 mp4/mkv，
+/// LibVLC 插件按白名单发布：本地/映射盘走 filesystem，UNC NAS 走 FileStream + imem，
 /// 必须保留解码、解封装、视频输出和音频输出这几组，同时不能再把整套插件带进包。
 /// </summary>
 public sealed class LibVlcPackagingTests
@@ -65,6 +65,24 @@ public sealed class LibVlcPackagingTests
         Assert.DoesNotContain("plugins\\**\\*", project);
     }
 
+    [Fact]
+    public void Publish_UsesManagedStreamForUncNasPlayback()
+    {
+        string source = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "PlaybackMediaSource.cs");
+        string playback = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "PlaybackWindow.xaml.cs");
+        string probe = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "PlaybackWindow.Playback.cs");
+
+        Assert.Contains("FileStream", source, StringComparison.Ordinal);
+        Assert.Contains("StreamMediaInput", source, StringComparison.Ordinal);
+        Assert.Contains("IsUncPath", source, StringComparison.Ordinal);
+        Assert.Contains("PlaybackMediaSource.Create(_libVLC!, video.FullPath)", playback, StringComparison.Ordinal);
+        Assert.Contains("PlaybackMediaSource.Create(libVlc, path)", probe, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Media(_libVLC!, new Uri(video.FullPath))", playback, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("codec\\libvpx_plugin.dll")]
     [InlineData("codec\\libaom_plugin.dll")]
@@ -89,6 +107,11 @@ public sealed class LibVlcPackagingTests
     private static string ReadProject() => File.ReadAllText(
         Path.Combine(FindRepositoryRoot(), "src", "ExpressPackingMonitoring", "ExpressPackingMonitoring.csproj"),
         Encoding.UTF8);
+
+    private static string ReadRepositoryFile(params string[] relativeParts) =>
+        File.ReadAllText(
+            Path.Combine([FindRepositoryRoot(), .. relativeParts]),
+            Encoding.UTF8);
 
     private static string FindRepositoryRoot()
     {

@@ -1,6 +1,9 @@
 using ExpressPackingMonitoring.Helpers;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.UI;
+using System.Globalization;
+using System.Reflection;
 using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
@@ -32,6 +35,43 @@ public sealed class PlaybackWindowTests
         Assert.Equal(
             expected,
             PlaybackWindow.ShouldIncludeDeletedVideos(showDeletedVideos, keyword));
+    }
+
+    [Theory]
+    [InlineData("zh-Hans", 1, 33, 1603, "第 1 / 33 页，共 1603 条")]
+    [InlineData("en-US", 1, 33, 1603, "Page 1 of 33 · 1603 items")]
+    [InlineData("ja-JP", 1, 33, 1603, "1 / 33 ページ · 全 1603 件")]
+    [InlineData("en-US", 1, 0, 0, "No recordings")]
+    public void FormatPageStatus_FollowsCurrentLanguage(
+        string culture,
+        int currentPage,
+        int pageCount,
+        int totalVideos,
+        string expected)
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            Assert.Equal(
+                expected,
+                PlaybackWindow.FormatPageStatus(currentPage, pageCount, totalVideos));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Theory]
+    [InlineData(@"\\NAS\share\video.mp4", true)]
+    [InlineData("//NAS/share/video.mp4", true)]
+    [InlineData(@"Z:\PackingProofVideos\video.mp4", false)]
+    [InlineData(@"C:\PackingProofVideos\video.mp4", false)]
+    [InlineData("", false)]
+    public void PlaybackMediaSource_DetectsUncPaths(string path, bool expected)
+    {
+        Assert.Equal(expected, PlaybackMediaSource.IsUncPath(path));
     }
 
     [Fact]
@@ -180,6 +220,101 @@ public sealed class PlaybackWindowTests
         Assert.Equal(expected, PlaybackWindow.GetStopReasonDisplay(sourceType, stopReason));
     }
 
+    [Theory]
+    [InlineData("pc", "录像过短，少于 3 秒", "Recording too short; under 3 s")]
+    [InlineData("pc", "文件过小，小于 50 KB", "File too small; under 50 KB")]
+    [InlineData("pc", "扫码切换（音频异常）", "Switched by scan (audio error)")]
+    [InlineData("external", "电脑工位上传", "Uploaded from PC workstation")]
+    public void CreateVideoItem_LocalizesStopReason(
+        string sourceType,
+        string stopReason,
+        string expected)
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var record = new VideoRecord
+            {
+                FilePath = Path.Combine(Path.GetTempPath(), "packingproof-stop-reason.mp4"),
+                SourceType = sourceType,
+                StopReason = stopReason,
+                StorageState = "Local"
+            };
+
+            VideoItem item = PlaybackWindow.CreateVideoItem(record);
+
+            Assert.Equal(expected, item.StopReason);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void CreateVideoItem_LocalizesCleanupReasonAndStatus()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var record = new VideoRecord
+            {
+                FilePath = Path.Combine(Path.GetTempPath(), "packingproof-cleaned.mp4"),
+                StorageState = "Local",
+                IsDeleted = true,
+                DeletedAt = new DateTime(2026, 10, 18, 0, 54, 0),
+                DeleteReason = "录像过短，少于 3 秒"
+            };
+
+            VideoItem item = PlaybackWindow.CreateVideoItem(record);
+
+            Assert.Equal("Recording too short; under 3 s", item.DeleteReason);
+            Assert.Equal(
+                "Cleaned up (Recording too short; under 3 s 10-18 00:54)",
+                item.StatusText);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void UnavailableVideoMessages_FollowCurrentLanguage()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var video = new VideoItem
+            {
+                OrderId = "MAN_010406",
+                DeleteReason = "Recording too short; under 3 s",
+                DeletedAt = new DateTime(2026, 10, 18, 1, 4, 7),
+                FileSize = "93KB",
+                Duration = "1s",
+                FullPath = @"D:\videos\MAN_010406.mkv"
+            };
+
+            string deleted = PlaybackWindow.FormatDeletedVideoMessage(video);
+            string missing = PlaybackWindow.FormatMissingVideoMessage(video);
+
+            Assert.Contains("This recording was overwritten and deleted", deleted, StringComparison.Ordinal);
+            Assert.Contains("Order number: MAN_010406", deleted, StringComparison.Ordinal);
+            Assert.Contains("Delete reason: Recording too short; under 3 s", deleted, StringComparison.Ordinal);
+            Assert.Contains("Original size: 93KB", deleted, StringComparison.Ordinal);
+            Assert.Contains("Duration: 1s", deleted, StringComparison.Ordinal);
+            Assert.Contains("The video file was deleted or moved externally", missing, StringComparison.Ordinal);
+            Assert.Contains(@"Path: D:\videos\MAN_010406.mkv", missing, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
     [Fact]
     public void FileLocator_SelectsNormalizedFileWithoutOpeningFolder()
     {
@@ -250,7 +385,9 @@ public sealed class PlaybackWindowTests
         Assert.False(item.IsDeleted);
         Assert.Equal(@"\\NAS\share\2026-08-11\SF123.mp4", item.FullPath);
         Assert.True(item.IsArchiveWarning);
-        Assert.Equal("已归档（本地副本已清理）", item.StatusText);
+        Assert.Equal(
+            AppLanguage.Get("已归档（本地副本已清理）"),
+            item.StatusText);
         Assert.Null(item.File);
     }
 
@@ -343,12 +480,107 @@ public sealed class PlaybackWindowTests
             VideoItem item = PlaybackWindow.CreateVideoItem(record);
 
             Assert.False(item.IsMissing);
-            Assert.Equal("NAS 副本已循环清理", item.StatusText);
+            Assert.Equal(
+                AppLanguage.Get("NAS 副本已循环清理"),
+                item.StatusText);
             Assert.Equal(localPath, item.FullPath);
         }
         finally
         {
             File.Delete(localPath);
+        }
+    }
+
+    [Fact]
+    public void ArchiveStatusText_FollowsCurrentLanguage()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            const string archivePath = @"\\NAS\share\recording.mkv";
+
+            Assert.Equal(
+                @"Archive conflict: the network copy differs. Check \\NAS\share\recording.mkv",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.Conflict,
+                    ArchivePath = archivePath
+                }));
+            Assert.Equal(
+                @"Archive failed; retrying automatically: \\NAS\share\recording.mkv",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.Failed,
+                    ArchivePath = archivePath
+                }));
+            Assert.Equal(
+                @"Archive paused: NAS is full. Clean up \\NAS\share\recording.mkv",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.NASFull,
+                    ArchivePath = archivePath
+                }));
+            Assert.Equal(
+                "Archived (local copy cleaned up)",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.LocalDeleted,
+                    ArchiveCompletedAt = DateTime.Now
+                }));
+            Assert.Equal(
+                "Local recording cleaned up; not backed up to NAS",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.LocalDeleted
+                }));
+            Assert.Equal(
+                "NAS copy rotated out",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.NasDeleted
+                }));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void ArchiveStatusText_AllStatusesLocalizeInEnglish()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            string[] statuses = typeof(VideoArchiveStatus)
+                .GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+                .Select(field => (string)field.GetRawConstantValue()!)
+                .ToArray();
+            foreach (string status in statuses)
+            {
+                string text = PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = status,
+                    ArchivePath = @"\\NAS\share\recording.mkv",
+                    ArchiveCompletedAt = DateTime.Now
+                });
+
+                Assert.DoesNotMatch("[\\p{IsCJKUnifiedIdeographs}]", text);
+            }
+
+            Assert.DoesNotMatch(
+                "[\\p{IsCJKUnifiedIdeographs}]",
+                PlaybackWindow.FormatArchiveStatusText(new VideoRecord
+                {
+                    ArchiveStatus = VideoArchiveStatus.LocalDeleted
+                }));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
         }
     }
 }

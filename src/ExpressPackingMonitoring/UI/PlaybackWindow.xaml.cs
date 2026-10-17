@@ -1,6 +1,7 @@
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Helpers;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 using System;
 using System.Collections.Generic;
@@ -94,9 +95,7 @@ namespace ExpressPackingMonitoring.UI
             {
                 if (IsDeleted)
                 {
-                    string reason = string.IsNullOrEmpty(DeleteReason) ? "已删除" : DeleteReason;
-                    string time = DeletedAt?.ToString("MM-dd HH:mm") ?? "";
-                    return $"已清理 ({reason} {time})";
+                    return PlaybackReasonText.CleanupStatus(DeleteReason, DeletedAt);
                 }
 
                 if (IsStoredOnHost)
@@ -132,6 +131,7 @@ namespace ExpressPackingMonitoring.UI
         private const int PageSize = 50;
         private LibVLC? _libVLC;
         private LibVLCSharp.Shared.MediaPlayer? _mediaPlayer;
+        private PlaybackMediaSource? _currentMediaSource;
         private List<VideoItem> _allVideos = new();
         private bool _isExportingOrderNumbers;
         private bool _isDragging;
@@ -404,6 +404,7 @@ namespace ExpressPackingMonitoring.UI
             if (ReferenceEquals(VideoList.SelectedItem, item))
             {
                 try { await Task.Run(() => _mediaPlayer?.Stop()); } catch { }
+                DisposeCurrentMediaSource();
             }
 
             try
@@ -537,6 +538,7 @@ namespace ExpressPackingMonitoring.UI
                 _awaitingFirstFrame = false;
                 CancelAwaitingFirstFrame();
                 await Task.Run(() => _mediaPlayer?.Stop());
+                DisposeCurrentMediaSource();
                 UpdatePlayState(false);
                 _currentMediaLengthMs = 0;
                 SetTimelineMaximum(0);
@@ -832,7 +834,7 @@ namespace ExpressPackingMonitoring.UI
         /// </summary>
         private void LoadSourceFilterOptions()
         {
-            var options = new List<VideoSourceOption> { new("全部设备", "", "", true) };
+            var options = new List<VideoSourceOption> { new(AppLanguage.Get("全部设备"), "", "", true) };
             try
             {
                 if (_db != null)
@@ -1146,17 +1148,7 @@ namespace ExpressPackingMonitoring.UI
                 or VideoArchiveStatus.NASFull
                 or VideoArchiveStatus.LocalDeleted
                 or VideoArchiveStatus.NasDeleted;
-            string archiveStatusText = record.ArchiveStatus switch
-            {
-                VideoArchiveStatus.Conflict => $"归档冲突：网络端已有不同版本，请检查 {record.ArchivePath}",
-                VideoArchiveStatus.Failed => $"归档失败，等待自动重试：{record.ArchivePath}",
-                VideoArchiveStatus.NASFull => $"归档暂停：NAS 空间不足，请清理 {record.ArchivePath}",
-                VideoArchiveStatus.LocalDeleted => record.ArchiveCompletedAt != null
-                    ? "已归档（本地副本已清理）"
-                    : "本地录像已清理，未备份到 NAS",
-                VideoArchiveStatus.NasDeleted => "NAS 副本已循环清理",
-                _ => ""
-            };
+            string archiveStatusText = FormatArchiveStatusText(record);
             // 归档路径不创建 FileInfo，避免列表构建触碰 SMB；大小使用数据库记录值。
             FileInfo? info = (!deleted && !missing && !storedOnHost && localExists)
                 ? new FileInfo(localPath)
@@ -1176,7 +1168,7 @@ namespace ExpressPackingMonitoring.UI
                 FileSize = (deleted || missing || storedOnHost || !localExists)
                     ? FormatFileSize(record.FileSizeBytes)
                     : FormatFileSize(info!.Length),
-                StopReason = GetStopReasonDisplay(record.SourceType, record.StopReason),
+                StopReason = PlaybackReasonText.StopReason(record.SourceType, record.StopReason),
                 VideoCodec = record.VideoCodec,
                 VideoEncoder = record.VideoEncoder,
                 SourceDisplay = GetSourceDisplay(
@@ -1190,7 +1182,7 @@ namespace ExpressPackingMonitoring.UI
                 IsDeleted = deleted,
                 IsArchiveWarning = archiveWarning,
                 ArchiveStatusText = archiveStatusText,
-                DeleteReason = record.DeleteReason,
+                DeleteReason = PlaybackReasonText.CleanupReason(record.DeleteReason),
                 DeletedAt = record.DeletedAt,
                 File = info,
                 CanDelete = canDeleteRecords && deleteRefusal == null,
@@ -1314,6 +1306,25 @@ namespace ExpressPackingMonitoring.UI
             return value;
         }
 
+        internal static string FormatArchiveStatusText(VideoRecord record) =>
+            record.ArchiveStatus switch
+            {
+                VideoArchiveStatus.Conflict => AppLanguage.Format(
+                    "归档冲突：网络端已有不同版本，请检查 {0}",
+                    record.ArchivePath),
+                VideoArchiveStatus.Failed => AppLanguage.Format(
+                    "归档失败，等待自动重试：{0}",
+                    record.ArchivePath),
+                VideoArchiveStatus.NASFull => AppLanguage.Format(
+                    "归档暂停：NAS 空间不足，请清理 {0}",
+                    record.ArchivePath),
+                VideoArchiveStatus.LocalDeleted => record.ArchiveCompletedAt != null
+                    ? AppLanguage.Get("已归档（本地副本已清理）")
+                    : AppLanguage.Get("本地录像已清理，未备份到 NAS"),
+                VideoArchiveStatus.NasDeleted => AppLanguage.Get("NAS 副本已循环清理"),
+                _ => ""
+            };
+
         private IEnumerable<FileInfo> EnumerateVideoFiles(string folderPath)
         {
             var dir = new DirectoryInfo(folderPath);
@@ -1335,9 +1346,7 @@ namespace ExpressPackingMonitoring.UI
         {
             VideoList.ItemsSource = _allVideos;
             int pageCount = GetPageCount();
-            PageStatusText.Text = pageCount == 0
-                    ? "共 0 条"
-                    : $"第 {_currentPage} / {pageCount} 页，共 {_totalVideos} 条";
+            PageStatusText.Text = FormatPageStatus(_currentPage, pageCount, _totalVideos);
             BtnPreviousPage.IsEnabled = !_isLoadingVideos && _currentPage > 1;
             BtnNextPage.IsEnabled = !_isLoadingVideos && (_usingApproximatePaging ? _hasMoreVideoPages : pageCount > 0 && _currentPage < pageCount);
             UpdateExportOrderNumbersButtonState();
@@ -1356,11 +1365,48 @@ namespace ExpressPackingMonitoring.UI
             bool hasRecords = _totalVideos > 0 || _allVideos.Count > 0;
             ExportOrderNumbersButton.IsEnabled = _db != null && !_isClosing && hasRecords;
             ExportOrderNumbersButton.ToolTip = ExportOrderNumbersButton.IsEnabled
-                ? "按当前筛选导出单号"
-                : "当前筛选没有匹配的录像，没有可导出的单号";
+                ? AppLanguage.Get("按当前筛选导出单号")
+                : AppLanguage.Get("当前筛选没有匹配的录像，没有可导出的单号");
         }
 
         private int GetPageCount() => GetPageCount(_totalVideos);
+
+        internal static string FormatPageStatus(int currentPage, int pageCount, int totalVideos) =>
+            pageCount <= 0
+                ? AppLanguage.Get("共 0 条")
+                : AppLanguage.Format(
+                    "第 {0} / {1} 页，共 {2} 条",
+                    currentPage,
+                    pageCount,
+                    totalVideos);
+
+        internal static string FormatDeletedVideoMessage(VideoItem video)
+        {
+            string reason = string.IsNullOrWhiteSpace(video.DeleteReason)
+                ? AppLanguage.Get("系统清理")
+                : video.DeleteReason;
+            string time = video.DeletedAt?.ToString("yyyy-MM-dd HH:mm:ss")
+                ?? AppLanguage.Get("未知");
+            return string.Join(
+                Environment.NewLine,
+                AppLanguage.Get("该视频已被覆盖删除，无法播放"),
+                "",
+                AppLanguage.Format("单号: {0}", video.OrderId),
+                AppLanguage.Format("删除原因: {0}", reason),
+                AppLanguage.Format("删除时间: {0}", time),
+                AppLanguage.Format("原始大小: {0}", video.FileSize),
+                AppLanguage.Format("录制时长: {0}", video.Duration));
+        }
+
+        internal static string FormatMissingVideoMessage(VideoItem video) =>
+            string.Join(
+                Environment.NewLine,
+                AppLanguage.Get("视频文件已被外部删除或移动，无法播放"),
+                "",
+                AppLanguage.Format("单号: {0}", video.OrderId),
+                AppLanguage.Format("路径: {0}", video.FullPath),
+                AppLanguage.Format("原始大小: {0}", video.FileSize),
+                AppLanguage.Format("录制时长: {0}", video.Duration));
 
         private static int GetPageCount(int totalVideos) =>
             totalVideos <= 0 ? 0 : (totalVideos + PageSize - 1) / PageSize;
@@ -1405,6 +1451,7 @@ namespace ExpressPackingMonitoring.UI
                     {
                         _mediaPlayer.Stop();
                     }
+                    DisposeCurrentMediaSource();
 
                     // 断开视图连接
                     PlayerView.MediaPlayer = null;
@@ -1414,6 +1461,7 @@ namespace ExpressPackingMonitoring.UI
                 }
                 catch { }
             }
+            DisposeCurrentMediaSource();
 
             if (_libVLC != null)
             {
@@ -1440,12 +1488,10 @@ namespace ExpressPackingMonitoring.UI
 
             if (video.IsDeleted)
             {
-                string reason = string.IsNullOrEmpty(video.DeleteReason) ? "系统清理" : video.DeleteReason;
-                string time = video.DeletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知";
                 AppDialog.Information(
                     this,
-                    $"该视频已被覆盖删除，无法播放。\n\n单号: {video.OrderId}\n删除原因: {reason}\n删除时间: {time}\n原始大小: {video.FileSize}\n录制时长: {video.Duration}",
-                    "视频已删除");
+                    FormatDeletedVideoMessage(video),
+                    AppLanguage.Get("视频已删除"));
                 UpdateLocateButtonState(video);
                 return;
             }
@@ -1454,8 +1500,8 @@ namespace ExpressPackingMonitoring.UI
             {
                 AppDialog.Error(
                     this,
-                    $"视频文件已被外部删除或移动，无法播放。\n\n单号: {video.OrderId}\n路径: {video.FullPath}\n原始大小: {video.FileSize}\n录制时长: {video.Duration}",
-                    "文件丢失");
+                    FormatMissingVideoMessage(video),
+                    AppLanguage.Get("文件丢失"));
                 UpdateLocateButtonState(video);
                 return;
             }
@@ -1464,8 +1510,8 @@ namespace ExpressPackingMonitoring.UI
             {
                 AppDialog.Information(
                     this,
-                    "这段录像已转移到绑定主机，请从录制工位主界面打开主机录像页面查看",
-                    "已保存到主机");
+                    AppLanguage.Get("这段录像已转移到绑定主机，请从录制工位主界面打开主机录像页面查看"),
+                    AppLanguage.Get("已保存到主机"));
                 UpdateLocateButtonState(video);
                 return;
             }
@@ -1478,6 +1524,7 @@ namespace ExpressPackingMonitoring.UI
         {
             // 1. 尝试获取信号量，如果已经在切换中，则直接返回，防止疯狂点击导致的排队
             if (!await _playerSemaphore.WaitAsync(0)) return;
+            PlaybackMediaSource? mediaSource = null;
 
             try
             {
@@ -1502,24 +1549,29 @@ namespace ExpressPackingMonitoring.UI
                 {
                     _mediaPlayer?.Stop();
                 });
+                DisposeCurrentMediaSource();
 
                 // 3. 准备新媒体
-                using var media = new Media(_libVLC!, new Uri(video.FullPath));
+                mediaSource = PlaybackMediaSource.Create(_libVLC!, video.FullPath);
 
                 // 增加一些优化参数，减少内存压力
-                media.AddOption(":file-caching=300"); // 减小缓存
+                mediaSource.Media.AddOption(":file-caching=300"); // 减小缓存
                 // 先以暂停状态打开媒体：等 libvlc 解出首帧、视频输出建好（见 PlaybackWindow.Playback.cs）
                 // 再放开播放。否则时钟立刻开始走，画面还没上屏的前几帧就被丢掉了。
-                media.AddOption(":start-paused");
+                mediaSource.Media.AddOption(":start-paused");
 
                 BeginAwaitingFirstFrame();
-                if (!_mediaPlayer!.Play(media))
+                if (!_mediaPlayer!.Play(mediaSource.Media))
                     throw new InvalidOperationException("播放器未能启动该文件");
+                _currentMediaSource = mediaSource;
+                mediaSource = null;
 
                 // 放开播放与开始计时都交给"首帧就绪"那一步，这里不再提前把状态改成播放中。
             }
             catch (Exception ex)
             {
+                mediaSource?.Dispose();
+                DisposeCurrentMediaSource();
                 CancelAwaitingFirstFrame();
                 ShowPlaybackCover("视频播放失败");
                 UpdatePlayState(false);
@@ -1530,6 +1582,13 @@ namespace ExpressPackingMonitoring.UI
                 // 4. 释放信号量，允许下一次切换
                 _playerSemaphore.Release();
             }
+        }
+
+        private void DisposeCurrentMediaSource()
+        {
+            PlaybackMediaSource? source = _currentMediaSource;
+            _currentMediaSource = null;
+            source?.Dispose();
         }
 
         private void BtnTogglePlay_Click(object sender, RoutedEventArgs e)

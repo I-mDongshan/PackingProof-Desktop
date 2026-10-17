@@ -212,26 +212,37 @@ public partial class PlaybackWindow
     {
         if (string.IsNullOrWhiteSpace(path))
             return null;
-
-        Core.Initialize();
-        LibVLC? libVlc = _libVLC ??= new LibVLC("--avcodec-hw=any");
-
-        using var media = new Media(libVlc, new Uri(path));
-        MediaParsedStatus status = media.Parse(MediaParseOptions.ParseLocal, timeout: 2000)
-            .GetAwaiter()
-            .GetResult();
-        if (status != MediaParsedStatus.Done && media.Tracks.Length == 0)
+        // UNC 走 StreamMediaInput 时 LibVLC 的 Parse 会直接跳过；不要为拿尺寸额外等 2 秒。
+        if (PlaybackMediaSource.IsUncPath(path))
             return null;
 
-        foreach (MediaTrack track in media.Tracks)
+        try
         {
-            if (track.TrackType != TrackType.Video)
-                continue;
+            Core.Initialize();
+            LibVLC? libVlc = _libVLC ??= new LibVLC("--avcodec-hw=any");
 
-            uint width = track.Data.Video.Width;
-            uint height = track.Data.Video.Height;
-            if (width > 0 && height > 0)
-                return PlaybackWindowFitPolicy.ResolveDisplaySize(width, height, track.Data.Video.Orientation);
+            using PlaybackMediaSource source = PlaybackMediaSource.Create(libVlc, path);
+            Media media = source.Media;
+            MediaParsedStatus status = media.Parse(MediaParseOptions.ParseLocal, timeout: 2000)
+                .GetAwaiter()
+                .GetResult();
+            if (status != MediaParsedStatus.Done && media.Tracks.Length == 0)
+                return null;
+
+            foreach (MediaTrack track in media.Tracks)
+            {
+                if (track.TrackType != TrackType.Video)
+                    continue;
+
+                uint width = track.Data.Video.Width;
+                uint height = track.Data.Video.Height;
+                if (width > 0 && height > 0)
+                    return PlaybackWindowFitPolicy.ResolveDisplaySize(width, height, track.Data.Video.Orientation);
+            }
+        }
+        catch
+        {
+            // 远端文件可能在探测期间断开；尺寸探测失败不应影响后续起播错误处理。
         }
 
         return null;
