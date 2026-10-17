@@ -508,4 +508,25 @@ public sealed class DefaultConfigurationTests
 
         Assert.Equal(processPath, result);
     }
+
+    /// <summary>
+    /// 启动时只在"标准安装布局"（app\ + 旁边的根启动器）里重写自启动项。
+    /// 开发构建、测试产物、发布脚本的临时输出跑起来时不能改用户的注册表——0.0.84 验证时
+    /// 它们就把自启动项改指向了 TestResults 下的构建输出。
+    /// </summary>
+    [Fact]
+    public void ShouldApplyOnStartup_OnlyForInstalledLayout()
+    {
+        Assert.True(AutoStartService.ShouldApplyOnStartup(
+            @"D:\Package\app",
+            path => string.Equals(path, @"D:\Package\ExpressPackingMonitoring.exe", StringComparison.OrdinalIgnoreCase)));
+
+        // 构建输出 / 测试产物：没有旁边的根启动器，不写注册表。
+        Assert.False(AutoStartService.ShouldApplyOnStartup(
+            @"D:\Source\bin\Debug\net10.0-windows\win-x64",
+            _ => true));
+        Assert.False(AutoStartService.ShouldApplyOnStartup(
+            @"D:\Source\bin\Debug\net10.0-windows\win-x64\app",
+            _ => false));
+    }
 }

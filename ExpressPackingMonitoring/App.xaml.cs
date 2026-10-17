@@ -194,7 +194,12 @@ namespace ExpressPackingMonitoring
                 break;
             }
 
-            AutoStartService.Apply(config.AutoStartOnBoot);
+            // 只有装在标准布局里的桌面端才按当前位置重写自启动项；开发/测试构建跑起来不许改用户注册表。
+            if (!config.AutoStartOnBoot
+                || AutoStartService.ShouldApplyOnStartup(AppContext.BaseDirectory, System.IO.File.Exists))
+            {
+                AutoStartService.Apply(config.AutoStartOnBoot);
+            }
             bool allowLanAccessSetup = !IsLanAccessSetupDisabled();
             MainViewModel.AllowLanAccessSetupOnStartup = allowLanAccessSetup;
 
