@@ -4,6 +4,7 @@ using ExpressPackingMonitoring.Audio;
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
+using ExpressPackingMonitoring.Services.Extensions;
 using ExpressPackingMonitoring.Themes;
 using ExpressPackingMonitoring.UpdateCore;
 using ExpressPackingMonitoring.ViewModels;
@@ -200,6 +201,9 @@ namespace ExpressPackingMonitoring
             {
                 AutoStartService.Apply(config.AutoStartOnBoot);
             }
+            // 扩展更新会换版本目录：把"把开机自启项改到新目录"的 Windows 实现挂给 Core
+            // （Core 是跨平台工程，不能直接碰注册表）。
+            ExtensionStartupRetarget.Hook = ExtensionStartupEntryRewriter.Retarget;
             bool allowLanAccessSetup = !IsLanAccessSetupDisabled();
             MainViewModel.AllowLanAccessSetupOnStartup = allowLanAccessSetup;
 

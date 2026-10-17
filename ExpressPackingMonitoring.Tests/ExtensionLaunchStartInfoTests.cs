@@ -111,4 +111,32 @@ public sealed class ExtensionLaunchStartInfoTests
         Assert.Throws<InvalidDataException>(() =>
             ExtensionInstallationService.ResolveDataDirectory(root, extensionId));
     }
+
+    /// <summary>
+    /// 扩展更新换了版本目录之后，开机自启项还指着旧目录里的启动器；桌面端要把这条命令改到新目录，
+    /// 参数（例如 --background）原样保留。不属于旧目录的值一律不动。
+    /// </summary>
+    [Fact]
+    public void RewireCommand_MovesStartupEntryToTheNewVersionDirectory()
+    {
+        const string oldExecutable = @"D:\Data\extensions\packages\packingproof.qqbot\0.0.7\PackingProof.QQBot.exe";
+        const string newExecutable = @"D:\Data\extensions\packages\packingproof.qqbot\0.0.8\PackingProof.QQBot.exe";
+
+        Assert.Equal(
+            "\"D:\\Data\\extensions\\packages\\packingproof.qqbot\\0.0.8\\PackingProof.QQBot.exe\" --background",
+            ExtensionStartupEntryRewriter.RewireCommand(
+                "\"D:\\Data\\extensions\\packages\\packingproof.qqbot\\0.0.7\\PackingProof.QQBot.exe\" --background",
+                oldExecutable,
+                newExecutable));
+        // 大小写不同也要认（注册表里的路径大小写不保证一致）。
+        Assert.Equal(
+            "\"D:\\Data\\extensions\\packages\\packingproof.qqbot\\0.0.8\\PackingProof.QQBot.exe\"",
+            ExtensionStartupEntryRewriter.RewireCommand(
+                "\"d:\\data\\extensions\\packages\\packingproof.qqbot\\0.0.7\\packingproof.qqbot.exe\"",
+                oldExecutable,
+                newExecutable));
+        Assert.Null(ExtensionStartupEntryRewriter.RewireCommand(
+            "\"C:\\Other\\app.exe\" --background", oldExecutable, newExecutable));
+        Assert.Null(ExtensionStartupEntryRewriter.RewireCommand(null, oldExecutable, newExecutable));
+    }
 }

@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.UpdateCore;
+using ExpressPackingMonitoring.Logging;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -165,6 +166,9 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             inspection.Manifest.Version);
         lock (Sync)
         {
+            List<InstalledExtensionRecord> registry = LoadRegistry();
+            InstalledExtensionRecord? previous = registry.FirstOrDefault(value =>
+                string.Equals(value.Id, inspection.Manifest.Id, StringComparison.Ordinal));
             Directory.CreateDirectory(Path.GetDirectoryName(targetDirectory)!);
             PublishDirectory(stagingDirectory, targetDirectory);
             var record = new InstalledExtensionRecord
@@ -177,9 +181,20 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
                 LauncherPath = inspection.Manifest.Launcher?.Path ?? "",
                 InstalledAt = DateTimeOffset.UtcNow
             };
-            List<InstalledExtensionRecord> registry = LoadRegistry();
             ReplaceRecord(registry, record);
             SaveRegistry(registry);
+            // 更新换到了新的版本目录：开机自启项如果指着旧目录里的启动器，赶紧改到新目录，
+            // 否则下次开机还是拉起旧版本（旧版本不会知道新路径）。
+            if (previous is { InstallDirectory.Length: > 0 }
+                && record.LauncherPath.Length > 0
+                && !string.Equals(previous.InstallDirectory, targetDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                ExtensionStartupRetarget.TryRetarget(
+                    previous.InstallDirectory,
+                    targetDirectory,
+                    record.LauncherPath,
+                    record.Version);
+            }
             return new ExtensionInstallResult(record, inspection.Warnings);
         }
     }
@@ -388,5 +403,48 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             throw;
         }
         if (movedExisting) ExtensionPackageService.TryDeleteOwnedDirectory(backupDirectory);
+    }
+}
+
+/// <summary>
+/// 扩展更新换了版本目录之后，把指向旧目录的开机自启命令改到新目录。
+/// Core 是跨平台工程、不允许碰注册表，具体实现由 Windows 桌面层在启动时挂进来
+/// （见 <c>ExtensionStartupEntryRewriter</c>）。
+/// </summary>
+internal static class ExtensionStartupRetarget
+{
+    /// <summary>参数：旧安装目录、新安装目录、启动器相对路径；返回改过的注册表值名。</summary>
+    internal static Func<string, string, string, IReadOnlyList<string>>? Hook { get; set; }
+
+    internal static void TryRetarget(
+        string previousInstallDirectory,
+        string newInstallDirectory,
+        string launcherRelativePath,
+        string newVersion)
+    {
+        if (Hook == null
+            || string.IsNullOrWhiteSpace(previousInstallDirectory)
+            || string.IsNullOrWhiteSpace(newInstallDirectory)
+            || string.IsNullOrWhiteSpace(launcherRelativePath))
+        {
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<string> changed = Hook(previousInstallDirectory, newInstallDirectory, launcherRelativePath);
+            if (changed.Count > 0)
+            {
+                RuntimeLog.Info(
+                    "Extensions",
+                    $"已把开机自启项 {string.Join("、", changed)} 从旧版本目录改到 {newVersion}");
+            }
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or System.Security.SecurityException)
+        {
+            RuntimeLog.Warn("Extensions", $"改写扩展开机自启项失败：{exception.Message}");
+        }
     }
 }
