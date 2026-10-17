@@ -96,6 +96,69 @@ public sealed class GiteeAssetRefreshTests
         Assert.True(cleanupIndex < uploadIndex, "清理必须发生在上传之前");
     }
 
+    [Fact]
+    public void GiteeAttachmentSizePolicy_UsesStrictHundredMegabyteBoundary()
+    {
+        string versionCommon = Path.Combine(FindRepositoryRoot(), "Tools", "ReleaseVersion.Common.ps1");
+
+        (int exitCode, string output) = RunScript(string.Join(
+            Environment.NewLine,
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+            "$OutputEncoding = [System.Text.Encoding]::UTF8",
+            "$ErrorActionPreference = 'Stop'",
+            $". '{Escape(versionCommon)}'",
+            "Write-Output ('FIT::' + (Test-GiteeAttachmentFits -Size (100MB - 1)) + ',' + (Test-GiteeAttachmentFits -Size 100MB) + ',' + (Test-GiteeAttachmentFits -Size 1))"));
+
+        Assert.True(exitCode == 0, output);
+        Assert.Contains("FIT::True,False,True", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleasePublisher_DirectlyUploadsSmallStandardSetupToGitee()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string publisher = File.ReadAllText(
+            Path.Combine(repositoryRoot, "Tools", "Publish-Releases.ps1"),
+            Encoding.UTF8);
+
+        Assert.Contains("$giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize", publisher, StringComparison.Ordinal);
+        Assert.Contains("$giteeAssets = @($setupPath) + $giteeAssets", publisher, StringComparison.Ordinal);
+        Assert.Contains("PackingProof_Setup_no-runtime_$releaseTag.exe", publisher, StringComparison.Ordinal);
+        Assert.Contains("Remove-GiteeReleaseAttachmentByName", publisher, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NoRuntimePackage_ReusesSmallStandardSetupBeforeBuilding()
+    {
+        string noRuntime = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "Tools", "Publish-NoRuntimePackage.ps1"),
+            Encoding.UTF8);
+
+        int reuseIndex = noRuntime.IndexOf(
+            "Test-GiteeAttachmentFits -Size (Get-Item -LiteralPath $standardSetupPath).Length",
+            StringComparison.Ordinal);
+        int buildWorkIndex = noRuntime.IndexOf("$workRoot = Join-Path", StringComparison.Ordinal);
+
+        Assert.True(reuseIndex >= 0, "Publish-NoRuntimePackage.ps1 必须先检查标准 Setup 是否能直接上传");
+        Assert.True(buildWorkIndex >= 0, "找不到 no-runtime 构建工作目录");
+        Assert.True(reuseIndex < buildWorkIndex, "标准 Setup 可上传时必须跳过 no-runtime 构建");
+        Assert.Contains(
+            "& gitee release upload --repo $GiteeRepository $releaseTag $standardSetupPath",
+            noRuntime,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Republish_SkipsNoRuntimeWhenSmallStandardSetupFitsGitee()
+    {
+        string republish = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "Tools", "Republish-SameVersion.ps1"),
+            Encoding.UTF8);
+
+        Assert.Contains("$fullSetupFitsGitee", republish, StringComparison.Ordinal);
+        Assert.Contains("if (-not $SkipNoRuntime -and -not $fullSetupFitsGitee)", republish, StringComparison.Ordinal);
+    }
+
     private static string Preamble()
     {
         string repositoryRoot = FindRepositoryRoot();

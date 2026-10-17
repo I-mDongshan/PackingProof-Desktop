@@ -30,7 +30,7 @@
 | iOS スマートフォン版 | 機能は Android と同等、TestFlight で配布 | [ベータに参加](https://testflight.apple.com/join/KR4qNs6t) |
 | 予備ダウンロード（中国国内回線） | 百度網盤: パソコン版の完全インストーラー | [百度網盤](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（抽出コード 6666） |
 
-> **中国国内回線**：GitHub に接続しにくい場合は、上記の Gitee ミラーからソースのクローン、Issue の投稿、Release のダウンロードができます。Gitee Release の Windows インストーラーは `PackingProof_Setup_no-runtime_vX.Y.Z.exe`（.NET ランタイムを含まない約 60MB）で、事前に [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) のインストールが必要です。ランタイムを含む完全なインストーラーは上記の百度網盤の予備リンクから入手できます。
+> **中国国内回線**：GitHub に接続しにくい場合は、上記の Gitee ミラーからソースのクローン、Issue の投稿、Release のダウンロードができます。完全な Setup が 100MB 未満のときは Gitee でも `PackingProof_Setup_vX.Y.Z.exe` を直接提供し、上限を超える場合は `PackingProof_Setup_no-runtime_vX.Y.Z.exe`（.NET ランタイムを含まない約 60MB）に切り替わります。後者は事前に [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) のインストールが必要です。ランタイムを含む完全なインストーラーは上記の百度網盤の予備リンクから入手できます。
 
 > **スマートフォン版は単体で動作**：スマートフォン アプリだけでも録画、送り状バーコードの認識、追跡番号での検索ができ、パソコンは不要です。パソコンに接続すると、LAN 経由の自動バックアップと注文の音声通知が追加されます。Android / iOS は中国国内のアプリストア申請の影響で未掲載のため、署名済み APK と TestFlight で配布しています。
 
@@ -199,7 +199,7 @@ PackingProof は公式の[拡張マーケット](https://gitee.com/PackingProof/
 
 ### 2. ソフトをインストールする
 
-[GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) または [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) から `PackingProof_Setup_vX.Y.Z.exe` をダウンロードしてインストールします。中国国内回線では[百度網盤の予備ダウンロード](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（抽出コード 6666）も使えます。
+[GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) または [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) からインストーラーをダウンロードしてインストールします。Gitee では完全な Setup が 100MB 未満のとき `PackingProof_Setup_vX.Y.Z.exe` を直接提供し、上限を超える場合は no-runtime インストーラーに切り替わります。中国国内回線では[百度網盤の予備ダウンロード](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（抽出コード 6666）も使えます。
 
 インストーラーに管理者権限は不要で、現在のユーザー ディレクトリにインストールし、スタート メニューのショートカットを作成します。どのファイルをダウンロードするかは下の「ダウンロード パッケージの選び方」を参照してください。
 
@@ -228,10 +228,10 @@ LAN のページから、スマートフォンや他のパソコンで再生す�
 
 | ファイル | 用途 |
 | ---------------------------------------------- | --------------------------------- |
-| `PackingProof_Setup_vX.Y.Z.exe` | 推奨。ほとんどのユーザーはこれ |
+| `PackingProof_Setup_vX.Y.Z.exe` | 推奨。ほとんどのユーザーはこれ。100MB 未満なら Gitee でも直接提供 |
 | `PackingProof_AppPatch_vX.Y.Z.zip` | メインプログラムの手動更新 |
 | `PackingProof_LauncherPatch_vX.Y.Z.zip` | ルート ランチャーの手動更新 |
-| `PackingProof_Setup_no-runtime_vX.Y.Z.exe` | Gitee 専用：.NET ランタイムを含まない（約 60MB）。先に .NET 10 Desktop Runtime (x64) が必要 |
+| `PackingProof_Setup_no-runtime_vX.Y.Z.exe` | 完全な Setup が 100MB に達した場合のみ使用：.NET ランタイムを含まない（約 60MB）。先に .NET 10 Desktop Runtime (x64) が必要 |
 
 正式なリリース パッケージには通常、動作に必要な .NET ランタイムと FFmpeg が含まれており、追加インストールは不要です。
 

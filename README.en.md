@@ -30,7 +30,7 @@
 | iOS mobile | Same feature set as Android, distributed via TestFlight | [Join the beta](https://testflight.apple.com/join/KR4qNs6t) |
 | Backup download (mainland China) | Baidu Netdisk: full desktop installer | [Baidu Netdisk](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666) (access code 6666) |
 
-> **Mainland China / restricted networks**: when GitHub is slow or unreachable, use the Gitee mirror above to clone the source, open issues or download releases. The Gitee release ships `PackingProof_Setup_no-runtime_vX.Y.Z.exe` (no .NET runtime, about 60 MB), which needs [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) installed first; the full installer that bundles the runtime is also mirrored on Baidu Netdisk above.
+> **Mainland China / restricted networks**: when GitHub is slow or unreachable, use the Gitee mirror above to clone the source, open issues or download releases. When the full Setup is strictly under 100 MB, Gitee provides `PackingProof_Setup_vX.Y.Z.exe` directly; above that limit it provides `PackingProof_Setup_no-runtime_vX.Y.Z.exe` (no .NET runtime, about 60 MB), which needs [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) installed first. The full installer is also mirrored on Baidu Netdisk above.
 
 > **The mobile app runs standalone**: one phone alone can record, recognize shipping-label barcodes and look footage up by tracking number, with no PC required; connecting it to a PC adds LAN auto-backup and spoken order alerts. Because of app-store filing requirements in mainland China, Android and iOS are not listed in the app stores yet and ship as a signed APK and a TestFlight build.
 
@@ -179,7 +179,7 @@ Camera recognition and a keyboard-mode scanner can be used together without chan
 
 ### 2. Install PackingProof
 
-Download `PackingProof_Setup_vX.Y.Z.exe` from [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) or [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) and install it. On networks where GitHub is slow, the [Baidu Netdisk backup](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666) (access code 6666) works too.
+Download the installer from [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) or [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) and install it. Gitee provides `PackingProof_Setup_vX.Y.Z.exe` directly when the full Setup is strictly under 100 MB, and switches to the no-runtime installer above that limit. On networks where GitHub is slow, the [Baidu Netdisk backup](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666) (access code 6666) works too.
 
 The installer does not require administrator rights. It installs for the current user and creates a Start menu shortcut. See “Choosing a Download” below for which file you need.
 
@@ -208,10 +208,10 @@ Recordings can also be played from a phone or another computer through the LAN W
 
 | File | Purpose |
 | --- | --- |
-| `PackingProof_Setup_vX.Y.Z.exe` | Recommended for most users |
+| `PackingProof_Setup_vX.Y.Z.exe` | Recommended for most users; Gitee also provides it directly when strictly under 100 MB |
 | `PackingProof_AppPatch_vX.Y.Z.zip` | Manual main-application update |
 | `PackingProof_LauncherPatch_vX.Y.Z.zip` | Manual root-launcher update |
-| `PackingProof_Setup_no-runtime_vX.Y.Z.exe` | Gitee only: installer without the .NET runtime (~60 MB), requires the .NET 10 Desktop Runtime (x64) first |
+| `PackingProof_Setup_no-runtime_vX.Y.Z.exe` | Used only when the full Setup reaches 100 MB: installer without the .NET runtime, requires the .NET 10 Desktop Runtime (x64) first |
 
 Official packages normally include the required .NET runtime and FFmpeg, so no separate installation is needed.
 

@@ -1,4 +1,4 @@
-# 重发同一个已发布版本（热修已发出去的包）：重建 → 替换两边资产 → 重做 Gitee no-runtime。
+# 重发同一个已发布版本（热修已发出去的包）：重建 → 替换两边资产 → 按尺寸补齐 Gitee 安装入口。
 #
 #   pwsh -NoProfile -File tools\Republish-SameVersion.ps1 -Version 0.0.74 -Title "<一句话内容>" `
 #       -ConfirmCommitCoverage -Confirmed
@@ -12,7 +12,7 @@
 # - 重建交给 Publish-CleanPackage.ps1（它自己会清产物目录，并保留人工写好的发布笔记）
 # - 上传交给 Publish-Releases.ps1：-UpdateNotes -ReplaceAssets，GitHub 用 --clobber，
 #   Gitee 先删同名附件再上传（Gitee 不支持覆盖上传）
-# - 最后重做 Gitee 专属 no-runtime 安装包，Gitee 侧才有"双击安装"入口
+# - 完整 Setup 严格小于 100MB 时直接上传它；达到 100MB 时才重做 no-runtime 安装包
 
 param(
     [string]$Version = "",
@@ -109,7 +109,12 @@ $artifactNames = Get-ReleaseArtifactNames -Tag $releaseTag -RepoRoot $repoRoot
 $planSteps = @(
     "重建产物：pwsh -NoProfile -File tools\Publish-CleanPackage.ps1 -Version $normalizedVersion",
     "替换两边资产：pwsh -NoProfile -File tools\Publish-Releases.ps1 -Tag $releaseTag -Title <标题> -UpdateNotes -ReplaceAssets$(if ($ConfirmCommitCoverage) { ' -ConfirmCommitCoverage' })",
-    $(if ($SkipNoRuntime) { "重做 Gitee no-runtime：（已按 -SkipNoRuntime 跳过）" } else { "重做 Gitee no-runtime：pwsh -NoProfile -File tools\Publish-NoRuntimePackage.ps1 -Tag $releaseTag -UploadGitee" })
+    $(if ($SkipNoRuntime) {
+        "Gitee 安装包：（已按 -SkipNoRuntime 跳过）"
+    }
+    else {
+        "Gitee 安装包：重建后完整 Setup 小于 100MB 时直接上传；否则重做 no-runtime（tools\Publish-NoRuntimePackage.ps1 -Tag $releaseTag -UploadGitee）"
+    })
 )
 
 Write-Host "重发同一版本：$releaseTag"
@@ -134,6 +139,10 @@ Write-Step "重建产物目录（会保留人工写好的发布笔记）"
 $cleanPackageArgs = @("-Version", $normalizedVersion)
 Invoke-ReleaseStep -ScriptName "Publish-CleanPackage.ps1" -Arguments $cleanPackageArgs
 
+$setupPath = Join-Path $artifactNames.PackageRoot $artifactNames.SetupFileName
+$fullSetupFitsGitee = (Test-Path -LiteralPath $setupPath -PathType Leaf) -and
+    (Test-GiteeAttachmentFits -Size (Get-Item -LiteralPath $setupPath).Length)
+
 Write-Step "替换 GitHub 与 Gitee 上的资产、更新正文"
 $releaseArgs = @(
     "-Tag", $releaseTag,
@@ -146,12 +155,20 @@ if ($ConfirmCommitCoverage) {
 }
 Invoke-ReleaseStep -ScriptName "Publish-Releases.ps1" -Arguments $releaseArgs
 
-if (-not $SkipNoRuntime) {
+if (-not $SkipNoRuntime -and -not $fullSetupFitsGitee) {
     Write-Step "重做 Gitee 专属 no-runtime 安装包"
     Invoke-ReleaseStep -ScriptName "Publish-NoRuntimePackage.ps1" -Arguments @("-Tag", $releaseTag, "-UploadGitee")
 }
 
 Write-Host ""
-$noRuntimeSummary = if ($SkipNoRuntime) { "" } else { "，Gitee no-runtime 安装包已重做" }
+$noRuntimeSummary = if ($SkipNoRuntime) {
+    ""
+}
+elseif ($fullSetupFitsGitee) {
+    "，完整 Setup 已直接上传 Gitee"
+}
+else {
+    "，Gitee no-runtime 安装包已重做"
+}
 Write-Host "$releaseTag 重发完成：GitHub 与 Gitee 资产已替换$noRuntimeSummary"
 Write-Host "还差一步（人工）：在 Mac 桌面会话里跑 tools/Publish-MacRelease.sh $normalizedVersion both，再确认两边 DMG 是否为本次构建"

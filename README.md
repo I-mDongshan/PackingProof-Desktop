@@ -30,7 +30,7 @@
 | iOS 手机端 | 功能与 Android 一致，TestFlight 分发 | [加入内测](https://testflight.apple.com/join/KR4qNs6t) |
 | 备用下载（国内网络） | 百度网盘：电脑端完整安装包 | [百度网盘](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（提取码 6666） |
 
-> **国内网络**：GitHub 访问不畅时，可用上面的 Gitee 镜像克隆源码、提交 Issue 或下载 Release；Gitee Release 的 Windows 安装包是 `PackingProof_Setup_no-runtime_vX.Y.Z.exe`（不含 .NET 运行时，约 60MB），需要先安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)；含运行时的完整安装包可走上面的百度网盘备用链接。
+> **国内网络**：GitHub 访问不畅时，可用上面的 Gitee 镜像克隆源码、提交 Issue 或下载 Release；完整 Setup 严格小于 100MB 时 Gitee 直接提供 `PackingProof_Setup_vX.Y.Z.exe`，达到附件上限时才改用 `PackingProof_Setup_no-runtime_vX.Y.Z.exe`（不含 .NET 运行时），后者需要先安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)；含运行时的完整安装包也可走上面的百度网盘备用链接。
 
 > **手机端可独立运行**：只装手机 App 就能录像、识别面单条码、按快递单号回看，不需要电脑；连接电脑后额外获得局域网自动备份与订单语音提醒。Android / iOS 受国内应用商店备案流程影响暂未上架商店，分别以签名 APK 与 TestFlight 分发。
 
@@ -198,7 +198,7 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 ### 2. 安装软件
 
-从 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) 或 [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) 下载 `PackingProof_Setup_vX.Y.Z.exe` 安装即可；国内网络也可以走[百度网盘备用下载](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（提取码 6666）。
+从 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) 或 [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) 下载安装包即可；Gitee 在完整 Setup 严格小于 100MB 时直接提供 `PackingProof_Setup_vX.Y.Z.exe`，达到限制时改用 no-runtime 安装包。国内网络也可以走[百度网盘备用下载](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（提取码 6666）。
 
 安装器不需要管理员权限，会装到当前用户目录并创建开始菜单快捷方式。要下载哪个文件，见下面的「下载包怎么选择」。
 
@@ -227,10 +227,10 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 | 文件                                           | 用途                              |
 | ---------------------------------------------- | --------------------------------- |
-| `PackingProof_Setup_vX.Y.Z.exe`                | 推荐，大多数用户选择这个          |
+| `PackingProof_Setup_vX.Y.Z.exe`                | 推荐，大多数用户选择这个；Gitee 在严格小于 100MB 时也直接提供 |
 | `PackingProof_AppPatch_vX.Y.Z.zip`             | 手动更新主程序                    |
 | `PackingProof_LauncherPatch_vX.Y.Z.zip`        | 手动更新根目录启动器              |
-| `PackingProof_Setup_no-runtime_vX.Y.Z.exe`     | Gitee 专属：不含 .NET 运行时（约 60MB），需先安装 .NET 10 Desktop Runtime (x64) |
+| `PackingProof_Setup_no-runtime_vX.Y.Z.exe`     | 仅当完整 Setup 达到 100MB 时使用：不含 .NET 运行时，需先安装 .NET 10 Desktop Runtime (x64) |
 
 正式发布包通常已经包含运行所需的 .NET 运行时和 FFmpeg，不需要额外安装。
 

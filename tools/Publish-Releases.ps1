@@ -6,7 +6,8 @@
 #
 # 约定（与 docs/development/RELEASE_AND_RUNTIME.md 的资产表一致）：
 # - GitHub：Setup、update JSON、可选 AppPatch；仅新启动器基线时附 LauncherPatch
-# - Gitee：update JSON、可选 AppPatch；仅新启动器基线时附 LauncherPatch，不上传 Setup
+# - Gitee：update JSON、可选 AppPatch；完整 Setup 小于 100MB 时直接上传 Setup，
+#   否则另行生成 no-runtime 安装包；仅新启动器基线时附 LauncherPatch
 # - 完整 7z 与完整 ZIP 是本地产物，任何渠道都不上传
 # - 产物必须已由 tools\Publish-CleanPackage.ps1 生成并通过校验
 # - 标题固定 `v<X.Y.Z> <一句话内容>`，两个平台保持一致
@@ -208,6 +209,8 @@ foreach ($required in @($setupPath, $updateJsonPath)) {
         throw "缺少必须上传的产物：$required$hint"
     }
 }
+$setupSize = (Get-Item -LiteralPath $setupPath).Length
+$giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize
 
 # 更新清单声明本版随包提供 LauncherPatch（launcher_package.version == 本版版本）时，
 # 产物目录里必须真的有一份 LauncherPatch：以前这里是 Test-Path 静默跳过，于是出现过
@@ -230,6 +233,9 @@ if ($launcherPatchDeclared -and -not (Test-Path -LiteralPath $launcherPatchPath)
 
 $githubAssets = @($setupPath, $updateJsonPath)
 $giteeAssets = @($updateJsonPath)
+if ($giteeSetupIncluded) {
+    $giteeAssets = @($setupPath) + $giteeAssets
+}
 if (Test-Path -LiteralPath $appPatchPath) {
     $githubAssets += $appPatchPath
     $giteeAssets += $appPatchPath
@@ -419,6 +425,20 @@ else {
 # 只更新正文时不要重复上传附件，避免 Gitee 上出现同名重复文件。
 if ($ReplaceAssets -and $giteeReleaseExisted) {
     $giteeReleaseId = Get-GiteeReleaseId -Repository $repoSlug -Tag $tag
+    # 两种安装包只保留与本次尺寸策略一致的那一种，避免同一版本同时挂两个安装向导。
+    $alternateSetupName = if ($giteeSetupIncluded) {
+        "PackingProof_Setup_no-runtime_$releaseTag.exe"
+    }
+    else {
+        Split-Path -Leaf $setupPath
+    }
+    $removedAlternate = Remove-GiteeReleaseAttachmentByName `
+        -Repository $repoSlug `
+        -ReleaseId $giteeReleaseId `
+        -FileName $alternateSetupName
+    if ($removedAlternate -gt 0) {
+        Write-Host "Gitee 旧安装包已删除 $removedAlternate 个：$alternateSetupName"
+    }
     $staleGiteeAssets = @(Get-StaleGiteeAssets `
         -Repository $repoSlug `
         -ReleaseId $giteeReleaseId `
@@ -457,7 +477,23 @@ else {
 
 Write-Host ""
 Write-Host "GitHub 与 Gitee Release 均已就绪：$tag"
-Write-Host "Setup 只在 GitHub 提供，Gitee 侧按资产表不上传"
-Write-Host ""
-Write-Host "还差一步（Gitee 专属，每次发布都要做，漏了 Gitee 就没有双击安装入口）："
-Write-Host "  pwsh -NoProfile -File tools\Publish-NoRuntimePackage.ps1 -Tag $tag -UploadGitee"
+$giteeAttachmentsKept = $giteeReleaseExisted -and -not $ReplaceAssets
+if ($giteeSetupIncluded) {
+    if ($giteeAttachmentsKept) {
+        Write-Host ("Gitee 安装入口沿用现有附件（完整 Setup {0:N1} MB 小于 100MB，无需 no-runtime）" -f ($setupSize / 1MB))
+    }
+    else {
+        Write-Host ("Gitee 已直接上传完整 Setup（{0:N1} MB，小于 100MB），无需 no-runtime 安装包" -f ($setupSize / 1MB))
+    }
+}
+else {
+    if ($giteeAttachmentsKept) {
+        Write-Host ("Gitee 附件保持原样；完整 Setup {0:N1} MB 达到 100MB 限制，若尚未提供安装入口请生成 no-runtime" -f ($setupSize / 1MB))
+    }
+    else {
+        Write-Host ("Gitee 未上传完整 Setup（{0:N1} MB，达到 100MB 限制）" -f ($setupSize / 1MB))
+        Write-Host ""
+        Write-Host "还差一步（Gitee 专属，漏了 Gitee 就没有双击安装入口）："
+        Write-Host "  pwsh -NoProfile -File tools\Publish-NoRuntimePackage.ps1 -Tag $tag -UploadGitee"
+    }
+}

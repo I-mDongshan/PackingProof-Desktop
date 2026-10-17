@@ -9,7 +9,7 @@
 > 预览版本必须在 GitHub 与 Gitee 上将 Release 标记为 prerelease，并在正文首行注明“预览版”。
 > 更新日志范围：预览版只写本预览版相对上一版本的增量更新内容；正式版必须汇总自上一个正式版以来（含中间所有预览版）的全部更新内容，避免正式版用户缺少中间版本的变更记录。
 > 编写前必须先执行 `git log --oneline <上一正式版标签>..HEAD` 逐条核对全部提交，发布笔记必须覆盖所有用户可见变更，禁止凭印象编写或遗漏提交。
-> 发布目标为 GitHub 与 Gitee（PackingProof/PackingProof-Desktop）两个远端，二者都创建 Release 并上传 update JSON、可选 AppPatch，以及仅在建立新启动器基线时上传的 LauncherPatch；Setup 只在 GitHub 提供，旧个人 Gitee 仓库不再发布。
+> 发布目标为 GitHub 与 Gitee（PackingProof/PackingProof-Desktop）两个远端，二者都创建 Release 并上传 update JSON、可选 AppPatch，以及仅在建立新启动器基线时上传的 LauncherPatch；完整 Setup 严格小于 100MB 时 Gitee 也直接上传该文件，达到限制时才改用 no-runtime 安装包，旧个人 Gitee 仓库不再发布。
 > `update_vX.Y.Z.json` 的 `title` 与 Release 标题一致；`notes` 必须是纯文本字符串数组，每项只写一条用户可见变化。不要加入 Markdown 标题、列表减号、序号或下载说明，启动器会自动为每项添加列表符号，完整笔记以 Release 页面为准。
 > `notes` 按模块归并，控制在 15~20 条以内，但要覆盖本版本全部用户可见变化（不是只写几条最重要的）；工程与内部改动（打包、测试、重构、CI）不写进 `notes`，只留在发布笔记的《兼容与工程》里。发布脚本会拒绝超过 20 条的 `notes`。
 > `notes` 每条必须短：启动器虽然会折行，但一条太长会折成两三行，整页看起来又乱又难读。单条控制在 20~35 字，硬上限 40 字（含标点），超过会被发布脚本拒绝；一条说不完就拆成两条，或合并同类项后重写。
@@ -46,7 +46,7 @@
 
 ## 下载与更新说明
 
-- 安装向导：PackingProof_Setup_v<X.Y.Z>.exe（未签名时注明：未签名，SmartScreen 可能提示未知发布者）
-- Gitee 专属：PackingProof_Setup_no-runtime_v<X.Y.Z>.exe（不含 .NET 运行时，约 60MB；机器需已安装 .NET 10 桌面运行时）
+- 安装向导：PackingProof_Setup_v<X.Y.Z>.exe（GitHub 必传；Gitee 在完整 Setup 严格小于 100MB 时同样提供。未签名时注明：未签名，SmartScreen 可能提示未知发布者）
+- Gitee no-runtime（仅完整 Setup 达到 100MB 时保留）：PackingProof_Setup_no-runtime_v<X.Y.Z>.exe（不含 .NET 运行时，机器需已安装 .NET 10 桌面运行时；未生成时删除本行）
 - 已安装用户：启动器会自动下载 AppPatch；如需手动更新，可完整解压 AppPatch 后双击包内更新脚本
 - <仅新启动器基线时保留>：本版本建立新启动器基线 launcher-v<X.Y.Z>，升级后的主程序会自动应用 LauncherPatch

@@ -1,4 +1,4 @@
-# 生成「不带 .NET 运行时」的清爽包，专供 Gitee 发布（Gitee 单附件上限 100MB，自包含 Setup 约 110MB 传不上去）。
+# 生成「不带 .NET 运行时」的清爽包，仅在完整 Setup 达到 Gitee 的 100MB 附件上限时使用。
 #
 #   pwsh -NoProfile -File tools\Publish-NoRuntimePackage.ps1 -Tag v0.0.70 [-UploadGitee] [-IncludeZip]
 #
@@ -10,6 +10,7 @@
 #   并**不带**包根的 `runtime\`、也不带 `app\runtime-seed\`：共享布局只在自包含包里由主程序落成，
 #   这一版就是给愿意自己装 .NET 10 Desktop Runtime 的用户准备的；
 # - 目标机器必须已安装 .NET 10 Desktop Runtime (x64)，包内附说明文件；
+# - 如果标准 Setup 本身已经严格小于 100MB，脚本会跳过 no-runtime 构建；带 -UploadGitee 时直接上传标准 Setup。
 # - 更新方式和标准包一致：增量包只包含与基线不同的应用文件，运行时没变时不含运行时，
 #   所以 no-runtime 安装目录同样能被启动器的 AppPatch 正常更新。
 param(
@@ -37,6 +38,30 @@ if ([string]::IsNullOrWhiteSpace($releaseTag)) {
 $normalizedVersion = Get-NormalizedReleaseVersion $releaseTag
 $artifactNames = Get-ReleaseArtifactNames -Tag $releaseTag -RepoRoot $repoRoot
 $packageRoot = $artifactNames.PackageRoot
+
+$standardSetupPath = Join-Path $packageRoot $artifactNames.SetupFileName
+if (-not $IncludeZip -and (Test-Path -LiteralPath $standardSetupPath -PathType Leaf) -and
+    (Test-GiteeAttachmentFits -Size (Get-Item -LiteralPath $standardSetupPath).Length)) {
+    $standardSetupSize = (Get-Item -LiteralPath $standardSetupPath).Length
+    Write-Host ("==> 完整 Setup 已小于 100MB（{0:N1} MB），跳过 no-runtime 构建" -f ($standardSetupSize / 1MB))
+    if ($UploadGitee -and -not $SkipSetup) {
+        $null = Import-GiteeTokenFromEnvFile -RepoRoot $repoRoot
+        $setupName = Split-Path -Leaf $standardSetupPath
+        $noRuntimeName = "PackingProof_Setup_no-runtime_$releaseTag.exe"
+        Remove-GiteeReleaseAttachmentsForTag `
+            -Repository $GiteeRepository `
+            -Tag $releaseTag `
+            -FileNames @($setupName, $noRuntimeName)
+        & gitee release upload --repo $GiteeRepository $releaseTag $standardSetupPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Gitee 完整 Setup 上传失败，退出码 $LASTEXITCODE"
+        }
+        Write-Host "Gitee 已直接上传：$setupName"
+    }
+    Write-Host "完成"
+    exit 0
+}
+
 $cleanPackageDir = Join-Path $packageRoot "PackingProof+$releaseTag"
 $launcherExe = Join-Path $cleanPackageDir "ExpressPackingMonitoring.exe"
 $sourceAppDir = Join-Path $cleanPackageDir "app"

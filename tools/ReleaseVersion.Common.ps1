@@ -7,6 +7,13 @@
 #     Setup 与更新清单用不带 v 的纯版本号
 # 任何一边自己用 tag 拼名字，都会在 tag 形式不同的时候找不到文件。
 
+function Test-GiteeAttachmentFits {
+    param([Parameter(Mandatory = $true)][long]$Size)
+
+    # Gitee 单附件上限按 100MB 计算；需求是“小于 100MB 才直接传 Setup”。
+    return $Size -lt 100MB
+}
+
 function Get-NormalizedReleaseVersion {
     param([string]$RawVersion)
 
