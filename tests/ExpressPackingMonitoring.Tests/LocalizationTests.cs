@@ -505,6 +505,21 @@ public sealed class LocalizationTests
     }
 
     [Fact]
+    public void SettingsAboutTitleUsesLocalizedProductBrand()
+    {
+        string path = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "ExpressPackingMonitoring",
+            "UI",
+            "SettingsWindow.xaml");
+        string xaml = File.ReadAllText(path);
+
+        Assert.Contains("Text=\"{loc:Localized App.ProductName}\"", xaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"快递打包监控\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MobileConnectionActionsUseSingleRow()
     {
         string path = Path.Combine(

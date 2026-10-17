@@ -3934,7 +3934,7 @@
                                                    RenderOptions.BitmapScalingMode="HighQuality"/>
                                         </Border>
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                            <TextBlock Text="快递打包监控"
+                                            <TextBlock Text="{loc:Localized App.ProductName}"
                                                        FontSize="18"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource TextPrimary}"/>
