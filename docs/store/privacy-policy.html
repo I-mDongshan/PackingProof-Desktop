@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PackingProof 隐私政策 / Privacy Policy</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f4f6f8; color: #1f2937; font: 16px/1.75 "Microsoft YaHei UI", "Segoe UI", sans-serif; }
+    main { max-width: 860px; margin: 32px auto; padding: 32px 40px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin-top: 32px; font-size: 21px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+    h3 { margin-top: 22px; font-size: 17px; }
+    p, li { color: #374151; }
+    .muted { color: #6b7280; font-size: 14px; }
+    a { color: #2563eb; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+    hr { border: 0; border-top: 1px solid #e5e7eb; margin: 36px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>PackingProof 隐私政策</h1>
+  <p class="muted">生效日期：2026-10-17</p>
+
+  <p>PackingProof 是开源免费的快递打包录像与发货留证工具。本政策说明桌面端如何处理你的数据。</p>
+
+  <h2>我们处理哪些数据</h2>
+  <ul>
+    <li><strong>录像与音频</strong>：在你开始录像时，应用会读取摄像头和麦克风，并把录像保存到你选择的位置。</li>
+    <li><strong>订单与快递信息</strong>：为了按快递单号归档和播报，应用会在本机保存快递单号、订单备注、买家留言、商品信息等你导入或扫描的内容。</li>
+    <li><strong>设置、日志与数据库</strong>：应用在本机保存配置、运行日志、录像索引和缓存，用于启动、排错和回放。</li>
+    <li><strong>扩展数据</strong>：你安装的扩展可能按自己的权限保存配置、缓存或凭据。扩展的隐私做法由扩展作者负责。</li>
+  </ul>
+
+  <h2>数据保存在哪里</h2>
+  <p>Microsoft Store 版把设置、日志和录像库放在应用包自己的本地数据目录；Setup 版使用 <code>%LOCALAPPDATA%\ExpressPackingMonitoring</code>。录像可以保存到本机磁盘、可移动盘或你配置的 NAS。PackingProof 不运营用于集中存储录像的云端服务，默认不会把录像上传给项目方。</p>
+
+  <h2>摄像头、麦克风与局域网</h2>
+  <p>摄像头和麦克风只在你启用录像时使用。局域网回放、手机/电脑备份、设备发现和订单联动需要在本机开启 Web 服务，并可能添加 Windows 防火墙规则和 URL ACL。局域网访问受应用内的访问密钥或设备授权控制。</p>
+
+  <h2>第三方在线服务</h2>
+  <ul>
+    <li><strong>Microsoft Edge TTS</strong>：当你选择在线语音时，需要朗读的文本会发送到 Microsoft 的语音服务。你可以改用 Windows 本地语音或本地 TTS 来避免发送这些文本。</li>
+    <li><strong>GitHub / Gitee</strong>：扩展市场会读取扩展目录并下载你选择的扩展包；Setup 版会读取更新元数据。Microsoft Store 版的更新由 Microsoft Store 提供。</li>
+    <li><strong>第三方扩展</strong>：扩展可能连接其作者指定的服务。安装前请查看扩展说明和权限。</li>
+  </ul>
+
+  <h2>我们不做什么</h2>
+  <p>PackingProof 不要求注册账号，不投放广告，不出售个人数据，也不包含分析或遥测 SDK。除本政策列出的在线语音、扩展市场和更新检查外，应用不会主动把录像或订单数据发送给项目方。</p>
+
+  <h2>保留与删除</h2>
+  <p>你可以在应用内删除录像、清理缓存或修改存储位置。卸载 Microsoft Store 版会由 Windows 回收应用包数据；保存在你自选目录、可移动盘或 NAS 上的录像不会被自动删除，需要你自行清理。导出诊断日志时，压缩包由你手动保存和发送。</p>
+
+  <h2>安全</h2>
+  <p>应用使用本机文件权限保护数据；在线请求使用 HTTPS；扩展包在安装前会校验签名和完整性。请妥善保管 NAS 凭据、扩展凭据和访问密钥。</p>
+
+  <h2>儿童</h2>
+  <p>PackingProof 面向电商打包和仓储工作场景，不面向儿童设计，也不会有意收集儿童的个人信息。</p>
+
+  <h2>政策更新与联系</h2>
+  <p>功能或数据处理方式变化时，我们会更新本页面的生效日期。问题、数据请求或安全反馈请通过 <a href="https://github.com/PackingProof/PackingProof-Desktop/issues">GitHub Issues</a> 联系项目维护者。</p>
+
+  <hr>
+
+  <h1 lang="en">PackingProof Privacy Policy</h1>
+  <p class="muted" lang="en">Effective date: 2026-10-17</p>
+
+  <div lang="en">
+    <p>PackingProof is an open-source packing-video and shipment-evidence tool. This policy explains how the desktop app handles data.</p>
+
+    <h2>Data the app processes</h2>
+    <ul>
+      <li><strong>Video and audio</strong>: when you start recording, the app uses the camera and microphone and saves the recording to the location you choose.</li>
+      <li><strong>Order and tracking data</strong>: tracking numbers, order notes, buyer messages and product information that you scan or import are stored locally so recordings can be indexed and read aloud.</li>
+      <li><strong>Settings, logs and database</strong>: configuration, runtime logs, recording indexes and caches are stored locally for startup, troubleshooting and playback.</li>
+      <li><strong>Extension data</strong>: optional extensions may store their own configuration, cache or credentials according to their permissions. Their authors are responsible for their privacy practices.</li>
+    </ul>
+
+    <h2>Where data is stored</h2>
+    <p>The Microsoft Store edition keeps settings, logs and the recording database in the package's local data folder. The Setup edition uses <code>%LOCALAPPDATA%\ExpressPackingMonitoring</code>. Recordings may be saved to a local disk, removable drive or a NAS you configure. PackingProof does not operate a cloud service for central recording storage and does not upload recordings to the project by default.</p>
+
+    <h2>Camera, microphone and LAN</h2>
+    <p>The camera and microphone are used only while recording is enabled. LAN playback, phone/PC backup, device discovery and order integration require the local web service, which may add a Windows firewall rule and URL ACL. LAN access is controlled by an access key or device authorization.</p>
+
+    <h2>Third-party online services</h2>
+    <ul>
+      <li><strong>Microsoft Edge TTS</strong>: when online speech is selected, text to be spoken is sent to Microsoft's speech service. You can use Windows TTS or local TTS instead.</li>
+      <li><strong>GitHub / Gitee</strong>: the extension market reads its catalog and downloads packages you choose; the Setup edition reads update metadata. The Store edition updates through Microsoft Store.</li>
+      <li><strong>Third-party extensions</strong>: extensions may contact services specified by their authors. Review the extension and its permissions before installing it.</li>
+    </ul>
+
+    <h2>What we do not do</h2>
+    <p>PackingProof does not require an account, does not show ads, does not sell personal data, and does not include analytics or telemetry SDKs. Apart from online speech, the extension market and update checks described above, the app does not send recordings or order data to the project.</p>
+
+    <h2>Retention and deletion</h2>
+    <p>You can delete recordings, clear caches or change storage locations in the app. Uninstalling the Store edition lets Windows remove package data. Recordings stored in a folder, removable drive or NAS that you selected are not deleted automatically and must be removed by you. Diagnostic packages are saved and sent only when you choose to export them.</p>
+
+    <h2>Security</h2>
+    <p>The app relies on local file permissions, uses HTTPS for online requests, and verifies extension signatures and integrity before installation. Protect your NAS credentials, extension credentials and access keys.</p>
+
+    <h2>Children</h2>
+    <p>PackingProof is designed for e-commerce packing and warehouse workflows, not for children, and does not intentionally collect children's personal information.</p>
+
+    <h2>Changes and contact</h2>
+    <p>We update the effective date when data handling changes. For questions, data requests or security reports, contact the maintainers through <a href="https://github.com/PackingProof/PackingProof-Desktop/issues">GitHub Issues</a>.</p>
+  </div>
+</main>
+</body>
+</html>
