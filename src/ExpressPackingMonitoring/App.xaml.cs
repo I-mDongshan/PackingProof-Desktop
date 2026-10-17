@@ -24,6 +24,7 @@ namespace ExpressPackingMonitoring
     {
         private static readonly bool SoftwareRenderingForced = ConfigureWpfRendering();
         private WorkstationInstanceCoordinator? _instanceCoordinator;
+        private IDisposable? _hostLease;
         private CancellationTokenSource? _launcherUpdateCancellation;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -195,6 +196,40 @@ namespace ExpressPackingMonitoring
                 break;
             }
 
+            if (DeploymentCapabilities.ForPreset(startupPreset).IsHost)
+            {
+                string? hostScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
+                if (!WorkstationInstanceCoordinator.TryAcquireHostLease(out _hostLease, hostScope))
+                {
+                    RuntimeLog.Info(
+                        "Instance",
+                        $"Host lease unavailable preset={startupPreset}; prompting for a non-host purpose");
+                    var hostConflictSelector = new WorkstationSelectionWindow(
+                        startupPreset,
+                        confirmCurrentPreset: true,
+                        hostUnavailable: true);
+                    if (hostConflictSelector.ShowDialog() != true ||
+                        string.IsNullOrWhiteSpace(hostConflictSelector.SelectedPreset) ||
+                        DeploymentCapabilities.ForPreset(hostConflictSelector.SelectedPreset).IsHost)
+                    {
+                        RuntimeLog.RecordShutdownRequest("HostLeaseFallbackCancelled", startupPreset);
+                        Shutdown(0);
+                        return;
+                    }
+
+                    if (!TrySaveStartupPreset(config, hostConflictSelector.SelectedPreset))
+                        return;
+                    startupPreset = config.DeploymentPreset;
+                    RuntimeLog.Info(
+                        "Instance",
+                        $"Host lease unavailable; continuing with non-host preset={startupPreset}");
+                }
+                else
+                {
+                    RuntimeLog.Info("Instance", $"Host lease acquired preset={startupPreset}");
+                }
+            }
+
             // 只有装在标准布局里的桌面端才按当前位置重写自启动项；开发/测试构建跑起来不许改用户注册表。
             if (!config.AutoStartOnBoot
                 || AutoStartService.ShouldApplyOnStartup(AppContext.BaseDirectory, System.IO.File.Exists))
@@ -342,6 +377,8 @@ namespace ExpressPackingMonitoring
             _launcherUpdateCancellation?.Cancel();
             _launcherUpdateCancellation?.Dispose();
             _launcherUpdateCancellation = null;
+            _hostLease?.Dispose();
+            _hostLease = null;
             _instanceCoordinator?.Dispose();
             _instanceCoordinator = null;
             WorkstationNetwork.TryStartPendingRestart();

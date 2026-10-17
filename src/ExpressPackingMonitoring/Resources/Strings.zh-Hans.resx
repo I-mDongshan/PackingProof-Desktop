@@ -1722,4 +1722,7 @@
   <data name="NAS 副本已循环清理" xml:space="preserve"><value>NAS 副本已循环清理</value></data>
   <data name="检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移" xml:space="preserve"><value>检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移</value></data>
   <data name="检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新" xml:space="preserve"><value>检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新</value></data>
+  <data name="另一个 PackingProof 实例已经把当前电脑作为保存主机。两个版本可以同时运行，但同一时间只能有一个保存主机；请关闭其中一个，或把当前版本改为查看端/录像从机" xml:space="preserve"><value>另一个 PackingProof 实例已经把当前电脑作为保存主机。两个版本可以同时运行，但同一时间只能有一个保存主机；请关闭其中一个，或把当前版本改为查看端/录像从机</value></data>
+  <data name="不能同时作为保存主机" xml:space="preserve"><value>不能同时作为保存主机</value></data>
+  <data name="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机" xml:space="preserve"><value>另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机</value></data>
 </root>

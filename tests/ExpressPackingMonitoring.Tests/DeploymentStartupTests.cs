@@ -143,7 +143,7 @@ public sealed class DeploymentStartupTests
     }
 
     [Fact]
-    public void SingleInstanceCoordinatorIsGlobalAcrossDeploymentPresets()
+    public void SingleInstanceCoordinatorIsGlobalWithinEdition()
     {
         string? previousScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
         Environment.SetEnvironmentVariable("EPM_INSTANCE_SCOPE", $"deployment{Guid.NewGuid():N}");
@@ -162,6 +162,64 @@ public sealed class DeploymentStartupTests
         {
             Environment.SetEnvironmentVariable("EPM_INSTANCE_SCOPE", previousScope);
         }
+    }
+
+    [Fact]
+    public void InstanceScopeSeparatesStoreAndSetupEditions()
+    {
+        string storeScope = WorkstationInstanceCoordinator.GetInstanceScopeName(true, "");
+        string setupScope = WorkstationInstanceCoordinator.GetInstanceScopeName(false, "");
+
+        Assert.NotEqual(storeScope, setupScope);
+        Assert.Contains("Store", storeScope, StringComparison.Ordinal);
+        Assert.Contains("Portable", setupScope, StringComparison.Ordinal);
+        Assert.NotEqual(
+            WorkstationInstanceCoordinator.GetInstanceScopeName(false, "one"),
+            WorkstationInstanceCoordinator.GetInstanceScopeName(false, "two"));
+    }
+
+    [Fact]
+    public void HostLeaseAllowsOnlyOneHost()
+    {
+        string scope = "host-" + Guid.NewGuid().ToString("N");
+
+        Assert.True(WorkstationInstanceCoordinator.TryAcquireHostLease(out IDisposable? first, scope));
+        using (first)
+        {
+            bool secondAcquired = false;
+            var otherThread = new System.Threading.Thread(() =>
+            {
+                secondAcquired = WorkstationInstanceCoordinator.TryAcquireHostLease(
+                    out IDisposable? second,
+                    scope);
+                second?.Dispose();
+            });
+            otherThread.Start();
+            otherThread.Join();
+            Assert.False(secondAcquired);
+        }
+
+        Assert.True(WorkstationInstanceCoordinator.TryAcquireHostLease(out IDisposable? afterRelease, scope));
+        using (afterRelease)
+        {
+            Assert.NotNull(afterRelease);
+        }
+    }
+
+    [Fact]
+    public void HostConflictUsesPurposeSelectionAndDisablesStorageHost()
+    {
+        string appSource = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "App.xaml.cs");
+        string selectionCode = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "Workstations", "WorkstationSelectionWindow.xaml.cs");
+        string selectionXaml = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "Workstations", "WorkstationSelectionWindow.xaml");
+
+        Assert.Contains("hostUnavailable: true", appSource, StringComparison.Ordinal);
+        Assert.Contains("HostUnavailableNotice", selectionXaml, StringComparison.Ordinal);
+        Assert.Contains("StorageYesChoice.IsEnabled = false", selectionCode, StringComparison.Ordinal);
+        Assert.Contains("StorageNoChoice.IsChecked = true", selectionCode, StringComparison.Ordinal);
     }
 
     [Fact]

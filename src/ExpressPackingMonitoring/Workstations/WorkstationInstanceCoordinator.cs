@@ -1,3 +1,4 @@
+using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Logging;
 using System.IO;
 using System.IO.Pipes;
@@ -12,6 +13,7 @@ namespace ExpressPackingMonitoring;
 public sealed class WorkstationInstanceCoordinator : IDisposable
 {
     private const string NamePrefix = "ExpressPackingMonitoring";
+    private const string HostMutexName = @"Local\ExpressPackingMonitoring.Host.Mutex";
     private readonly Mutex _mutex;
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
@@ -67,6 +69,45 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 保存主机跨安装形态共享：Store 版和 Setup 版可以同时运行，
+    /// 但同一时间只能有一个进程作为保存主机。
+    /// </summary>
+    internal static bool TryAcquireHostLease(out IDisposable? lease, string? testScope = null)
+    {
+        lease = null;
+        string mutexName = string.IsNullOrWhiteSpace(testScope)
+            ? HostMutexName
+            : $@"Local\{NamePrefix}.Host.{NormalizeScope(testScope)}.Mutex";
+        var mutex = new Mutex(initiallyOwned: false, mutexName);
+        bool acquired = false;
+        try
+        {
+            try
+            {
+                acquired = mutex.WaitOne(0);
+            }
+            catch (AbandonedMutexException)
+            {
+                acquired = true;
+            }
+
+            if (!acquired)
+            {
+                mutex.Dispose();
+                return false;
+            }
+
+            lease = new HostLease(mutex);
+            return true;
+        }
+        catch
+        {
+            if (!acquired) mutex.Dispose();
+            throw;
         }
     }
 
@@ -146,11 +187,36 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
 
     private static string GetMutexName() => $@"Local\{GetScopedNamePrefix()}.Mutex";
     private static string GetPipeName() => $"{GetScopedNamePrefix()}.Activate";
-    private static string GetScopedNamePrefix()
+    internal static string GetInstanceScopeName(bool packaged, string? explicitScope = null)
     {
-        string scope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE") ?? "";
-        string normalizedScope = new(scope.Where(char.IsLetterOrDigit).Take(48).ToArray());
-        return string.IsNullOrEmpty(normalizedScope) ? NamePrefix : $"{NamePrefix}.{normalizedScope}";
+        string edition = packaged ? "Store" : "Portable";
+        string normalizedScope = NormalizeScope(
+            explicitScope ?? Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE"));
+        return string.IsNullOrEmpty(normalizedScope)
+            ? $"{NamePrefix}.{edition}"
+            : $"{NamePrefix}.{edition}.{normalizedScope}";
+    }
+
+    private static string GetScopedNamePrefix() =>
+        GetInstanceScopeName(PackagingIdentity.IsPackaged);
+
+    private static string NormalizeScope(string? scope) =>
+        new((scope ?? "").Where(char.IsLetterOrDigit).Take(48).ToArray());
+
+    private sealed class HostLease : IDisposable
+    {
+        private readonly Mutex _mutex;
+
+        public HostLease(Mutex mutex)
+        {
+            _mutex = mutex;
+        }
+
+        public void Dispose()
+        {
+            try { _mutex.ReleaseMutex(); } catch { }
+            try { _mutex.Dispose(); } catch { }
+        }
     }
 }
 

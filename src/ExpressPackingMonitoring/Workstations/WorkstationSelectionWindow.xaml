@@ -62,6 +62,10 @@
                                 <Setter TargetName="SelectionDot" Property="Fill" Value="{DynamicResource AccentBlue}"/>
                                 <Setter TargetName="SelectionDot" Property="Stroke" Value="{DynamicResource AccentBlue}"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ChoiceCard" Property="Opacity" Value="0.45"/>
+                                <Setter TargetName="SelectionDot" Property="Opacity" Value="0.45"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -86,6 +90,19 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                <Border x:Name="HostUnavailableNotice"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource ControlBackground}"
+                        BorderBrush="{DynamicResource BorderDefault}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="14,11"
+                        Margin="0,0,0,14">
+                    <TextBlock Text="另一个版本正在作为保存主机。这台电脑只能选择查看端或录像从机，不能再次作为保存主机"
+                               FontSize="13"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </Border>
                 <TextBlock Text="1. 这台电脑要用来录像吗？"
                            FontSize="17"
                            FontWeight="Bold"

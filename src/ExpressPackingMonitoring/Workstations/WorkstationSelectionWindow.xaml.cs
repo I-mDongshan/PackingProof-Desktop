@@ -14,20 +14,32 @@ public partial class WorkstationSelectionWindow : Window
 {
     private readonly string _currentPreset;
     private readonly bool _confirmCurrentPreset;
+    private readonly bool _hostUnavailable;
     private bool? _recordOnThisComputer;
     private bool? _useAsStorageHost;
 
     public string? SelectedPreset { get; private set; }
 
-    public WorkstationSelectionWindow(string? currentPreset = null, bool confirmCurrentPreset = false)
+    public WorkstationSelectionWindow(
+        string? currentPreset = null,
+        bool confirmCurrentPreset = false,
+        bool hostUnavailable = false)
     {
         _currentPreset = DeploymentPresets.IsKnown(currentPreset)
             ? DeploymentPresets.Normalize(currentPreset)
             : "";
         _confirmCurrentPreset = confirmCurrentPreset;
+        _hostUnavailable = hostUnavailable;
 
         InitializeComponent();
         RestoreCurrentAnswers();
+        if (_hostUnavailable)
+        {
+            HostUnavailableNotice.Visibility = Visibility.Visible;
+            StorageYesChoice.IsEnabled = false;
+            StorageNoChoice.IsChecked = true;
+            _useAsStorageHost = false;
+        }
         UpdateResult();
     }
 
@@ -110,6 +122,8 @@ public partial class WorkstationSelectionWindow : Window
         string selected = ResolvePreset(
             _recordOnThisComputer.Value,
             _useAsStorageHost.Value);
+        if (_hostUnavailable && DeploymentCapabilities.ForPreset(selected).IsHost)
+            return;
         if (string.Equals(selected, _currentPreset, StringComparison.OrdinalIgnoreCase))
         {
             if (!_confirmCurrentPreset)
