@@ -8,6 +8,16 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class ExtensionMarketClientTests
 {
     [Fact]
+    public async Task CatalogFixture_IsValidForSignature()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        byte[] catalog = await File.ReadAllBytesAsync(Fixture("catalog.v1.json"), cancellationToken);
+        byte[] signature = await File.ReadAllBytesAsync(Fixture("catalog.v1.sig"), cancellationToken);
+
+        ExtensionMarketClient.VerifyCatalog(catalog, signature);
+    }
+
+    [Fact]
     public async Task CatalogFallsBackFromGiteeToSignedGithubCopy()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
