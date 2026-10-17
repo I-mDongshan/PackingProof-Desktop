@@ -42,7 +42,7 @@ pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireSto
 
 ## 3.1 正式发布时一起出包
 
-正式发布不再单独手工调用本节的打包命令。`tools\Publish-CleanPackage.ps1` 默认会在同一次发布中同时构建 Setup 和 Store MSIX，并让 Store MSIX 复用 Setup 已经生成的 `app\` 负载，避免两份包的主程序二进制漂移。`tools\Publish-Releases.ps1` 会校验 `store_package_v<X.Y.Z>.json` 与 MSIX 的版本、大小、SHA256 和包内标记，缺少 Store 包时正式发布会直接失败。
+正式发布不再单独手工调用本节的打包命令。`tools\Publish-CleanPackage.ps1` 默认会在同一次发布中同时构建 Setup 和 Store MSIX，并让 Store MSIX 复用 Setup 已经生成的 `app\` 负载，避免两份包的主程序二进制漂移。`store_package_v<X.Y.Z>.json` 还会记录 Setup `app\` 的逐文件指纹；`tools\Publish-Releases.ps1` 会校验清单与 MSIX 的版本、大小、SHA256、包内标记，并解开 MSIX 与本次 Setup 负载逐个文件比对，缺少 Store 包或复用旧包时正式发布会直接失败。
 
 只有本地调试才允许给 `Publish-CleanPackage.ps1` 传 `-SkipStorePackage`；正式发布必须同时完成 Git Release 和 Partner Center 提交，Store 包不上传 GitHub/Gitee Release。
 
@@ -79,8 +79,9 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 )
 ```
 
-已验证的行为：按包身份启动、数据写入 `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalState`、更新检查跳过、
-设置页提示由 Microsoft Store 管理更新、启动项通过 MSIX `startupTask` 注册。
+本机侧载时应验证：按包身份启动、数据写入 `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalState`、更新检查跳过、
+设置页提示由 Microsoft Store 管理更新、启动项通过 MSIX `startupTask` 注册。v0.0.86 候选尚未完成真实 MSIX
+安装验证，提交前必须实际安装并检查这些行为。
 
 ## 5. 商店版与 Setup 版的差异
 

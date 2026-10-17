@@ -21,7 +21,8 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("\"apply_app_patch.ps1\"", script, StringComparison.Ordinal);
         Assert.Contains("\"双击更新主程序.cmd\"", script, StringComparison.Ordinal);
         Assert.Contains("[string]$AppPayloadDir", script, StringComparison.Ordinal);
-        Assert.Contains("Copy-Item -Path (Join-Path $resolvedAppPayloadDir \"*\")", script, StringComparison.Ordinal);
+        Assert.Contains("Get-ChildItem -LiteralPath $resolvedAppPayloadDir -Force", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-Item -Destination $payloadDir -Recurse -Force", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -85,6 +86,20 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("Publish-StorePackage.ps1", publishScript, StringComparison.Ordinal);
         Assert.Contains("SkipStorePackage", publishScript, StringComparison.Ordinal);
         Assert.Contains("store_package_$releaseTag.json", publishScript, StringComparison.Ordinal);
+        Assert.Contains("app_payload_sha256", publishScript, StringComparison.Ordinal);
+        Assert.Contains("app_payload_file_count", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Get-AppPayloadFingerprint", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Assert-AppPayloadMatchesArchive", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("app_payload_sha256", releaseScript, StringComparison.Ordinal);
+        int staleManifestRemoval = publishScript.IndexOf(
+            "Remove-Item -LiteralPath $storeManifestPath -Force",
+            StringComparison.Ordinal);
+        int skipStoreBranch = publishScript.IndexOf(
+            "if ($SkipStorePackage)",
+            StringComparison.Ordinal);
+        Assert.True(
+            staleManifestRemoval >= 0 && skipStoreBranch > staleManifestRemoval,
+            "跳过 Store 打包前必须先删除同版本旧清单");
         Assert.Contains("正式发布必须包含 Microsoft Store 包", releaseScript, StringComparison.Ordinal);
         Assert.Contains("Microsoft Store MSIX (submit via Partner Center", publishScript, StringComparison.Ordinal);
         Assert.Contains("store-package.local.json", prereqs, StringComparison.Ordinal);

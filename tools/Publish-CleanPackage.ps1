@@ -1584,6 +1584,12 @@ $storePackageHash = ""
 $storePackageSize = 0
 $storePackageVersion = ""
 $storePackageIdentity = ""
+$storeManifestPath = Join-Path $packageRoot "store_package_$releaseTag.json"
+# 同版本重打时，旧清单必须失效；否则跳过 Store 打包后会留下“旧清单 + 旧 MSIX”
+# 被发布门禁误认为本次产物。先删旧清单，成功构建后再写新的。
+if (Test-Path -LiteralPath $storeManifestPath) {
+    Remove-Item -LiteralPath $storeManifestPath -Force
+}
 if ($SkipStorePackage) {
     Write-Warning "已跳过 Microsoft Store MSIX；该选项只用于本地验证，正式发布必须同时产出商店包。"
 }
@@ -1652,6 +1658,8 @@ else {
         $storeArchive.Dispose()
     }
 
+    $appPayloadManifestFiles = @(Get-AppPayloadManifestFiles -AppDir $appPublishDir)
+    $appPayloadFingerprint = Get-AppPayloadFingerprint -AppDir $appPublishDir
     $storeManifest = [ordered]@{
         app_release_version = $normalizedVersion
         package_version = $storePackageVersion
@@ -1660,9 +1668,10 @@ else {
         relative_path = $storePackagePath.Substring($repoRoot.TrimEnd('\').Length + 1)
         sha256 = $storePackageHash
         size = $storePackageSize
+        app_payload_sha256 = $appPayloadFingerprint
+        app_payload_file_count = $appPayloadManifestFiles.Count
         signed = $true
     }
-    $storeManifestPath = Join-Path $packageRoot "store_package_$releaseTag.json"
     $storeManifest |
         ConvertTo-Json -Depth 5 |
         Set-Content -LiteralPath $storeManifestPath -Encoding UTF8

@@ -166,11 +166,21 @@ if ($useExistingPayload) {
         -not (Test-Path -LiteralPath (Join-Path $resolvedAppPayloadDir "coreclr.dll") -PathType Leaf)) {
         throw "已构建的应用负载不是自包含发布：$resolvedAppPayloadDir"
     }
+    $productPrefix = $productDir.TrimEnd('\') + '\'
+    $payloadPrefix = $resolvedAppPayloadDir.TrimEnd('\') + '\'
+    if ([string]::Equals($resolvedAppPayloadDir, $productDir, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $resolvedAppPayloadDir.StartsWith($productPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "AppPayloadDir 不能位于 Store 产物目录内，否则重建产物时会先删除源负载：$resolvedAppPayloadDir"
+    }
+    if ($productDir.StartsWith($payloadPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Store 产物目录不能位于 AppPayloadDir 内，否则会把产物递归复制进源负载：$productDir"
+    }
     if (Test-Path -LiteralPath $productDir) {
         Remove-Item -LiteralPath $productDir -Recurse -Force
     }
     New-Item -ItemType Directory -Path $payloadDir -Force | Out-Null
-    Copy-Item -Path (Join-Path $resolvedAppPayloadDir "*") -Destination $payloadDir -Recurse -Force
+    Get-ChildItem -LiteralPath $resolvedAppPayloadDir -Force |
+        Copy-Item -Destination $payloadDir -Recurse -Force
 }
 elseif ($SkipBuild) {
     if (-not (Test-Path -LiteralPath $payloadDir -PathType Container)) {
