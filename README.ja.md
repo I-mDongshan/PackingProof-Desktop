@@ -98,7 +98,7 @@
 
 <br>
 
-![PackingProof の画面](Image/软件截图.jpg)
+![PackingProof の画面](docs/images/软件截图.jpg)
 
 **目次へ**：[機能](#機能) · [使い方](#使い方) · [その他](#その他) · [拡張マーケット](#拡張マーケット) · [ライセンス](#ライセンス)
 [注文メモの読み上げと返金アラート](#注文メモの読み上げと返金アラート) · [複数ワークステーションでの使い方](#複数ワークステーションでの使い方) · [LAN 再生](#lan-再生) · [ソフトの更新](#ソフトの更新)
@@ -207,7 +207,7 @@ PackingProof は公式の[拡張マーケット](https://gitee.com/PackingProof/
 
 初回起動後は、ウィザードに従って次の手順を進めます。
 
-![用途の選択](Image/询问用途.jpg)
+![用途の選択](docs/images/询问用途.jpg)
 
 1. このパソコンの用途を選択します。
 2. カメラとマイクを選択します。
@@ -220,7 +220,7 @@ PackingProof は公式の[拡張マーケット](https://gitee.com/PackingProof/
 
 録画一覧を開き、追跡番号を入力すると該当の録画を検索できます。
 
-![録画の検索と再生](Image/Replay.jpg)
+![録画の検索と再生](docs/images/Replay.jpg)
 
 LAN のページから、スマートフォンや他のパソコンで再生することもできます。
 
@@ -311,13 +311,13 @@ Web ページでは保持する期間を選び、切り抜いてからダウン�
 
 Windows のファイアウォールの確認が表示された場合は、ソフトの LAN アクセスを許可してください。
 
-![LAN での Web 再生](Image/WebService.jpg)
+![LAN での Web 再生](docs/images/WebService.jpg)
 
 ### 梱包データ統計
 
 日別・週別に梱包件数、使用容量、累計作業時間、1 件あたりの平均時間を集計します。
 
-![梱包データ統計](Image/Statistics.jpg)
+![梱包データ統計](docs/images/Statistics.jpg)
 
 ## その他
 
@@ -503,7 +503,7 @@ PackingProof は [AGPL-3.0 License](LICENSE) で公開しています。
 
 <div align="center">
 
-<img src="Image/场景图.jpg" alt="PackingProof の梱包風景">
+<img src="docs/images/场景图.jpg" alt="PackingProof の梱包風景">
 
 <br><br>
 

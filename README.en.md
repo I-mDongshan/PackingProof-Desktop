@@ -97,7 +97,7 @@ The mobile app supports Android (signed ARM64 APK) and iOS (TestFlight beta). It
 
 <br>
 
-![PackingProof application](Image/软件截图.jpg)
+![PackingProof application](docs/images/软件截图.jpg)
 
 **Jump to**：[Features](#features) · [How to Use](#how-to-use) · [More](#more) · [Extension Market](#extension-market) · [License](#license)
 [Order Notes and Refund Interception](#order-notes-and-refund-interception) · [Workstation Roles](#workstation-roles) · [LAN Playback](#lan-playback) · [Updating](#updating)
@@ -187,7 +187,7 @@ The installer does not require administrator rights. It installs for the current
 
 After the first launch, the wizard walks you through these steps:
 
-![Purpose selection](Image/询问用途.jpg)
+![Purpose selection](docs/images/询问用途.jpg)
 
 1. Choose the purpose of this computer.
 2. Select the camera and microphone.
@@ -200,7 +200,7 @@ After that, place the shipping-label barcode inside the guide in the center of t
 
 Open the recording list and enter a tracking number.
 
-![Recording search and playback](Image/Replay.jpg)
+![Recording search and playback](docs/images/Replay.jpg)
 
 Recordings can also be played from a phone or another computer through the LAN Web interface.
 
@@ -287,13 +287,13 @@ The Web interface can also keep a selected time range and download the resulting
 
 Allow LAN access if Windows Firewall prompts you.
 
-![LAN Web playback](Image/WebService.jpg)
+![LAN Web playback](docs/images/WebService.jpg)
 
 ### Packing Statistics
 
 Summarize packing counts, storage usage, accumulated working time, and average time per parcel by day or by week.
 
-![Packing statistics](Image/Statistics.jpg)
+![Packing statistics](docs/images/Statistics.jpg)
 
 ## More
 
@@ -443,7 +443,7 @@ The `PackingProof` name and official application icon are project brand assets. 
 
 <div align="center">
 
-<img src="Image/场景图.jpg" alt="PackingProof packing station">
+<img src="docs/images/场景图.jpg" alt="PackingProof packing station">
 
 <br><br>
 

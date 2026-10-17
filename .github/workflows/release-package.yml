@@ -99,7 +99,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: package/tts_cache
-          key: tts-${{ hashFiles('Tools/ExpressPackingMonitoring.TtsCacheBuilder/**', 'ExpressPackingMonitoring/Audio/**', 'ExpressPackingMonitoring/Localization/**', 'ExpressPackingMonitoring/Resources/**', 'ExpressPackingMonitoring/Config/**') }}
+          key: tts-${{ hashFiles('Tools/ExpressPackingMonitoring.TtsCacheBuilder/**', 'src/ExpressPackingMonitoring/Audio/**', 'src/ExpressPackingMonitoring/Localization/**', 'src/ExpressPackingMonitoring/Resources/**', 'src/ExpressPackingMonitoring/Config/**') }}
           restore-keys: |
             tts-
 

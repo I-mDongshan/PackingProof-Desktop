@@ -10,20 +10,20 @@
 ## 项目结构与常用命令
 
 - `ExpressPackingMonitoring.sln`：主解决方案
-- `ExpressPackingMonitoring/`：WPF 主程序、服务、SQLite、录像逻辑和 `Web/index.html`
-- `ExpressPackingMonitoring.Launcher/`：清爽发布包的根启动器
-- `ExpressPackingMonitoring.Tests/`：自动化回归测试
-- `Tools/Publish-CleanPackage.ps1`：Setup、完整包、AppPatch、更新清单和可选 LauncherPatch
+- `src/ExpressPackingMonitoring/`：WPF 主程序、服务、SQLite、录像逻辑和 `Web/index.html`
+- `src/ExpressPackingMonitoring.Launcher/`：清爽发布包的根启动器
+- `tests/ExpressPackingMonitoring.Tests/`：自动化回归测试
+- `tools/Publish-CleanPackage.ps1`：Setup、完整包、AppPatch、更新清单和可选 LauncherPatch
 - `Scripts/PackingProof-Order-Integration-KDZS.user.js`：官方快递助手联动脚本
 - `Test/HTML/`：脚本解析和调试用网页样本，不是自动测试套件
 
 ```powershell
 dotnet restore ExpressPackingMonitoring.sln
 dotnet build ExpressPackingMonitoring.sln -c Debug
-dotnet test ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj -c Debug
-dotnet run --project ExpressPackingMonitoring
-pwsh -NoProfile -File Tools\Publish-CleanPackage.ps1
-pwsh -NoProfile -File Tools\Test-Release-Automated.ps1
+dotnet test tests\ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj -c Debug
+dotnet run --project src\ExpressPackingMonitoring
+pwsh -NoProfile -File tools\Publish-CleanPackage.ps1
+pwsh -NoProfile -File tools\Test-Release-Automated.ps1
 ```
 
 ## 开发决策顺序
@@ -58,9 +58,9 @@ pwsh -NoProfile -File Tools\Test-Release-Automated.ps1
 
 - 日常构建和测试优先使用本机或局域网编译机，不依赖 GitHub CI。机器地址、账号和连接方式只保存在本机笔记，禁止提交或推送。
 - Gitee 发布认证固定从项目根目录 `.env` 的 `GITEE_TOKEN` 读取；若缺失或失效，先读取并同步本机 `C:\Users\Administrator\.gitee\apikey.txt`，不得要求用户手工上传发布资产。`.env` 已被 Git 忽略，禁止提交 token。
-- Mac 负责 iOS/Xcode 与 macOS 保存主机（`Tools/Publish-MacHost.sh`、`Tools/Publish-MacRelease.sh`）；Windows 负责桌面端构建与测试。双机同步优先 rebase，禁止为同步制造本地 merge 提交。
+- Mac 负责 iOS/Xcode 与 macOS 保存主机（`tools/Publish-MacHost.sh`、`tools/Publish-MacRelease.sh`）；Windows 负责桌面端构建与测试。双机同步优先 rebase，禁止为同步制造本地 merge 提交。
 - 不提交配置、数据库、日志、缓存、录像、`.env`、证书、签名材料、密钥或其他本机状态。运行时数据属于 `%LOCALAPPDATA%\ExpressPackingMonitoring\`。
-- 本机工具链固定为 .NET 10 SDK（`global.json` 钉在 10.0.400，`Tools\Build-SharedRuntimeLayout.ps1` 等脚本按它取运行时）。.NET 10 的 `minimumMSBuildVersion` 是 18.0.0，所以 IDE 必须是 Visual Studio 2026（18.x）；用 VS 2022 打开解决方案会报"未能正确加载解决方案中的一个或多个项目"，命令行 `dotnet` 构建与发布脚本不受影响，别去改 `.sln` 或回退 TFM 掩盖它。
+- 本机工具链固定为 .NET 10 SDK（`global.json` 钉在 10.0.400，`tools\Build-SharedRuntimeLayout.ps1` 等脚本按它取运行时）。.NET 10 的 `minimumMSBuildVersion` 是 18.0.0，所以 IDE 必须是 Visual Studio 2026（18.x）；用 VS 2022 打开解决方案会报"未能正确加载解决方案中的一个或多个项目"，命令行 `dotnet` 构建与发布脚本不受影响，别去改 `.sln` 或回退 TFM 掩盖它。
 
 ## 代码与界面
 
@@ -87,9 +87,9 @@ pwsh -NoProfile -File Tools\Test-Release-Automated.ps1
 - 同一功能连续完善时，只有此前提交由当前代理创建、尚未推送或被他人依赖，且中间没有其他提交，才可 amend；否则创建新提交。
 - 分支整合优先 rebase，保持直线历史。已共享分支不得随意 rebase；merge 只用于共享功能分支、发布/长期分支或平台强制场景。
 - 改动一律通过远程 PR 合并到主干，禁止直接向 `main` 推送提交。
-- 提交 PR 必须人工确认：先把分支、目标平台、PR 标题与改动范围报给用户，得到明确同意后才能推送分支、创建 PR 与合并（`Tools\Submit-ChangePr.ps1` 不加 `-Confirmed` 只打印计划并拒绝执行）。
+- 提交 PR 必须人工确认：先把分支、目标平台、PR 标题与改动范围报给用户，得到明确同意后才能推送分支、创建 PR 与合并（`tools\Submit-ChangePr.ps1` 不加 `-Confirmed` 只打印计划并拒绝执行）。
 - PR 提到哪个平台按问题来源定：我们自己发现的 **bug**，先在 GitHub 开 issue，再提 PR 并在 PR 说明里关联那个 issue；性能、功能、工具、文档这类**不是 bug** 的改动直接提 PR，不必为了留痕再补一个 issue。别人在某平台提的 issue，就把 PR 提到那个平台（Gitee 的 issue 交 Gitee PR，GitHub 的交 GitHub PR）。PR 默认 Gitee 和 GitHub 两边都提。
-- 合并后把主干对齐到同一个提交。PR 目标可通过仓库根目录 `.env` 的 `PR_TARGET_HOST`（`gitee` / `github` / `both`，默认 `both`）配置，命令行 `-Target` 优先；统一用 `Tools\Submit-ChangePr.ps1` 提交。
+- 合并后把主干对齐到同一个提交。PR 目标可通过仓库根目录 `.env` 的 `PR_TARGET_HOST`（`gitee` / `github` / `both`，默认 `both`）配置，命令行 `-Target` 优先；统一用 `tools\Submit-ChangePr.ps1` 提交。
 - PR 提到哪个平台按问题来源决定：自己发现的 bug 默认提 Gitee；别人在某个平台提的 issue，PR 就提到那个平台（在 Gitee 提的 issue 提 Gitee PR，在 GitHub 提的 issue 提 GitHub PR）。
 - PR 合并使用快进（fast-forward），提交原样保留，不改写 SHA、不做 merge 提交、不 squash；发布标签必须打在已合并到主干的提交上。
 - 提交格式为 `<type>: <简洁主题>`，通常使用中文；正文需要时用一两句说明修改内容与原因，保持简洁、不罗列实现细节。提交前检查 staged diff。

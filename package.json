@@ -2,7 +2,7 @@
   "name": "express-packing-monitoring-automation",
   "private": true,
   "scripts": {
-    "test:e2e": "node --test Tests/Automation/*.test.mjs"
+    "test:e2e": "node --test tests/Automation/*.test.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.61.1"

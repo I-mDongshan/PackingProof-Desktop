@@ -1,0 +1,416 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <!--
+      开发构建与发布都不再自包含：运行时统一放在包根的 runtime\，由启动器通过 DOTNET_ROOT 复用，
+      增量包也不会再因为运行时漂移而膨胀（这正是当初这里钉死 RuntimeFrameworkVersion 的原因，
+      现在由共享运行时布局根治）。自包含只用于跨机用的分发形态，由发布脚本显式传参。
+    -->
+    <SelfContained>false</SelfContained>
+    <UseRidGraph>true</UseRidGraph>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Media Foundation 采集路径要按 BT.709 逐像素解 YUY2/NV12（MfFrameConverter），
+         这条路径每秒 60 帧 1080p，托管数组的边界检查开销占比过高。 -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);NU1701;MVVMTK0045;MSB3277</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin_publish_tmp\**;obj_publish_tmp\**;publish-test\**;publish-size-*\**;bin\Release\publish\**</DefaultItemExcludes>
+    
+    <!-- 主应用保持目录发布，保留压缩包体积优势；清爽根目录由发布脚本和启动器实现。 -->
+    <PublishSingleFile>false</PublishSingleFile>
+    <!-- 原生库保持可独立加载，优先保证 OpenCV/SQLite/LibVLC 等运行稳定性。 -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- 开发构建使用与发布一致的 FFmpeg 基线（tools/ffmpeg-baseline.json），避免开发/发布能力漂移。 -->
+    <FFmpegBaselineVersion>4.4.1</FFmpegBaselineVersion>
+    <FFmpegBaselineExecutable>..\..\package\dependency-cache\ffmpeg\$(FFmpegBaselineVersion)\ffmpeg.exe</FFmpegBaselineExecutable>
+    <SatelliteResourceLanguages>en-US;zh-Hans;ja-JP</SatelliteResourceLanguages>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>ExpressPackingMonitoring.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>ExpressPackingMonitoring.EncodingIntegrationTests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- 修复自包含发布时 ComboBox 因缺少 Accessibility.dll 报错的问题 -->
+  <ItemGroup>
+    <Content Include="$(WinDir)\Microsoft.NET\Framework64\v4.0.30319\Accessibility.dll" Link="Accessibility.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+    <ProjectReference Include="..\ExpressPackingMonitoring.WinTts\ExpressPackingMonitoring.WinTts.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\ExpressPackingMonitoring.UpdateCore\ExpressPackingMonitoring.UpdateCore.csproj" />
+    <ProjectReference Include="..\ExpressPackingMonitoring.Core\ExpressPackingMonitoring.Core.csproj" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+    <PackageReference Include="AForge.Video" Version="2.2.5" />
+    <PackageReference Include="EdgeTTS.Framework" Version="1.0.5" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.34" />
+    <PackageReference Include="AForge.Video.DirectShow" Version="2.2.5" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageReference Include="MiniExcel" Version="1.45.0" />
+    <PackageReference Include="OpenCvSharp4.Windows" Version="4.13.0.20260226" />
+    <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.13.0.20260226" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Web\index.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Web\kuaidizs-install-guide.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Web\logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- 第三方组件与许可证全文随包分发（安装目录 app\licenses\），登记见 docs\THIRD_PARTY_NOTICES.md。
+       正文原件保存在 docs\third-party-licenses\，打包时原样复制，不做任何改写。 -->
+  <ItemGroup>
+    <Content Include="..\..\docs\THIRD_PARTY_NOTICES.md">
+      <TargetPath>licenses\THIRD_PARTY_NOTICES.md</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\..\LICENSE">
+      <TargetPath>licenses\AGPL-3.0.txt</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\..\docs\third-party-licenses\*.txt">
+      <TargetPath>licenses\%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="Audio\AudioProbe.cs" />
+    <Compile Include="Audio\DefaultSpeechCatalog.cs" />
+    <Compile Include="Audio\SpeechService.cs" />
+    <Compile Include="Audio\WindowsTtsBridge.cs" />
+    <Compile Include="Helpers\BarcodeHelper.cs" />
+    <Compile Include="Helpers\BarcodePrintLayout.cs" />
+    <Compile Include="Helpers\BarcodePrintService.cs" />
+    <Compile Include="Helpers\BarcodeCommandCatalog.cs" />
+    <Compile Include="Helpers\EncodingHelper.cs" />
+    <Compile Include="Helpers\WindowsShellFileLocator.cs" />
+    <Compile Include="Input\GlobalKeyboardHook.cs" />
+    <Compile Include="Input\GlobalKeyboardRuntimeController.cs" />
+    <Compile Include="Input\ScannerAutoSubmitPolicy.cs" />
+    <Compile Include="Localization\WpfLocalization.cs" />
+    <Compile Include="Services\WinRtPlacementService.cs" />
+    <Compile Include="Services\WpfQrCode.cs" />
+    <Compile Include="Services\FeedbackPackageService.cs" />
+    <Compile Include="Services\UninstallCleanupService.cs" />
+    <Compile Include="Services\AutoStartService.cs" />
+    <Compile Include="Services\Extensions\ExtensionStartupEntryRewriter.cs" />
+    <Compile Include="Services\CameraBarcodeRecognitionService.cs" />
+    <Compile Include="Services\CameraBarcodeGuideLayout.cs" />
+    <Compile Include="Services\CameraFormatCatalog.cs" />
+    <Compile Include="Services\CameraDeviceChoice.cs" />
+    <Compile Include="Services\CameraDeviceSelectionPolicy.cs" />
+    <Compile Include="Services\ZoomCropPolicy.cs" />
+    <Compile Include="Services\CameraFrameOrientation.cs" />
+    <Compile Include="Services\ClipboardHelper.cs" />
+    <Compile Include="Services\PastedTextNormalizer.cs" />
+    <Compile Include="UI\PlaybackTooltipPresenter.cs" />
+    <Compile Include="Services\NoCameraWorkstationHost.cs" />
+    <Compile Include="Services\MediaFoundation\MfInterop.cs" />
+    <Compile Include="Services\MediaFoundation\MfPlatform.cs" />
+    <Compile Include="Services\MediaFoundation\MfCaptureSourceFactory.cs" />
+    <Compile Include="Services\MediaFoundation\MfFormatSelector.cs" />
+    <Compile Include="Services\MediaFoundation\MfFrameConverter.cs" />
+    <Compile Include="Services\MediaFoundation\IMFSourceReaderCallback.cs" />
+    <Compile Include="Services\MediaFoundation\CameraColorSpacePolicy.cs" />
+    <Compile Include="Services\MediaFoundation\MfCameraSource.cs" />
+    <Compile Include="Services\MediaFoundation\MfCameraSource.Gpu.cs" />
+    <Compile Include="Services\MediaFoundation\MfCameraSource.Diagnostics.cs" />
+    <Compile Include="Services\MediaFoundation\MfCaptureProbe.cs" />
+    <Compile Include="Services\MediaFoundation\MfCaptureProbeCache.cs" />
+    <Compile Include="Services\MediaFoundation\CameraBackendPolicy.cs" />
+    <Compile Include="Services\MediaFoundation\MfDeviceMatcher.cs" />
+    <Compile Include="Services\Gpu\GpuConversionShaders.cs" />
+    <Compile Include="Services\Gpu\GpuPreviewResizeShader.cs" />
+    <Compile Include="Services\Gpu\GpuPreviewResizer.cs" />
+    <Compile Include="ViewModels\RecordingVideoFrame.cs" />
+    <Compile Include="Services\Gpu\GpuFrameConverter.cs" />
+    <Compile Include="Services\NetworkCameraSource.cs" />
+    <Compile Include="Services\NetworkCameraSelfCheck.cs" />
+    <Compile Include="Services\RecordingFileAccessGate.cs" />
+    <Compile Include="Services\RecordingProfileDetector.cs" />
+    <Compile Include="Services\TrayIconService.cs" />
+    <Compile Include="Services\TaskbarIdentityService.cs" />
+    <Compile Include="Themes\ThemeManager.cs" />
+    <Compile Include="ViewModels\MainViewModel.Cleanup.cs" />
+    <Compile Include="ViewModels\CameraLifecycleSynchronization.cs" />
+    <Compile Include="ViewModels\MainViewModel.CameraNetworkDiagnosis.cs" />
+    <Compile Include="ViewModels\RecordingBufferPolicy.cs" />
+    <Compile Include="ViewModels\PreRecordFrameRing.cs" />
+    <Compile Include="ViewModels\CameraFrameWaitPolicy.cs" />
+    <Compile Include="ViewModels\PreviewFrameRatePolicy.cs" />
+    <Compile Include="ViewModels\CameraFrameConverter.cs" />
+    <Compile Include="ViewModels\CameraColorMatrixPolicy.cs" />
+    <Compile Include="ViewModels\RecordingAudioStartPolicy.cs" />
+    <Compile Include="ViewModels\RecordingStartOrderPolicy.cs" />
+    <Compile Include="ViewModels\RecordingTimelinePolicy.cs" />
+    <Compile Include="ViewModels\PreviewDownscalePolicy.cs" />
+    <Compile Include="ViewModels\CameraOverlayLayout.cs" />
+    <Compile Include="ViewModels\CameraOverlayComposer.cs" />
+    <Compile Include="ViewModels\WatermarkOverlayRenderer.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.ArchiveBackup.cs" />
+    <Compile Include="ViewModels\MainViewModel.Camera.cs" />
+    <Compile Include="ViewModels\MainViewModel.CameraFrames.cs" />
+    <Compile Include="ViewModels\MainViewModel.CameraRotation.cs" />
+    <Compile Include="ViewModels\MainViewModel.CameraGuide.cs" />
+    <Compile Include="ViewModels\MainViewModel.Zoom.cs" />
+    <Compile Include="ViewModels\MainViewModel.FloatingPreview.cs" />
+    <Compile Include="ViewModels\MainViewModel.OverlayChannels.cs" />
+    <Compile Include="ViewModels\MainViewModel.Scanner.cs" />
+    <Compile Include="ViewModels\MainViewModel.Notifications.cs" />
+    <Compile Include="ViewModels\MainViewModel.Settings.cs" />
+    <Compile Include="ViewModels\MainViewModel.Media.cs" />
+    <Compile Include="ViewModels\MainViewModel.Integration.cs" />
+    <Compile Include="ViewModels\MainViewModel.Encoder.cs" />
+    <Compile Include="ViewModels\MainViewModel.Recording.cs" />
+    <Compile Include="ViewModels\MainViewModel.Ffmpeg.cs" />
+    <Compile Include="ViewModels\MainViewModel.Audio.cs" />
+    <Compile Include="ViewModels\MainViewModel.Conversion.cs" />
+    <Compile Include="ViewModels\MainViewModel.Transfer.cs" />
+    <Compile Include="UI\AppDialog.cs" />
+    <Compile Include="UI\EdgeVoiceCatalog.cs" />
+    <Compile Include="UI\BackupDeviceEnrollmentApprovalPrompt.cs" />
+    <Compile Include="UI\BackupDeviceEnrollmentApprovalWindow.xaml.cs" />
+    <Compile Include="UI\FloatingPreviewController.cs" />
+    <Compile Include="UI\FloatingPreviewStatus.cs" />
+    <Compile Include="UI\FloatingPreviewWindow.xaml.cs" />
+    <Compile Include="Audio\AudioEndpointCatalog.cs" />
+    <Compile Include="UI\AudioDeviceSelectionPolicy.cs" />
+    <Compile Include="UI\FloatingPreviewPlacement.cs" />
+    <Compile Include="UI\PlaybackTooltipBuilder.cs" />
+    <Compile Include="UI\RecordingFilterState.cs" />
+    <Compile Include="UI\RoundedClip.cs" />
+    <Compile Include="UI\SectionCardSpacing.cs" />
+    <Compile Include="UI\SettingsWindow.Search.cs" />
+    <Compile Include="UI\SettingsWindow.Speech.cs" />
+    <Compile Include="UI\SettingsSearch\SettingsSearchController.cs" />
+    <Compile Include="UI\SettingsSearch\SettingsSearchIndex.cs" />
+    <Compile Include="UI\SettingsSearch\SettingsSearchMatcher.cs" />
+    <Compile Include="UI\ExtensionEnrollmentApprovalPrompt.cs" />
+    <Compile Include="UI\ExtensionEnrollmentApprovalWindow.xaml.cs" />
+    <Compile Include="UI\ExtensionMarketWindow.xaml.cs" />
+    <Compile Include="UI\ConfirmDialog.xaml.cs" />
+    <Compile Include="UI\CloseBehaviorDialog.xaml.cs" />
+    <Compile Include="UI\TrayKeyboardListeningDialog.xaml.cs" />
+    <Compile Include="UI\CameraBarcodeUpgradeDialog.xaml.cs" />
+    <Compile Include="UI\DriveSelectionDialog.cs" />
+    <Compile Include="UI\FirstUseSetupWizardWindow.xaml.cs" />
+    <Compile Include="UI\MainWindow.xaml.cs" />
+    <Compile Include="UI\MainWindow.OverlayBoxes.cs" />
+    <Compile Include="UI\MarkdownFlowDocumentRenderer.cs" />
+    <Compile Include="UI\MobileAppUpdatePrompt.cs" />
+    <Compile Include="UI\MobileAppUpdatePromptWindow.xaml.cs" />
+    <Compile Include="UI\MobileConnectionWindow.xaml.cs" />
+    <Compile Include="UI\ModeTransitionButton.xaml.cs" />
+    <Compile Include="UI\ManualCleanupDialog.xaml.cs" />
+    <Compile Include="UI\NotificationVisuals.cs" />
+    <Compile Include="UI\PlaybackWindow.xaml.cs" />
+    <Compile Include="UI\PlaybackWindow.Playback.cs" />
+    <Compile Include="UI\PlaybackWindowFitPolicy.cs" />
+    <Compile Include="UI\PlaybackControlBarPolicy.cs" />
+    <Compile Include="UI\OrderNumberExportProgressDialog.xaml.cs" />
+    <Compile Include="UI\VideoImportDialog.xaml.cs" />
+    <Compile Include="UI\SettingsWindow.xaml.cs" />
+    <Compile Include="UI\SettingsWindow.CameraChannels.cs" />
+    <Compile Include="UI\SettingsWindow.ZoomGuide.cs" />
+    <Compile Include="UI\SettingsContext.cs" />
+    <Compile Include="UI\StorageCapacityEditorPolicy.cs" />
+    <Compile Include="UI\StorageReserveWarningPolicy.cs" />
+    <Compile Include="UI\StatisticsWindow.xaml.cs" />
+    <Compile Include="UI\StorageReserveDialog.xaml.cs" />
+    <Compile Include="UI\StoragePathSelectionDialog.xaml.cs" />
+    <Compile Include="UI\Controls\InputClearButton.xaml.cs" />
+    <Compile Include="UI\Controls\InputPasteButton.xaml.cs" />
+    <Compile Include="UI\Controls\StatusCard.xaml.cs" />
+    <Compile Include="UI\Controls\SmoothProgressBar.cs" />
+    <Compile Include="UI\UpdateAvailableDialog.xaml.cs" />
+    <Compile Include="Workstations\WorkstationInstanceCoordinator.cs" />
+    <Compile Include="Workstations\ManualHostConnectionWindow.xaml.cs" />
+    <Compile Include="Workstations\PrintWorkstationWindow.xaml.cs" />
+    <Compile Include="Workstations\ViewerClientWindow.xaml.cs" />
+    <Compile Include="Workstations\ApplicationRestart.cs" />
+    <Compile Include="Workstations\WorkstationSelectionWindow.xaml.cs" />
+  </ItemGroup>
+
+  <!-- 排除不需要的 OpenCV 内置 ffmpeg（已使用独立 ffmpeg.exe 管道录制） -->
+  <ItemGroup>
+    <Content Remove="runtimes\**\opencv_videoio_ffmpeg*" />
+    <None Remove="runtimes\**\opencv_videoio_ffmpeg*" />
+  </ItemGroup>
+  <Target Name="RemoveUnusedDlls" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <!-- OpenCV 内置 ffmpeg -->
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="$([System.String]::Copy('%(Filename)').StartsWith('opencv_videoio_ffmpeg'))" />
+      <!-- Kokoro native runtime is optional and should not be bundled by default. -->
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)' == 'onnxruntime'" />
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)' == 'sherpa-onnx-c-api'" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Publish 时同样排除 -->
+  <Target Name="RemoveUnusedFromPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(Filename)').StartsWith('opencv_videoio_ffmpeg'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'onnxruntime'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'sherpa-onnx-c-api'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb' Or '%(Extension)' == '.xml' Or '%(Extension)' == '.lib'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').StartsWith('libvlc\win-x86\'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').Contains('\include\'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- ffmpeg.exe 作为独立进程保留，但发布到 tools 子目录，避免根目录混杂依赖文件。
+       开发构建优先复制钉死的 FFmpeg 基线缓存；缓存不存在时回退到项目根目录的 ffmpeg.exe。 -->
+  <ItemGroup>
+    <Content Include="$(FFmpegBaselineExecutable)" Condition="Exists('$(FFmpegBaselineExecutable)')">
+      <TargetPath>tools\ffmpeg.exe</TargetPath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="ffmpeg.exe" Condition="!Exists('$(FFmpegBaselineExecutable)') And Exists('ffmpeg.exe')">
+      <TargetPath>tools\ffmpeg.exe</TargetPath>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="IncludeLibVlcFilesForPublish" AfterTargets="ComputeFilesToPublish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PropertyGroup>
+      <VlcPluginRoot>$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\</VlcPluginRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').StartsWith('libvlc\'))" />
+
+      <LibVlcX64Dll Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\libvlc.dll" />
+      <LibVlcX64Dll Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\libvlccore.dll" />
+      <!-- LibVLC 自带 250 多个插件，占包内约 32 MB，而回放只用到本地 mp4/mkv：
+           H.264/HEVC/AV1 解码、AAC/MP3 等常见音轨、Direct3D 输出和 Windows 音频输出。
+           这里改成显式白名单，去掉网络流、字幕渲染、VP8/VP9、VR、可视化等无关插件。
+           新增回放格式时必须同步补充对应插件并跑多格式回放回归。 -->
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)codec\libavcodec_plugin.dll;$(VlcPluginRoot)codec\libdav1d_plugin.dll;$(VlcPluginRoot)codec\libd3d11va_plugin.dll;$(VlcPluginRoot)codec\libdxva2_plugin.dll;$(VlcPluginRoot)codec\libmft_plugin.dll;$(VlcPluginRoot)codec\librawvideo_plugin.dll;$(VlcPluginRoot)codec\liblpcm_plugin.dll;$(VlcPluginRoot)codec\libg711_plugin.dll;$(VlcPluginRoot)codec\libadpcm_plugin.dll;$(VlcPluginRoot)codec\libvorbis_plugin.dll;$(VlcPluginRoot)codec\libopus_plugin.dll;$(VlcPluginRoot)codec\libflac_plugin.dll;$(VlcPluginRoot)codec\libmpg123_plugin.dll;$(VlcPluginRoot)codec\libtheora_plugin.dll">
+        <PluginTargetDir>codec</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)demux\libmkv_plugin.dll;$(VlcPluginRoot)demux\libmp4_plugin.dll;$(VlcPluginRoot)demux\libh26x_plugin.dll;$(VlcPluginRoot)demux\libavi_plugin.dll;$(VlcPluginRoot)demux\libplaylist_plugin.dll;$(VlcPluginRoot)demux\libsubtitle_plugin.dll">
+        <PluginTargetDir>demux</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)packetizer\libpacketizer_h264_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_hevc_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpeg4audio_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_av1_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpeg4video_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpegvideo_plugin.dll">
+        <PluginTargetDir>packetizer</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)video_output\libdirect3d11_plugin.dll;$(VlcPluginRoot)video_output\libdirect3d9_plugin.dll;$(VlcPluginRoot)video_output\libwingdi_plugin.dll;$(VlcPluginRoot)video_output\libdirectdraw_plugin.dll;$(VlcPluginRoot)video_output\libvdummy_plugin.dll">
+        <PluginTargetDir>video_output</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)video_chroma\*.dll">
+        <PluginTargetDir>video_chroma</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_output\libmmdevice_plugin.dll;$(VlcPluginRoot)audio_output\libdirectsound_plugin.dll;$(VlcPluginRoot)audio_output\libwaveout_plugin.dll;$(VlcPluginRoot)audio_output\libwasapi_plugin.dll;$(VlcPluginRoot)audio_output\libadummy_plugin.dll">
+        <PluginTargetDir>audio_output</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_filter\libaudio_format_plugin.dll;$(VlcPluginRoot)audio_filter\libscaletempo_plugin.dll;$(VlcPluginRoot)audio_filter\libsimple_channel_mixer_plugin.dll;$(VlcPluginRoot)audio_filter\libtrivial_channel_mixer_plugin.dll;$(VlcPluginRoot)audio_filter\libugly_resampler_plugin.dll;$(VlcPluginRoot)audio_filter\libspeex_resampler_plugin.dll">
+        <PluginTargetDir>audio_filter</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_mixer\*.dll">
+        <PluginTargetDir>audio_mixer</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)meta_engine\libtaglib_plugin.dll">
+        <PluginTargetDir>meta_engine</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)stream_filter\libprefetch_plugin.dll;$(VlcPluginRoot)stream_filter\libcache_read_plugin.dll;$(VlcPluginRoot)stream_filter\libinflate_plugin.dll">
+        <PluginTargetDir>stream_filter</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)d3d11\*.dll">
+        <PluginTargetDir>d3d11</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)d3d9\*.dll">
+        <PluginTargetDir>d3d9</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)logger\*.dll">
+        <PluginTargetDir>logger</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libfilesystem_plugin.dll" />
+      <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libidummy_plugin.dll" />
+      <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libattachment_plugin.dll" />
+      <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libimem_plugin.dll" />
+      <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libaccess_concat_plugin.dll" />
+
+      <!-- 移除运行时不需要的诊断/设计时程序集，进一步压缩发布体积：
+           WinForms 设计时程序集。ReachFramework 是 WPF 打印（指令条码打印）的运行时依赖，必须保留。 -->
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(Filename)').StartsWith('System.Windows.Forms.Design'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Design'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Drawing.Design'" />
+
+      <ResolvedFileToPublish Include="@(LibVlcX64Dll)">
+        <RelativePath>libvlc\win-x64\%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="@(LibVlcX64Plugin)">
+        <RelativePath>libvlc\win-x64\plugins\%(LibVlcX64Plugin.PluginTargetDir)\%(LibVlcX64Plugin.Filename)%(LibVlcX64Plugin.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="@(LibVlcX64AccessPlugin)">
+        <RelativePath>libvlc\win-x64\plugins\access\%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CopyWinTtsRuntimeToBuildOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <WinTtsProjectPath>$(MSBuildProjectDirectory)\..\ExpressPackingMonitoring.WinTts\ExpressPackingMonitoring.WinTts.csproj</WinTtsProjectPath>
+      <WinTtsPublishDirectory>$(IntermediateOutputPath)wintts-runtime</WinTtsPublishDirectory>
+      <WinTtsArtifactsArgument Condition="'$(ArtifactsPath)' != ''">--artifacts-path "$(ArtifactsPath)"</WinTtsArtifactsArgument>
+    </PropertyGroup>
+    <Exec Command="dotnet publish &quot;$(WinTtsProjectPath)&quot; -c &quot;$(Configuration)&quot; --no-restore --nologo $(WinTtsArtifactsArgument) -o &quot;$(WinTtsPublishDirectory)&quot;" />
+    <ItemGroup>
+      <WinTtsRuntimeFile Include="$(WinTtsPublishDirectory)\ExpressPackingMonitoring.WinTts.dll" />
+      <WinTtsRuntimeFile Include="$(WinTtsPublishDirectory)\Microsoft.Windows.SDK.NET.dll" />
+      <WinTtsRuntimeFile Include="$(WinTtsPublishDirectory)\WinRT.Runtime.dll" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(WinTtsRuntimeFile.Identity)')" Text="WinTts runtime output missing: %(WinTtsRuntimeFile.Identity)" />
+    <Copy SourceFiles="@(WinTtsRuntimeFile)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

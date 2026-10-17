@@ -97,7 +97,7 @@
 
 <br>
 
-![PackingProof 软件界面](Image/软件截图.jpg)
+![PackingProof 软件界面](docs/images/软件截图.jpg)
 
 **快速跳转**：[功能](#功能) · [怎么用](#怎么用) · [其他](#其他) · [扩展市场](#扩展市场) · [开源许可证](#开源许可证)
 [订单备注播报与退款拦截](#订单备注播报与退款拦截) · [多工位使用方式](#多工位使用方式) · [局域网回放](#局域网回放) · [软件更新](#软件更新)
@@ -206,7 +206,7 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 首次启动后，跟着向导走完这几步：
 
-![询问用途](Image/询问用途.jpg)
+![询问用途](docs/images/询问用途.jpg)
 
 1. 选择这台电脑的用途。
 2. 选择摄像头和麦克风。
@@ -219,7 +219,7 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 打开录像列表，输入快递单号即可搜索对应录像。
 
-![历史录像检索与回放](Image/Replay.jpg)
+![历史录像检索与回放](docs/images/Replay.jpg)
 
 也可以通过局域网页面，在手机或其他电脑上回放。
 
@@ -310,13 +310,13 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 如果 Windows 弹出防火墙提示，请允许软件访问局域网。
 
-![局域网 Web 回放](Image/WebService.jpg)
+![局域网 Web 回放](docs/images/WebService.jpg)
 
 ### 打包数据统计
 
 按天或按周汇总打包件数、占用空间、累计时长和平均单件用时。
 
-![打包数据统计](Image/Statistics.jpg)
+![打包数据统计](docs/images/Statistics.jpg)
 
 ## 其他
 
@@ -503,7 +503,7 @@ PackingProof 使用 [AGPL-3.0 License](LICENSE) 开源。
 
 <div align="center">
 
-<img src="Image/场景图.jpg" alt="PackingProof 快递打包场景">
+<img src="docs/images/场景图.jpg" alt="PackingProof 快递打包场景">
 
 <br><br>
 

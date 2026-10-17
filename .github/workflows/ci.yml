@@ -81,7 +81,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $arguments = @(
             "test",
-            "ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj",
+            "tests\ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj",
             "-c", "Debug",
             "--no-build",
             "--no-restore",

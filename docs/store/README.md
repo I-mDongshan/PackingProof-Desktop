@@ -17,15 +17,15 @@
 ## 2. 生成本地身份配置
 
 ```powershell
-Copy-Item Tools\store-package.example.json Tools\store-package.local.json
+Copy-Item tools\store-package.example.json tools\store-package.local.json
 ```
 
-编辑 `Tools\store-package.local.json`，填入 Partner Center 的两个值。该文件已在 `.gitignore` 中，不会被提交。
+编辑 `tools\store-package.local.json`，填入 Partner Center 的两个值。该文件已在 `.gitignore` 中，不会被提交。
 
 ## 3. 构建商店包
 
 ```powershell
-pwsh -NoProfile -File Tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireStoreIdentity -Sign
+pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireStoreIdentity -Sign
 ```
 
 产物在 `package\store\PackingProof_Store_v0.0.85\`：
@@ -43,14 +43,14 @@ pwsh -NoProfile -File Tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireSto
 先构建并签名：
 
 ```powershell
-pwsh -NoProfile -File Tools\Publish-StorePackage.ps1 -Version 0.0.85 -Sign -TrustCertificate
+pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -Sign -TrustCertificate
 ```
 
 安装和启动需要管理员权限，因为测试证书要写入 `LocalMachine\TrustedPeople`：
 
 ```powershell
 Start-Process pwsh -Verb RunAs -ArgumentList @(
-  '-NoProfile','-File','Tools\Test-StorePackage.ps1',
+  '-NoProfile','-File','tools\Test-StorePackage.ps1',
   '-PackagePath','package\store\PackingProof_Store_v0.0.85\PackingProof_Store_v0.0.85.msix',
   '-CertificatePath','package\store\PackingProof_Store_v0.0.85\PackingProof-test.cer',
   '-Launch'
@@ -61,7 +61,7 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 
 ```powershell
 Start-Process pwsh -Verb RunAs -ArgumentList @(
-  '-NoProfile','-File','Tools\Test-StorePackage.ps1',
+  '-NoProfile','-File','tools\Test-StorePackage.ps1',
   '-PackagePath','package\store\PackingProof_Store_v0.0.85\PackingProof_Store_v0.0.85.msix',
   '-Uninstall'
 )
@@ -102,7 +102,7 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 - 中文文案：`docs/store/Listing/zh-CN.md`
 - 英文文案：`docs/store/Listing/en-US.md`
 - 认证备注：`docs/store/Listing/notes-for-certification.md`
-- 截图重新生成：`pwsh -NoProfile -File Tools\New-StoreScreenshots.ps1`
+- 截图重新生成：`pwsh -NoProfile -File tools\New-StoreScreenshots.ps1`
 
-截图来自仓库 `Image/` 下的真实界面。上传前请确认画面里的快递单号、订单信息和设备名可以公开展示；如不能，
+截图来自仓库 `docs/images/` 下的真实界面。上传前请确认画面里的快递单号、订单信息和设备名可以公开展示；如不能，
 先替换源图再重新生成。
