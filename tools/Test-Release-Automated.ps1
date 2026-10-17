@@ -175,9 +175,9 @@ try {
         do {
             Start-Sleep -Milliseconds 100
             $wpfProcess.Refresh()
-        } while (-not $wpfProcess.MainWindowTitle.StartsWith("快递打包监控", [System.StringComparison]::Ordinal) -and
+        } while (-not $wpfProcess.MainWindowTitle.StartsWith("PackingProof 包裹留证", [System.StringComparison]::Ordinal) -and
                  [DateTime]::UtcNow -lt $titleDeadline)
-        if (-not $wpfProcess.MainWindowTitle.StartsWith("快递打包监控", [System.StringComparison]::Ordinal)) {
+        if (-not $wpfProcess.MainWindowTitle.StartsWith("PackingProof 包裹留证", [System.StringComparison]::Ordinal)) {
             throw "Unexpected camera-monitor window title: $($wpfProcess.MainWindowTitle)"
         }
         Stop-Process -Id $wpfProcess.Id -Force
