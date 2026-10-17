@@ -15,7 +15,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "dotnet build 失败，退出码：$LASTEXITCODE" }
 
     Write-Host "运行单元测试..."
-    dotnet test ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj -c $Configuration --no-build --no-restore --nologo
+    dotnet test tests\ExpressPackingMonitoring.Tests\ExpressPackingMonitoring.Tests.csproj -c $Configuration --no-build --no-restore --nologo
     if ($LASTEXITCODE -ne 0) { throw "dotnet test 失败，退出码：$LASTEXITCODE" }
 
     Write-Host "运行网页 UI 自动化测试（真实浏览器）..."
