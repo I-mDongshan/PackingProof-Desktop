@@ -39,6 +39,39 @@ PackingProof 不执行导入的脚本，也不会把脚本加载为桌面端插�
 
 外部适配器可在包内 manifest 声明可选的 `launcher.path`（仅限 `payload/` 下的 `.exe`、`.cmd` 或 `.bat`）。市场安装后用户可点击“启动”直接运行；未声明时按钮保持灰色不可用，仍可打开目录手动运行。启动失败只提示用户，不会影响 Desktop 主程序
 
+## 外部适配器的数据目录（v1 约定）
+
+这一节是**硬约定**。外部适配器是普通 Windows 程序，Desktop 不会替它做文件沙箱；但"自己的数据放哪里"必须统一，否则自动更新一换版本，用户的配置就会看起来"丢了"。
+
+**Desktop 注入的环境变量**（启动外部适配器时）：
+
+| 变量 | 含义 |
+| --- | --- |
+| `PACKINGPROOF_EXTENSION_ID` | 扩展在 manifest 里的 `id`（市场里唯一） |
+| `PACKINGPROOF_EXTENSION_DATA_DIR` | 该扩展独占的数据目录，绝对路径，启动前已创建、当前用户可写 |
+
+数据目录的固定位置是 `%LOCALAPPDATA%\ExpressPackingMonitoring\extension-data\<id>`。扩展应当**优先读取这两个变量**；读不到时按同一路径自行推导，不要写死别的位置。
+
+**必须遵守的规则**
+
+- 用户数据（配置、凭据、缓存、日志、下载中的临时文件、SQLite 库等）只能放在 `PACKINGPROOF_EXTENSION_DATA_DIR` 里。建议结构：`settings.json`、`cache\`、`logs\`。
+- **不得写入扩展包目录**（`%LOCALAPPDATA%\ExpressPackingMonitoring\extensions\packages\<id>\<版本>\`）。包目录每次更新都会换成新版本目录，旧版本目录以后还会被清理；写进去的数据不会跟着新版本走，用户看到的就是"升级后设置没了"。
+- 不得写入 Desktop 的 `config.json`、`videos.db`、录像目录、安装目录或 `Program Files`；需要业务数据一律走本 API。
+- 不得读写别的扩展的数据目录（Desktop 不做文件级隔离，这是约定而不是强制，市场页会提示外部程序的系统访问风险）。
+- 同一数据目录只允许一个进程写：扩展应自行做单实例（命名互斥体或锁文件），不要靠 Desktop 兜底。
+- 凭据：用 Windows DPAPI（`DataProtectionScope.CurrentUser`）或凭据管理器加密后存放；不得明文落盘，不得写进日志、命令行参数或市场说明。
+- 版本兼容：新版本必须能读旧版本写下的数据（未知字段保留、缺失字段给默认值、按需迁移并在迁移后写回）。数据迁移由扩展自己做，Desktop 不参与。
+
+**Desktop 保证的行为**
+
+- 扩展的版本更新只动包目录：新版本装到 `extensions\packages\<id>\<新版本>\`，数据目录不碰；外部适配器正在运行时本轮跳过更新。
+- 在扩展市场里"卸载"扩展只删包目录，数据目录保留，重装后可以继续用原来的设置。
+- 升级或覆盖安装 Desktop **不会**删数据目录；只有卸载 Desktop 并勾选"删除设置和临时文件"时，才会连同 `extensions`、`extension-data`、`QQBot` 等一起清理——这一步删掉后无法恢复，扩展需要在用户重新配置后重建。
+
+**历史扩展的过渡**
+
+已经有自己目录的扩展（例如 QQ 机器人一直用 `%LOCALAPPDATA%\ExpressPackingMonitoring\QQBot\`）可以继续用原目录，但必须满足两条：目录位于 `%LOCALAPPDATA%` 下、**绝不**写进扩展包目录。新接入的 external-adapter 必须使用 `PACKINGPROOF_EXTENSION_DATA_DIR`
+
 ## 两种鉴权方式
 
 ### 扩展签名鉴权（推荐）

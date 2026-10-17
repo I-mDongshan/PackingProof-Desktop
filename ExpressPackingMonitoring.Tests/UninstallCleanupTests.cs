@@ -233,6 +233,11 @@ public sealed class UninstallCleanupTests
         string botSecrets = fixture.CreateFile("QQBot", "secrets.dat", "secrets");
         // 已安装扩展与临时产物：不算"设置"，但卸载时跟这个勾选项一起清掉。
         string extension = fixture.CreateFile("extensions", "packingproof.qqbot", "package");
+        // 外部适配器自己的配置/凭据（按扩展 id 分目录）：勾了删除设置也要清掉。
+        string extensionDataDirectory = Path.Combine(fixture.Root, "extension-data", "packingproof.qqbot");
+        Directory.CreateDirectory(extensionDataDirectory);
+        string extensionData = Path.Combine(extensionDataDirectory, "settings.json");
+        File.WriteAllText(extensionData, "{}", new UTF8Encoding(false));
         string recordingBuffer = fixture.CreateFile("RecordingBuffer", "frames.bin", "tmp");
         string testOrderPicture = fixture.CreateFile("TestOrderPicture", "test.jpg", "img");
         string backup = fixture.CreateFile("backups", "videos-backup.db", "backup");
@@ -249,6 +254,7 @@ public sealed class UninstallCleanupTests
         Assert.False(File.Exists(pairing));
         Assert.False(File.Exists(botSecrets));
         Assert.False(File.Exists(extension));
+        Assert.False(File.Exists(extensionData));
         Assert.False(File.Exists(recordingBuffer));
         Assert.False(File.Exists(testOrderPicture));
         // 录像、录像库与恢复备份仍然保留：它们归另一个勾选项管。

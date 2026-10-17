@@ -26,6 +26,9 @@ internal sealed record ExtensionInstallResult(
 internal sealed class ExtensionInstallationService : IExtensionInstallationTarget
 {
     private const string RegistryFileName = "registry.json";
+    /// <summary>启动外部适配器时注入的环境变量：扩展 id 与它独占的数据目录（见 docs\EXTENSION_API_V1.md）。</summary>
+    internal const string ExtensionIdVariableName = "PACKINGPROOF_EXTENSION_ID";
+    internal const string ExtensionDataDirectoryVariableName = "PACKINGPROOF_EXTENSION_DATA_DIR";
     private static readonly object Sync = new();
     private readonly string _extensionsDirectory;
     private readonly string _registryPath;
@@ -196,13 +199,27 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             error = "扩展启动文件不存在";
             return false;
         }
+        // 数据目录和扩展包目录分开：包目录会随版本换掉、以后还会清理旧版本，配置写进去就会"丢"。
+        string dataDirectory;
+        try
+        {
+            dataDirectory = ResolveDataDirectory(AppPaths.ExtensionDataDir, record.Id);
+            Directory.CreateDirectory(dataDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            error = $"扩展数据目录不可用：{ex.Message}";
+            return false;
+        }
         try
         {
             Process.Start(CreateLaunchStartInfo(
                 target,
                 SharedRuntimeLayout.GetDotNetRootForChildProcess(
                     AppContext.BaseDirectory,
-                    Environment.GetEnvironmentVariable("DOTNET_ROOT"))));
+                    Environment.GetEnvironmentVariable("DOTNET_ROOT")),
+                record.Id,
+                dataDirectory));
             return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
@@ -213,11 +230,34 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
     }
 
     /// <summary>
+    /// 外部适配器的数据目录：用户数据目录下按扩展 id 分目录，跨版本、跨更新都不变。
+    /// id 来自 manifest（打包时已校验为 <c>[a-z0-9][a-z0-9.-]*[a-z0-9]</c>），这里再挡一次
+    /// 路径分隔符与 ".."，避免拼出数据根目录之外的位置。
+    /// </summary>
+    internal static string ResolveDataDirectory(string dataRoot, string extensionId)
+    {
+        string id = (extensionId ?? "").Trim();
+        if (id.Length == 0
+            || id.Contains('\\')
+            || id.Contains('/')
+            || id.Contains("..", StringComparison.Ordinal)
+            || id.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new InvalidDataException($"扩展 ID 不能用作数据目录名：{extensionId}");
+        }
+        return Path.Combine(Path.GetFullPath(dataRoot), id);
+    }
+
+    /// <summary>
     /// 扩展进程的启动信息。桌面端把自己的共享运行时（DOTNET_ROOT）交给扩展，市场里那些框架依赖的
     /// .NET 扩展就不用自带运行时；没有布局时不给这个变量，扩展按系统 .NET 启动。
     /// .cmd/.bat 启动器经 cmd.exe 走，环境变量同样能传进去。
     /// </summary>
-    internal static ProcessStartInfo CreateLaunchStartInfo(string target, string dotNetRoot)
+    internal static ProcessStartInfo CreateLaunchStartInfo(
+        string target,
+        string dotNetRoot,
+        string extensionId = "",
+        string extensionDataDirectory = "")
     {
         string extension = Path.GetExtension(target);
         bool shellScript = extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase)
@@ -234,6 +274,11 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             startInfo.ArgumentList.Add(target);
         }
         if (!string.IsNullOrWhiteSpace(dotNetRoot)) startInfo.Environment["DOTNET_ROOT"] = dotNetRoot;
+        // 数据目录约定：扩展从这里读写自己的配置/缓存/日志，不要写进包目录（见 docs\EXTENSION_API_V1.md）。
+        if (!string.IsNullOrWhiteSpace(extensionId))
+            startInfo.Environment[ExtensionIdVariableName] = extensionId;
+        if (!string.IsNullOrWhiteSpace(extensionDataDirectory))
+            startInfo.Environment[ExtensionDataDirectoryVariableName] = extensionDataDirectory;
         return startInfo;
     }
 

@@ -28,6 +28,12 @@ namespace ExpressPackingMonitoring.Config
         public static readonly string ExtensionMarketCacheDir = Path.Combine(CacheDir, "extension-market");
         public static readonly string UserscriptsDir = Path.Combine(UserDataDir, "userscripts");
         public static readonly string ExtensionsDir = Path.Combine(UserDataDir, "extensions");
+        /// <summary>
+        /// 外部适配器自己的数据根目录：每个扩展一个 <c>&lt;id&gt;</c> 子目录，跨版本不变。
+        /// 扩展包目录（extensions\packages\&lt;id&gt;\&lt;版本&gt;）会随更新换掉、以后还会清理旧版本，
+        /// 所以配置、缓存、日志这些**必须**放这里，不能写进包目录。见 docs\EXTENSION_API_V1.md。
+        /// </summary>
+        public static readonly string ExtensionDataDir = Path.Combine(UserDataDir, "extension-data");
         // 指令条码图片：可随时重新生成，用户点"打开所在位置"时按最新配置覆盖一次。
         public static readonly string CommandBarcodeImageDir = Path.Combine(UserDataDir, "command-barcodes");
 

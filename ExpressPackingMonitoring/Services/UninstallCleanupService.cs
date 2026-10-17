@@ -316,6 +316,9 @@ internal static class UninstallCleanupService
             // 已安装扩展与临时产物不算"设置"，但卸载时也该跟着这个勾选项一起清掉：
             // 扩展重装后可重新下载，录制缓冲与测试订单图片是纯粹的临时文件。
             Path.Combine(normalizedUserDataDirectory, "extensions"),
+            // 外部适配器自己的配置/凭据/缓存（按扩展 id 分目录）。卸载桌面端时勾了"删除设置"
+            // 就应该连它们一起清掉，否则 AppSecret、扩展凭据这类东西会留在磁盘上。
+            Path.Combine(normalizedUserDataDirectory, "extension-data"),
             Path.Combine(normalizedUserDataDirectory, "RecordingBuffer"),
             Path.Combine(normalizedUserDataDirectory, "TestOrderPicture")
         ];
