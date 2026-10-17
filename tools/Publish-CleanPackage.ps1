@@ -1909,7 +1909,7 @@ elseif (-not (Test-Path -LiteralPath $releaseNotesPath -PathType Leaf)) {
 # 产物新鲜度守卫：曾经出现过"重新打包，但 app 负载还是上一次的旧文件"（源码改了、DLL 没重新编出来），
 # 于是发出去的包看着是新的、内容却是旧的。这里要求 app 里的主程序集不早于应用侧最新的源码文件。
 $payloadAssemblyPath = Join-Path $appPublishDir "ExpressPackingMonitoring.dll"
-$appSourceRoot = Join-Path $repoRoot "ExpressPackingMonitoring"
+$appSourceRoot = Join-Path $repoRoot "src\ExpressPackingMonitoring"
 if ((Test-Path -LiteralPath $payloadAssemblyPath) -and (Test-Path -LiteralPath $appSourceRoot)) {
     $newestAppSource = Get-ChildItem -LiteralPath $appSourceRoot -Recurse -File -Include *.cs, *.xaml |
         Where-Object { $_.FullName -notmatch '\\obj\\' } |

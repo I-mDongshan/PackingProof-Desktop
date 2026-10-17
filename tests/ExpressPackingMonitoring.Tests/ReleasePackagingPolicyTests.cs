@@ -521,6 +521,26 @@ public sealed class ReleasePackagingPolicyTests
     }
 
     [Fact]
+    public void ReleaseTooling_UsesCurrentRepositoryLayout()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string testCi = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Test-CI.ps1"),
+            Encoding.UTF8);
+        string publishScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
+            Encoding.UTF8);
+        string launcherCommon = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "LauncherBaseline.Common.ps1"),
+            Encoding.UTF8);
+
+        Assert.Contains("tests\\ExpressPackingMonitoring.Tests\\ExpressPackingMonitoring.Tests.csproj", testCi, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet test ExpressPackingMonitoring.Tests\\ExpressPackingMonitoring.Tests.csproj", testCi, StringComparison.Ordinal);
+        Assert.Contains(@"$appSourceRoot = Join-Path $repoRoot ""src\ExpressPackingMonitoring""", publishScript, StringComparison.Ordinal);
+        Assert.Contains("foreach ($candidateTagPath in @($tagPath, $headPath)", launcherCommon, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ChangePrSubmitter_DefaultsToBothPlatformsAndStaysConfigurable()
     {
         string repositoryRoot = FindRepositoryRoot();

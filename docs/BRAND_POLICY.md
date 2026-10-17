@@ -7,8 +7,8 @@
 下列内容属于 PackingProof 官方品牌标识：
 
 - `PackingProof` 产品名称
-- `ExpressPackingMonitoring/app.ico` 中的官方应用图标
-- `ExpressPackingMonitoring/GenAdvancedIcon.ps1` 按默认参数生成的官方图标视觉
+- `src/ExpressPackingMonitoring/app.ico` 中的官方应用图标
+- `src/ExpressPackingMonitoring/GenAdvancedIcon.ps1` 按默认参数生成的官方图标视觉
 - 官方仓库、发布页面和宣传材料中明确作为 PackingProof Logo 使用的相同或近似视觉
 
 上述品牌资产不因源代码采用 AGPL-3.0 而获得用于第三方修改版产品标识、宣传或背书的许可。`GenAdvancedIcon.ps1` 的脚本代码本身仍按 AGPL-3.0 提供；第三方可以修改脚本并生成具有明显区别的自有图标。
@@ -61,7 +61,7 @@ PackingProof 官方版本仅由以下组织维护的仓库和发布页面提供�
 
 This policy distinguishes official PackingProof releases from third-party modifications. It does not change the rights to use, study, modify, and distribute the source code under GNU AGPL-3.0.
 
-The `PackingProof` product name, the official icon in `ExpressPackingMonitoring/app.ico`, the default icon visual produced by `ExpressPackingMonitoring/GenAdvancedIcon.ps1`, and substantially similar official logo visuals are PackingProof brand assets. Their inclusion alongside AGPL-3.0 source code does not grant permission to use them as the product identity, promotion, or endorsement of a modified distribution.
+The `PackingProof` product name, the official icon in `src/ExpressPackingMonitoring/app.ico`, the default icon visual produced by `src/ExpressPackingMonitoring/GenAdvancedIcon.ps1`, and substantially similar official logo visuals are PackingProof brand assets. Their inclusion alongside AGPL-3.0 source code does not grant permission to use them as the product identity, promotion, or endorsement of a modified distribution.
 
 The icon generator script itself remains available under AGPL-3.0. Third parties may modify it to produce a clearly distinct icon of their own.
 
