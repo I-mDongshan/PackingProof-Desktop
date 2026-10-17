@@ -23,10 +23,10 @@ src/ExpressPackingMonitoring.Core/obj/
 src/MacHostShell/.build/
 src/ExpressPackingMonitoring.WinTts/bin/
 src/ExpressPackingMonitoring.WinTts/obj/
-Tools/ExpressPackingMonitoring.TtsCacheBuilder/bin/
-Tools/ExpressPackingMonitoring.TtsCacheBuilder/obj/
-Tools/ExpressPackingMonitoring.AutomationHost/bin/
-Tools/ExpressPackingMonitoring.AutomationHost/obj/
+tools/ExpressPackingMonitoring.TtsCacheBuilder/bin/
+tools/ExpressPackingMonitoring.TtsCacheBuilder/obj/
+tools/ExpressPackingMonitoring.AutomationHost/bin/
+tools/ExpressPackingMonitoring.AutomationHost/obj/
 src/ExpressPackingMonitoring/bin/Release/package/
 src/ExpressPackingMonitoring/package/
 src/ExpressPackingMonitoring/publish-test/
@@ -58,7 +58,7 @@ docs/images/PixPin_*.jpg
 .tmp/
 Videos/*
 package/*
-Tools/store-package.local.json
+tools/store-package.local.json
 TODO.md
 node_modules/
 TestResults/

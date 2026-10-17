@@ -54,7 +54,7 @@
 
 <div align="center">
 
-<img src="ExpressPackingMonitoring/app.ico" width="112" alt="PackingProof logo">
+<img src="src/ExpressPackingMonitoring/app.ico" width="112" alt="PackingProof logo">
 
 # PackingProof
 

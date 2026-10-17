@@ -16,9 +16,30 @@ if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
 }
 
 if ($Uninstall) {
-    Get-AppxPackage -Name $PackageName | Remove-AppxPackage
+    $subjects = @()
+    foreach ($installed in @(Get-AppxPackage -Name $PackageName | Where-Object { $null -ne $_ })) {
+        if (-not [string]::IsNullOrWhiteSpace($installed.Publisher)) {
+            $subjects += [string]$installed.Publisher
+        }
+        Remove-AppxPackage -Package $installed.PackageFullName
+    }
+    if (-not [string]::IsNullOrWhiteSpace($CertificatePath) -and
+        (Test-Path -LiteralPath $CertificatePath -PathType Leaf)) {
+        try {
+            $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+                (Resolve-Path -LiteralPath $CertificatePath).Path)
+            $subjects += $certificate.Subject
+        }
+        catch {
+            Write-Warning "读取测试证书失败，跳过按证书主题清理：$($_.Exception.Message)"
+        }
+    }
+    # 兼容旧版脚本固定使用 CN=PackingProof 的测试证书。
+    $subjects += "CN=PackingProof"
+    $subjects = @($subjects | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Unique)
     Get-ChildItem "Cert:\LocalMachine\TrustedPeople" |
-        Where-Object { $_.Subject -eq "CN=PackingProof" } |
+        Where-Object { $subjects -contains $_.Subject } |
         Remove-Item -Force
     Write-Host "已卸载测试包并清理测试证书"
     if (-not [string]::IsNullOrWhiteSpace($LogPath)) { Stop-Transcript | Out-Null }
