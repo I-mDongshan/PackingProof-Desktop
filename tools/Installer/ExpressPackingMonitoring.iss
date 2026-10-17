@@ -271,6 +271,15 @@ begin
   Result := StartsWithFolder(Uppercase(Dir), Uppercase(WindowsAppsDir));
 end;
 
+function IsPackingProofRunning: Boolean;
+begin
+  // v0.0.86 起 Setup 版使用带 Portable 后缀的实例锁；更早版本仍用无后缀的旧锁。
+  // 两种都必须检查，否则升级时可能边运行边删除旧目录。
+  Result :=
+    CheckForMutexes('Local\ExpressPackingMonitoring.Portable.Mutex') or
+    CheckForMutexes('Local\ExpressPackingMonitoring.Mutex');
+end;
+
 function IsStorePackageInstalled: Boolean;
 var
   Names: TArrayOfString;
@@ -407,7 +416,7 @@ begin
         UpgradeDirPromptShown := True;
         if MsgBox(CustomMessage('UpgradeDirPrompt'), mbConfirmation, MB_YESNO) = IDYES then
         begin
-          if CheckForMutexes('Local\ExpressPackingMonitoring.Mutex') then
+          if IsPackingProofRunning then
           begin
             UpgradeDirPromptShown := False;
             MsgBox(CustomMessage('AppRunningBeforeRemove'), mbInformation, MB_OK);
@@ -442,7 +451,7 @@ begin
   PreviousDir := GetPreviousInstallDir;
   if (PreviousDir <> '') and (CompareText(PreviousDir, WizardDirValue) <> 0) then
   begin
-    if CheckForMutexes('Local\ExpressPackingMonitoring.Mutex') then
+    if IsPackingProofRunning then
     begin
       Result := FmtMessage(CustomMessage('OldVersionRunningAtPrepare'), [PreviousDir]);
       Exit;
@@ -455,7 +464,7 @@ begin
 
   if DirHasInstalledApp(WizardDirValue) then
   begin
-    if CheckForMutexes('Local\ExpressPackingMonitoring.Mutex') then
+    if IsPackingProofRunning then
     begin
       Result := FmtMessage(CustomMessage('OldVersionRunningAtPrepare'), [WizardDirValue]);
       Exit;

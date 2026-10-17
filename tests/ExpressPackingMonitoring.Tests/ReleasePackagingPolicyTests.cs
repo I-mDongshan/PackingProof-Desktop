@@ -377,7 +377,10 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("if not UpgradeDirPromptShown then", innoScript);
         Assert.Contains("(PreviousDir <> '') or DirHasInstalledApp(SelectedDir)", innoScript);
         Assert.DoesNotContain("你选择了新的安装文件夹", innoScript);
-        Assert.Contains("CheckForMutexes('Local\\ExpressPackingMonitoring.Mutex')", innoScript);
+        Assert.Contains("function IsPackingProofRunning: Boolean", innoScript);
+        Assert.Contains("Local\\ExpressPackingMonitoring.Portable.Mutex", innoScript);
+        Assert.Contains("Local\\ExpressPackingMonitoring.Mutex", innoScript);
+        Assert.Equal(3, innoScript.Split("if IsPackingProofRunning then", StringSplitOptions.None).Length - 1);
         Assert.Contains("InstallDir[Length(InstallDir)] = '\\'", innoScript);
         Assert.Contains("function PrepareToInstall(var NeedsRestart: Boolean): String", innoScript);
         Assert.Contains("function RemoveOldInstall", innoScript);

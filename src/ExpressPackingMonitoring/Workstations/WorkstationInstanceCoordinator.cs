@@ -3,9 +3,6 @@ using ExpressPackingMonitoring.Logging;
 using System.IO;
 using System.IO.Pipes;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ExpressPackingMonitoring;
@@ -13,37 +10,112 @@ namespace ExpressPackingMonitoring;
 public sealed class WorkstationInstanceCoordinator : IDisposable
 {
     private const string NamePrefix = "ExpressPackingMonitoring";
+    private const string LegacyMutexName = @"Local\ExpressPackingMonitoring.Mutex";
+    private const string LegacyActivationPipeName = "ExpressPackingMonitoring.Activate";
     private const string HostMutexName = @"Local\ExpressPackingMonitoring.Host.Mutex";
     private readonly Mutex _mutex;
+    private readonly Mutex? _legacyMutex;
     private readonly CancellationTokenSource _cts = new();
     private Task? _listenTask;
     private Window? _window;
     private bool _disposed;
 
-    private WorkstationInstanceCoordinator(Mutex mutex)
+    private WorkstationInstanceCoordinator(Mutex mutex, Mutex? legacyMutex)
     {
         _mutex = mutex;
+        _legacyMutex = legacyMutex;
     }
 
     public static bool TryCreate(out WorkstationInstanceCoordinator? coordinator)
+        => TryCreate(out coordinator, out _);
+
+    /// <summary>
+    /// 同版本重复启动与“旧版本仍在运行”要区分处理：前者激活已有窗口，
+    /// 后者必须先阻止新进程写同一份配置和 SQLite 数据库。
+    /// </summary>
+    public static bool TryCreate(
+        out WorkstationInstanceCoordinator? coordinator,
+        out InstanceStartConflict conflict)
+    {
+        string? explicitScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
+        bool packaged = PackagingIdentity.IsPackaged;
+        bool acquireLegacyAlias = !packaged && string.IsNullOrWhiteSpace(NormalizeScope(explicitScope));
+        return TryCreateCore(
+            out coordinator,
+            out conflict,
+            explicitScope,
+            LegacyMutexName,
+            packaged,
+            acquireLegacyAlias);
+    }
+
+    internal static bool TryCreateForTest(
+        out WorkstationInstanceCoordinator? coordinator,
+        out InstanceStartConflict conflict,
+        string explicitScope,
+        string legacyMutexName,
+        bool packaged = false,
+        bool acquireLegacyAlias = true)
+        => TryCreateCore(
+            out coordinator,
+            out conflict,
+            explicitScope,
+            legacyMutexName,
+            packaged,
+            acquireLegacyAlias);
+
+    private static bool TryCreateCore(
+        out WorkstationInstanceCoordinator? coordinator,
+        out InstanceStartConflict conflict,
+        string? explicitScope,
+        string legacyMutexName,
+        bool packaged,
+        bool acquireLegacyAlias)
     {
         coordinator = null;
-        var mutex = new Mutex(initiallyOwned: true, GetMutexName(), out bool createdNew);
+        conflict = InstanceStartConflict.None;
+        var mutex = new Mutex(
+            initiallyOwned: true,
+            GetMutexName(packaged, explicitScope),
+            out bool createdNew);
         if (!createdNew)
         {
             mutex.Dispose();
+            conflict = InstanceStartConflict.AlreadyRunning;
             return false;
         }
 
-        coordinator = new WorkstationInstanceCoordinator(mutex);
+        Mutex? legacyMutex = null;
+        if (acquireLegacyAlias)
+        {
+            legacyMutex = new Mutex(initiallyOwned: true, legacyMutexName, out bool legacyCreatedNew);
+            if (!legacyCreatedNew)
+            {
+                try { mutex.ReleaseMutex(); } catch { }
+                mutex.Dispose();
+                legacyMutex.Dispose();
+                conflict = InstanceStartConflict.LegacyVersionRunning;
+                return false;
+            }
+        }
+
+        coordinator = new WorkstationInstanceCoordinator(mutex, legacyMutex);
         return true;
     }
 
     public static bool IsRunning()
     {
+        if (MutexExists(GetMutexName()))
+            return true;
+
+        return !PackagingIdentity.IsPackaged && MutexExists(LegacyMutexName);
+    }
+
+    private static bool MutexExists(string name)
+    {
         try
         {
-            using var existing = Mutex.OpenExisting(GetMutexName());
+            using var existing = Mutex.OpenExisting(name);
             return true;
         }
         catch (WaitHandleCannotBeOpenedException)
@@ -62,6 +134,26 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
         {
             using var pipe = new NamedPipeClientStream(".", GetPipeName(), PipeDirection.Out);
             pipe.Connect(400);
+            using var writer = new StreamWriter(pipe) { AutoFlush = true };
+            writer.WriteLine("activate");
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// v0.0.85 及更早的 Setup 版使用无后缀的实例锁和激活管道。
+    /// 新版检测到旧锁时先唤醒旧窗口，避免升级期间出现两个实例。
+    /// </summary>
+    public static bool RequestActivateLegacy()
+    {
+        try
+        {
+            using var pipe = new NamedPipeClientStream(".", LegacyActivationPipeName, PipeDirection.Out);
+            pipe.Connect(800);
             using var writer = new StreamWriter(pipe) { AutoFlush = true };
             writer.WriteLine("activate");
             return true;
@@ -182,10 +274,14 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
         try { _cts.Cancel(); } catch { }
         try { _mutex.ReleaseMutex(); } catch { }
         try { _mutex.Dispose(); } catch { }
+        try { _legacyMutex?.ReleaseMutex(); } catch { }
+        try { _legacyMutex?.Dispose(); } catch { }
         try { _cts.Dispose(); } catch { }
     }
 
     private static string GetMutexName() => $@"Local\{GetScopedNamePrefix()}.Mutex";
+    private static string GetMutexName(bool packaged, string? explicitScope) =>
+        $@"Local\{GetInstanceScopeName(packaged, explicitScope)}.Mutex";
     private static string GetPipeName() => $"{GetScopedNamePrefix()}.Activate";
     internal static string GetInstanceScopeName(bool packaged, string? explicitScope = null)
     {
@@ -220,126 +316,9 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
     }
 }
 
-public enum DuplicateInstanceChoice
+public enum InstanceStartConflict
 {
-    ActivateExisting,
-    OpenOtherRole,
-    Cancel
-}
-
-public sealed class DuplicateInstanceDialog : Window
-{
-    private readonly string _otherRole;
-
-    public DuplicateInstanceChoice Choice { get; private set; } = DuplicateInstanceChoice.Cancel;
-
-    public DuplicateInstanceDialog(string runningRole, string otherRole, bool canOpenOtherRole)
-    {
-        _otherRole = otherRole;
-        Title = "程序已经在运行";
-        Width = 500;
-        SizeToContent = SizeToContent.Height;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        ResizeMode = ResizeMode.NoResize;
-        SetResourceReference(BackgroundProperty, "PanelBackground");
-
-        var root = new StackPanel
-        {
-            Margin = new Thickness(24)
-        };
-
-        Content = root;
-
-        var titleText = new TextBlock
-        {
-            Text = $"当前已打开：{WorkstationRoles.GetDisplayName(runningRole)}",
-            FontSize = 20,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 14)
-        };
-        titleText.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
-        root.Children.Add(titleText);
-
-        var bodyText = new TextBlock
-        {
-            Text = "重复打开同一种录像方式，可能抢占摄像头、麦克风、Web 端口或数据库",
-            TextWrapping = TextWrapping.Wrap,
-            LineHeight = 20,
-            FontSize = 13,
-            Margin = new Thickness(0, 0, 0, 14)
-        };
-        bodyText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondary");
-        root.Children.Add(bodyText);
-
-        var questionText = new TextBlock
-        {
-            Text = "你想怎么做？",
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 18)
-        };
-        questionText.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
-        root.Children.Add(questionText);
-
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        root.Children.Add(actions);
-
-        var activateButton = CreateButton("切换到已打开窗口", isPrimary: true);
-        activateButton.IsDefault = true;
-        activateButton.Click += (_, _) =>
-        {
-            Choice = DuplicateInstanceChoice.ActivateExisting;
-            DialogResult = true;
-        };
-        actions.Children.Add(activateButton);
-
-        if (canOpenOtherRole)
-        {
-            var otherButton = CreateButton($"临时打开{WorkstationRoles.GetDisplayName(otherRole)}", isPrimary: false);
-            otherButton.Click += (_, _) =>
-            {
-                Choice = DuplicateInstanceChoice.OpenOtherRole;
-                DialogResult = true;
-            };
-            actions.Children.Add(otherButton);
-        }
-
-        var cancelButton = CreateButton("取消", isPrimary: false);
-        cancelButton.IsCancel = true;
-        cancelButton.Click += (_, _) =>
-        {
-            Choice = DuplicateInstanceChoice.Cancel;
-            DialogResult = false;
-        };
-        actions.Children.Add(cancelButton);
-
-        PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Escape)
-            {
-                Choice = DuplicateInstanceChoice.Cancel;
-                DialogResult = false;
-            }
-        };
-    }
-
-    public string OtherRole => _otherRole;
-
-    private static Button CreateButton(string text, bool isPrimary)
-    {
-        var button = new Button
-        {
-            Content = text,
-            Margin = new Thickness(8, 0, 0, 0),
-            Cursor = Cursors.Hand
-        };
-
-        button.SetResourceReference(FrameworkElement.StyleProperty, isPrimary ? "PrimaryButtonStyle" : "SecondaryButtonStyle");
-
-        return button;
-    }
+    None,
+    AlreadyRunning,
+    LegacyVersionRunning
 }

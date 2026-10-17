@@ -81,8 +81,27 @@ namespace ExpressPackingMonitoring
                 return;
             }
 
-            if (!WorkstationInstanceCoordinator.TryCreate(out _instanceCoordinator))
+            if (!WorkstationInstanceCoordinator.TryCreate(
+                    out _instanceCoordinator,
+                    out InstanceStartConflict instanceConflict))
             {
+                if (instanceConflict == InstanceStartConflict.LegacyVersionRunning)
+                {
+                    bool activatedLegacy = WorkstationInstanceCoordinator.RequestActivateLegacy();
+                    RuntimeLog.RecordShutdownRequest(
+                        activatedLegacy ? "LegacyInstanceActivated" : "LegacyInstanceBlocked");
+                    if (!activatedLegacy)
+                    {
+                        AppDialog.Warning(
+                            null,
+                            AppLanguage.Get(
+                                "检测到旧版本仍在运行。请先关闭旧版本，再打开新版本，避免两个进程同时写入同一份配置和录像数据库"),
+                            AppLanguage.Get("请先关闭旧版本"));
+                    }
+                    Shutdown(0);
+                    return;
+                }
+
                 WorkstationInstanceCoordinator.RequestActivate();
                 RuntimeLog.RecordShutdownRequest("DuplicateInstanceActivated");
                 Shutdown(0);

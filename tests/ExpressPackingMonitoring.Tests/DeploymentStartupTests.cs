@@ -165,6 +165,58 @@ public sealed class DeploymentStartupTests
     }
 
     [Fact]
+    public void LegacyInstanceMutexBlocksNewSetupStartup()
+    {
+        string legacyMutexName =
+            $@"Local\ExpressPackingMonitoring.LegacyTest.{Guid.NewGuid():N}.Mutex";
+        using var legacyMutex = new Mutex(initiallyOwned: true, legacyMutexName, out bool createdNew);
+        Assert.True(createdNew);
+        try
+        {
+            bool started = WorkstationInstanceCoordinator.TryCreateForTest(
+                out WorkstationInstanceCoordinator? coordinator,
+                out InstanceStartConflict conflict,
+                $"legacy{Guid.NewGuid():N}",
+                legacyMutexName);
+
+            Assert.False(started);
+            Assert.Null(coordinator);
+            Assert.Equal(InstanceStartConflict.LegacyVersionRunning, conflict);
+        }
+        finally
+        {
+            legacyMutex.ReleaseMutex();
+        }
+    }
+
+    [Fact]
+    public void SameEditionDuplicateReportsAlreadyRunning()
+    {
+        string scope = $"duplicate{Guid.NewGuid():N}";
+        string firstLegacyMutex =
+            $@"Local\ExpressPackingMonitoring.LegacyTest.{Guid.NewGuid():N}.Mutex";
+        string secondLegacyMutex =
+            $@"Local\ExpressPackingMonitoring.LegacyTest.{Guid.NewGuid():N}.Mutex";
+
+        Assert.True(WorkstationInstanceCoordinator.TryCreateForTest(
+            out WorkstationInstanceCoordinator? first,
+            out InstanceStartConflict firstConflict,
+            scope,
+            firstLegacyMutex));
+        Assert.Equal(InstanceStartConflict.None, firstConflict);
+        using (first)
+        {
+            Assert.False(WorkstationInstanceCoordinator.TryCreateForTest(
+                out WorkstationInstanceCoordinator? second,
+                out InstanceStartConflict secondConflict,
+                scope,
+                secondLegacyMutex));
+            Assert.Null(second);
+            Assert.Equal(InstanceStartConflict.AlreadyRunning, secondConflict);
+        }
+    }
+
+    [Fact]
     public void InstanceScopeSeparatesStoreAndSetupEditions()
     {
         string storeScope = WorkstationInstanceCoordinator.GetInstanceScopeName(true, "");
