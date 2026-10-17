@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="clr-namespace:ExpressPackingMonitoring.UI"
              xmlns:localization="clr-namespace:ExpressPackingMonitoring.Localization"
+             xmlns:core="clr-namespace:ExpressPackingMonitoring.Localization;assembly=ExpressPackingMonitoring.Core"
              Height="52">
     <UserControl.Resources>
         <localization:LocalizedTextConverter x:Key="ModeTextConverter"/>
@@ -37,6 +38,13 @@
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType=ui:ModeTransitionButton}}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                            <!-- 英文/日文模式名更长，按中文 22px 排会撑宽按钮，改用 16px 保持两侧按钮等宽 -->
+                            <DataTrigger Binding="{Binding Source={x:Static core:AppLanguage.Current}}" Value="en-US">
+                                <Setter Property="FontSize" Value="16"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Source={x:Static core:AppLanguage.Current}}" Value="ja-JP">
+                                <Setter Property="FontSize" Value="16"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

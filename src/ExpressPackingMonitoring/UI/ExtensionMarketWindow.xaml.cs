@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Helpers;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Services.Extensions;
 using Microsoft.Win32;
@@ -113,8 +114,11 @@ public partial class ExtensionMarketWindow : Window
             _selectedRelease = null;
             InstallButton.IsEnabled = false;
             InstallOtherVersionButton.IsEnabled = false;
-            SourceStatusText.Text = $"读取扩展详情失败：{ex.Message}";
-            AppDialog.Error(this, $"读取扩展详情失败：{ex.Message}", "读取失败");
+            SourceStatusText.Text = AppLanguage.Format("读取扩展详情失败：{0}", ex.Message);
+            AppDialog.Error(
+                this,
+                AppLanguage.Format("读取扩展详情失败：{0}", ex.Message),
+                "读取失败");
         }
         finally
         {
@@ -225,10 +229,16 @@ public partial class ExtensionMarketWindow : Window
             bool compatible = ExtensionMarketVersionPolicy.IsAppCompatible(
                 release.Compatibility.MinPackingProofVersion,
                 AppVersion.Current);
-            string installedSuffix = installed?.Version == release.Version ? "（已安装）" : "";
+            string installedSuffix = installed?.Version == release.Version
+                ? AppLanguage.Get("（已安装）")
+                : "";
             var item = new MenuItem
             {
-                Header = $"{release.Version}{installedSuffix}  ·  需要 PackingProof {release.Compatibility.MinPackingProofVersion}+",
+                Header = AppLanguage.Format(
+                    "{0}{1}  ·  需要 PackingProof {2}+",
+                    release.Version,
+                    installedSuffix,
+                    release.Compatibility.MinPackingProofVersion),
                 IsEnabled = compatible,
                 ToolTip = compatible ? null : "当前 PackingProof 版本过低"
             };
@@ -300,8 +310,11 @@ public partial class ExtensionMarketWindow : Window
         }
         catch (Exception ex)
         {
-            SourceStatusText.Text = $"安装扩展失败：{ex.Message}";
-            AppDialog.Error(this, $"安装扩展失败：{ex.Message}", "安装失败");
+            SourceStatusText.Text = AppLanguage.Format("安装扩展失败：{0}", ex.Message);
+            AppDialog.Error(
+                this,
+                AppLanguage.Format("安装扩展失败：{0}", ex.Message),
+                "安装失败");
         }
         finally
         {

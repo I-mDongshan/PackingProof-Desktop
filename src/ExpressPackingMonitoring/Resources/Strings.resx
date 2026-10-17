@@ -16,7 +16,7 @@
   <data name="暂停" xml:space="preserve"><value>Pause</value></data>
   <data name="下载" xml:space="preserve"><value>Download</value></data>
   <data name="剪辑" xml:space="preserve"><value>Clip</value></data>
-  <data name="跟随系统" xml:space="preserve"><value>Use system language</value></data>
+  <data name="跟随系统" xml:space="preserve"><value>System default</value></data>
   <data name="简体中文" xml:space="preserve"><value>Simplified Chinese</value></data>
   <data name="日语" xml:space="preserve"><value>Japanese</value></data>
   <data name="使用本机录像摄像头扫描保存主机连接二维码" xml:space="preserve"><value>Use this recording camera to scan the storage host connection QR code</value></data>
@@ -24,19 +24,19 @@
   <data name="浅色主题" xml:space="preserve"><value>Light</value></data>
   <data name="深色主题" xml:space="preserve"><value>Dark</value></data>
   <data name="设备与画面" xml:space="preserve"><value>Devices &amp; video</value></data>
-  <data name="面单放大" xml:space="preserve"><value>Shipping-label zoom</value></data>
+  <data name="面单放大" xml:space="preserve"><value>Label zoom</value></data>
   <data name="录制控制" xml:space="preserve"><value>Recording</value></data>
   <data name="存储管理" xml:space="preserve"><value>Storage</value></data>
   <data name="AI 语音" xml:space="preserve"><value>AI voice</value></data>
   <data name="局域网查看" xml:space="preserve"><value>LAN access</value></data>
   <data name="条码识别" xml:space="preserve"><value>Barcode recognition</value></data>
-  <data name="设备与外观" xml:space="preserve"><value>Devices &amp; appearance</value></data>
-  <data name="扫码与识别" xml:space="preserve"><value>Scanning &amp; recognition</value></data>
-  <data name="存储与备份" xml:space="preserve"><value>Storage &amp; backup</value></data>
-  <data name="录像设置" xml:space="preserve"><value>Recording settings</value></data>
-  <data name="声音与播报" xml:space="preserve"><value>Sound &amp; announcements</value></data>
+  <data name="设备与外观" xml:space="preserve"><value>Devices</value></data>
+  <data name="扫码与识别" xml:space="preserve"><value>Scanning</value></data>
+  <data name="存储与备份" xml:space="preserve"><value>Storage</value></data>
+  <data name="录像设置" xml:space="preserve"><value>Recording</value></data>
+  <data name="声音与播报" xml:space="preserve"><value>Sound</value></data>
   <data name="局域网与网页" xml:space="preserve"><value>LAN &amp; web</value></data>
-  <data name="扩展与联动" xml:space="preserve"><value>Extensions &amp; integrations</value></data>
+  <data name="扩展与联动" xml:space="preserve"><value>Extensions</value></data>
   <data name="高级设置" xml:space="preserve"><value>Advanced</value></data>
   <data name="关于" xml:space="preserve"><value>About</value></data>
   <data name="摄像头" xml:space="preserve"><value>Camera</value></data>
@@ -50,17 +50,17 @@
   <data name="加载中" xml:space="preserve"><value>Loading</value></data>
   <data name="正在搜索..." xml:space="preserve"><value>Searching...</value></data>
   <data name="连接失败" xml:space="preserve"><value>Connection failed</value></data>
-  <data name="开始录制" xml:space="preserve"><value>Start recording</value></data>
-  <data name="停止录制" xml:space="preserve"><value>Stop recording</value></data>
+  <data name="开始录制" xml:space="preserve"><value>Record</value></data>
+  <data name="停止录制" xml:space="preserve"><value>Stop</value></data>
   <data name="正在启动" xml:space="preserve"><value>Starting</value></data>
   <data name="正在停止" xml:space="preserve"><value>Stopping</value></data>
-  <data name="正在收尾" xml:space="preserve"><value>Wrapping up</value></data>
+  <data name="正在收尾" xml:space="preserve"><value>Finishing</value></data>
   <data name="点击解锁后可拖动调整识别框" xml:space="preserve"><value>Click to unlock, then drag to adjust the recognition guide</value></data>
   <data name="可拖动调整识别框，点击锁住" xml:space="preserve"><value>Drag to adjust the recognition guide; click to lock</value></data>
   <data name="发货模式" xml:space="preserve"><value>Shipping mode</value></data>
   <data name="退货模式" xml:space="preserve"><value>Return mode</value></data>
   <data name="重新检测" xml:space="preserve"><value>Detect again</value></data>
-  <data name="检查更新" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="检查更新" xml:space="preserve"><value>Check updates</value></data>
   <data name="播放选区" xml:space="preserve"><value>Play selection</value></data>
   <data name="生成并下载" xml:space="preserve"><value>Create and download</value></data>
   <data name="开始时间" xml:space="preserve"><value>Start time</value></data>
@@ -70,15 +70,15 @@
   <data name="设置预留空间" xml:space="preserve"><value>Reserve space</value></data>
   <data name="设置预留空间…" xml:space="preserve"><value>Reserve space…</value></data>
   <data name="为整块磁盘保留的安全空间，单位 GB" xml:space="preserve"><value>Safety space reserved for the whole disk, in GB</value></data>
-  <data name="预留空间是留给整块磁盘的安全空间，整个磁盘共享，其他软件占用也算在内，不是本软件最多占用多少；留得太小磁盘容易写满，调整后立即生效" xml:space="preserve"><value>Reserved space is a safety margin kept for the whole disk: the disk shares it, other software counts against it, and it is not a cap on how much this app may occupy. Keeping it too small makes the disk fill up easily, and changes take effect immediately</value></data>
+  <data name="预留空间是留给整块磁盘的安全空间，整个磁盘共享，其他软件占用也算在内，不是本软件最多占用多少；留得太小磁盘容易写满，调整后立即生效" xml:space="preserve"><value>Reserved space is a safety margin for the whole disk. It is not an app storage cap. Too little can fill the disk quickly; changes apply immediately</value></data>
   <data name="请输入大于 0 的数字（单位 GB）" xml:space="preserve"><value>Enter a number greater than 0 (GB)</value></data>
-  <data name="录像空间上限" xml:space="preserve"><value>Recording storage limit</value></data>
+  <data name="录像空间上限" xml:space="preserve"><value>Storage limit</value></data>
   <data name="备份空间上限" xml:space="preserve"><value>Backup storage limit</value></data>
   <data name="选择磁盘分区" xml:space="preserve"><value>Select drive</value></data>
   <data name="选择用于保存录像的磁盘" xml:space="preserve"><value>Select a drive for recordings</value></data>
   <data name="语言" xml:space="preserve"><value>Language</value></data>
   <data name="界面语言" xml:space="preserve"><value>Display language</value></data>
-  <data name="默认跟随 Windows 显示语言，修改后重启生效" xml:space="preserve"><value>Uses the Windows display language by default. Restart to apply changes</value></data>
+  <data name="默认跟随 Windows 显示语言，修改后重启生效" xml:space="preserve"><value>Follows Windows by default; restart to apply</value></data>
   <data name="RestartSaved" xml:space="preserve"><value>Language preference saved. Restart the application to apply it</value></data>
   <data name="RestartRequired" xml:space="preserve"><value>Restart required</value></data>
   <data name="Speech.StartRecording" xml:space="preserve"><value>Recording started</value></data>
@@ -125,7 +125,7 @@
   <data name="播报买家留言" xml:space="preserve"><value>Broadcast buyer's message</value></data>
   <data name="播报买家留言和卖家备注" xml:space="preserve"><value>Report buyer messages and seller notes</value></data>
   <data name="播报卖家备注" xml:space="preserve"><value>Broadcast seller notes</value></data>
-  <data name="播报商品信息" xml:space="preserve"><value>Broadcast product information</value></data>
+  <data name="播报商品信息" xml:space="preserve"><value>Announce product info</value></data>
   <data name="程序在此位置最多用于存放录像或备份的容量，不会提前占用空间；其他软件占用磁盘后，实际可用容量可能减少" xml:space="preserve"><value>The maximum capacity used for recordings or backups at this location. Space is not preallocated, and actual available capacity may decrease when other software uses the disk.</value></data>
   <data name="暂不可计算" xml:space="preserve"><value>Unavailable</value></data>
   <data name="打包监控程序官方开源软件适用中小电商" xml:space="preserve"><value>Official open-source packing monitor for small and medium online stores</value></data>
@@ -140,30 +140,30 @@
   <data name="单个录像超过这个时间就自动停止" xml:space="preserve"><value>If a single recording exceeds this time, it will automatically stop</value></data>
   <data name="单号判断规则" xml:space="preserve"><value>Order number validation</value></data>
   <data name="单字符间隔上限" xml:space="preserve"><value>Maximum character interval</value></data>
-  <data name="底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示" xml:space="preserve"><value>The underlying layer is still saved as CQP. The smaller the CQP value, the clearer and larger the file; here it is displayed in a more intuitive direction.</value></data>
+  <data name="底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示" xml:space="preserve"><value>Lower values mean sharper, larger files</value></data>
   <data name="电脑开机后自动启动本程序" xml:space="preserve"><value>This program will automatically start after the computer is turned on.</value></data>
   <data name="商店版请在 Windows 设置 → 应用 → 启动 中管理" xml:space="preserve"><value>In the Store edition, manage this in Windows Settings &gt; Apps &gt; Startup</value></data>
   <data name="调试日志" xml:space="preserve"><value>Debug logging</value></data>
   <data name="调整播报快慢" xml:space="preserve"><value>Adjust the broadcast speed</value></data>
   <data name="订单备注播报" xml:space="preserve"><value>Order-note announcements</value></data>
   <data name="动画持续时间" xml:space="preserve"><value>animation duration</value></data>
-  <data name="端口是浏览器访问服务时使用的数字，例如 http://电脑IP:端口" xml:space="preserve"><value>The port is the number used by the browser to access the service, such as http://computer IP:port</value></data>
+  <data name="端口是浏览器访问服务时使用的数字，例如 http://电脑IP:端口" xml:space="preserve"><value>Port for browser access, e.g. http://PC-IP:port</value></data>
   <data name="断句关键词" xml:space="preserve"><value>Pause keywords</value></data>
-  <data name="多数连续字符间隔低于该值时，也可认为是扫码枪输入" xml:space="preserve"><value>When the interval between most consecutive characters is lower than this value, it can also be considered as input from a code scanner.</value></data>
-  <data name="二次修改分发时请保留原作者署名、版权声明和许可证信息" xml:space="preserve"><value>Please retain the original author's signature, copyright statement and license information when making secondary modifications and distribution.</value></data>
-  <data name="发货或退货扫到退款单时继续录像并按退款状态连续报警" xml:space="preserve"><value>When a refund order is scanned for shipment or return, the video will continue to be recorded and the alarm will be sent continuously according to the refund status.</value></data>
+  <data name="多数连续字符间隔低于该值时，也可认为是扫码枪输入" xml:space="preserve"><value>Allows occasional slow keys from a scanner</value></data>
+  <data name="二次修改分发时请保留原作者署名、版权声明和许可证信息" xml:space="preserve"><value>Keep the author credit, copyright, and license notices when redistributing modified versions</value></data>
+  <data name="发货或退货扫到退款单时继续录像并按退款状态连续报警" xml:space="preserve"><value>For shipping or return refunds, keep recording and repeat the alarm until the refund status changes</value></data>
   <data name="范围大" xml:space="preserve"><value>Wider view</value></data>
   <data name="方便事后确认这段录像对应哪个订单" xml:space="preserve"><value>It is convenient to confirm later which order this video corresponds to.</value></data>
-  <data name="防止单个录像录得太久" xml:space="preserve"><value>Prevent a single video from being recorded for too long</value></data>
+  <data name="防止单个录像录得太久" xml:space="preserve"><value>Limit single-recording length</value></data>
   <data name="防止扫码枪连续触发太快" xml:space="preserve"><value>Prevent the code scanner from triggering too quickly continuously</value></data>
-  <data name="访问录像、播放和剪辑时验证专用链接，订单插件不受影响" xml:space="preserve"><value>Verify the dedicated link when accessing recording, playback and editing, and the order plug-in will not be affected</value></data>
-  <data name="访问密钥会包含在复制的完整访问链接中，请不要发送给无关人员" xml:space="preserve"><value>The access key will be included in the copied full access link, please do not send it to unrelated persons.</value></data>
+  <data name="访问录像、播放和剪辑时验证专用链接，订单插件不受影响" xml:space="preserve"><value>Checks the dedicated link for recordings, playback, and clips; the order plug-in is unaffected</value></data>
+  <data name="访问密钥会包含在复制的完整访问链接中，请不要发送给无关人员" xml:space="preserve"><value>The copied link includes this key; share only with trusted people</value></data>
   <data name="放大倍数" xml:space="preserve"><value>Maximum close-up</value></data>
   <data name="放大画面保持多久后恢复" xml:space="preserve"><value>How long does the zoomed-in screen last before it resumes?</value></data>
   <data name="放大前等待" xml:space="preserve"><value>Wait before zooming in</value></data>
   <data name="放大停留时间" xml:space="preserve"><value>Zoom dwell time</value></data>
   <data name="分辨率" xml:space="preserve"><value>Resolution</value></data>
-  <data name="负数表示让音频提前，正数表示让音频延后；通常保持 0" xml:space="preserve"><value>A negative number means to advance the audio, a positive number means to delay the audio; usually kept at 0</value></data>
+  <data name="负数表示让音频提前，正数表示让音频延后；通常保持 0" xml:space="preserve"><value>Negative advances audio; positive delays it</value></data>
   <data name="个人学习、自家店铺自用可以免费使用" xml:space="preserve"><value>It can be used free of charge for personal study and self-use in your own store.</value></data>
   <data name="更短" xml:space="preserve"><value>shorter</value></data>
   <data name="更多缓存" xml:space="preserve"><value>more cache</value></data>
@@ -176,36 +176,36 @@
   <data name="更清晰" xml:space="preserve"><value>Higher quality</value></data>
   <data name="更柔和" xml:space="preserve"><value>softer</value></data>
   <data name="更省空间" xml:space="preserve"><value>Smaller files</value></data>
-  <data name="更提前" xml:space="preserve"><value>More in advance</value></data>
+  <data name="更提前" xml:space="preserve"><value>Earlier</value></data>
   <data name="更晚" xml:space="preserve"><value>later</value></data>
   <data name="更稳妥" xml:space="preserve"><value>Safer</value></data>
   <data name="更延后" xml:space="preserve"><value>Later</value></data>
   <data name="更严格" xml:space="preserve"><value>stricter</value></data>
   <data name="更早" xml:space="preserve"><value>earlier</value></data>
   <data name="更长" xml:space="preserve"><value>longer</value></data>
-  <data name="过渡时长" xml:space="preserve"><value>Transition duration</value></data>
+  <data name="过渡时长" xml:space="preserve"><value>Transition</value></data>
   <data name="合并 MKV" xml:space="preserve"><value>Merge MKV files</value></data>
   <data name="画面不动超过这个时间后停止录像" xml:space="preserve"><value>Stop recording after the screen remains motionless for more than this time</value></data>
   <data name="画面流畅度" xml:space="preserve"><value>Frame rate</value></data>
-  <data name="画面没变化时自动结束录像" xml:space="preserve"><value>Automatically end recording when the picture does not change</value></data>
+  <data name="画面没变化时自动结束录像" xml:space="preserve"><value>Stop when the picture is still</value></data>
   <data name="画质与文件大小" xml:space="preserve"><value>Quality and file size</value></data>
-  <data name="缓存包含在线播放转码、剪辑预览图和剪辑下载文件，超出上限后会自动清理最旧文件" xml:space="preserve"><value>The cache contains online playback transcoding, clip previews, and clip download files. The oldest files will be automatically cleared after the upper limit is exceeded.</value></data>
-  <data name="建议与普通播报使用不同角色，便于区分警告提示" xml:space="preserve"><value>It is recommended to use different roles from ordinary broadcasts to facilitate the differentiation of warning prompts.</value></data>
-  <data name="仅限同码停录" xml:space="preserve"><value>Only stop recording with the same code</value></data>
-  <data name="同码消失时间" xml:space="preserve"><value>Same-code disappearance time</value></data>
+  <data name="缓存包含在线播放转码、剪辑预览图和剪辑下载文件，超出上限后会自动清理最旧文件" xml:space="preserve"><value>Stores playback, clip previews, and downloads; oldest files are removed first</value></data>
+  <data name="建议与普通播报使用不同角色，便于区分警告提示" xml:space="preserve"><value>Use a different voice to distinguish warnings</value></data>
+  <data name="仅限同码停录" xml:space="preserve"><value>Stop on same code only</value></data>
+  <data name="同码消失时间" xml:space="preserve"><value>Same-code rearm delay</value></data>
   <data name="同码确认时间" xml:space="preserve"><value>Same-code confirmation time</value></data>
   <data name="警告播报声线" xml:space="preserve"><value>Warning voice</value></data>
   <data name="静止超时" xml:space="preserve"><value>Motion timeout</value></data>
   <data name="开机自启动" xml:space="preserve"><value>Start at boot</value></data>
   <data name="兼容渲染模式" xml:space="preserve"><value>Compatibility rendering mode</value></data>
-  <data name="画面显示全白或全黑时再开启；关闭显卡加速，重启程序后生效" xml:space="preserve"><value>Turn this on only if the window shows up all white or all black; it disables GPU acceleration and takes effect after a restart</value></data>
+  <data name="画面显示全白或全黑时再开启；关闭显卡加速，重启程序后生效" xml:space="preserve"><value>Use only if the window is all white or black. Disables GPU acceleration; restart to apply</value></data>
   <data name="启动" xml:space="preserve"><value>Start</value></data>
   <data name="开启后，超时、停录和订单信息会用语音提醒" xml:space="preserve"><value>When turned on, voice reminders will be given for timeouts, recording stops and order information.</value></data>
   <data name="每次播报前取消静音并将电脑音量调到最大" xml:space="preserve"><value>Unmute and set the computer volume to maximum before each announcement</value></data>
   <data name="开启后放大和恢复时会有平滑动画" xml:space="preserve"><value>When turned on, there will be smooth animation when zooming in and restoring.</value></data>
   <data name="开始合并" xml:space="preserve"><value>Start merging</value></data>
   <data name="开始录制后等待多久再放大" xml:space="preserve"><value>How long to wait after starting recording before zooming in</value></data>
-  <data name="可跟随系统，或固定为浅色 / 深色主题" xml:space="preserve"><value>Can follow the system or be fixed to light/dark theme</value></data>
+  <data name="可跟随系统，或固定为浅色 / 深色主题" xml:space="preserve"><value>Follow the system, or choose light or dark</value></data>
   <data name="空闲超过这个时间后关闭摄像头" xml:space="preserve"><value>Turn off the camera after being idle for longer than this time</value></data>
   <data name="空闲超时" xml:space="preserve"><value>Idle timeout</value></data>
   <data name="空闲时省资源，有操作时再恢复" xml:space="preserve"><value>Save resources when idle and resume when operations are required</value></data>
@@ -216,23 +216,23 @@
   <data name="快递打包监控" xml:space="preserve"><value>Express packaging monitoring</value></data>
   <data name="快要自动停止录像前，提前多久提醒" xml:space="preserve"><value>How long to remind before automatically stopping recording</value></data>
   <data name="离线语音" xml:space="preserve"><value>Offline voice</value></data>
-  <data name="连续字符平均间隔低于该值时，认为更像扫码枪高速输入" xml:space="preserve"><value>When the average interval between consecutive characters is lower than this value, it is considered more like high-speed input with a code scanner.</value></data>
+  <data name="连续字符平均间隔低于该值时，认为更像扫码枪高速输入" xml:space="preserve"><value>Lower values reject slower typing</value></data>
   <data name="联网语音" xml:space="preserve"><value>Online voice</value></data>
   <data name="浏览器访问用的端口，保存后自动重启服务" xml:space="preserve"><value>The port used for browser access, and the service will be automatically restarted after saving.</value></data>
   <data name="录像保存位置" xml:space="preserve"><value>Recording locations</value></data>
-  <data name="检测本机实时录制能力，并按摄像头原生模式推荐分辨率和帧率" xml:space="preserve"><value>Test real-time recording performance and recommend a native camera resolution and frame rate</value></data>
+  <data name="检测本机实时录制能力，并按摄像头原生模式推荐分辨率和帧率" xml:space="preserve"><value>Test this PC and recommend stable camera settings</value></data>
   <data name="检测并推荐录制规格" xml:space="preserve"><value>Test and recommend recording settings</value></data>
   <data name="检测本机性能并推荐稳定的摄像头原生规格" xml:space="preserve"><value>Test this computer and recommend stable native camera settings</value></data>
   <data name="开始检测" xml:space="preserve"><value>Start test</value></data>
   <data name="正在检测，请稍候" xml:space="preserve"><value>Testing, please wait</value></data>
   <data name="录像编码异常时，用它重新检测电脑能力" xml:space="preserve"><value>When the video encoding is abnormal, use it to re-test the computer's capabilities.</value></data>
-  <data name="录像按列表顺序保存，当前磁盘空间不足时自动换到下一个。系统会为每块磁盘保留安全空间，按整块磁盘计算，其他软件占用后可用容量可能减少；需要调整时右键磁盘" xml:space="preserve"><value>Recordings are saved in list order, and the next disk is used automatically when the current one runs low on space. The system keeps a safety margin for the whole disk, so available capacity can drop when other software uses it. Right-click a disk to adjust it</value></data>
+  <data name="录像按列表顺序保存，当前磁盘空间不足时自动换到下一个。系统会为每块磁盘保留安全空间，按整块磁盘计算，其他软件占用后可用容量可能减少；需要调整时右键磁盘" xml:space="preserve"><value>Space runs out: recordings move to the next disk. Each disk keeps a safety margin, so other apps can reduce usable space. Right-click a disk to adjust</value></data>
   <data name="录像网页访问密钥" xml:space="preserve"><value>Recording page access key</value></data>
   <data name="放大取景框内的画面，停留一会儿后恢复全景" xml:space="preserve"><value>Zoom the area inside the guide box, then restore the full view.</value></data>
   <data name="录制声音" xml:space="preserve"><value>Record sound</value></data>
   <data name="面单大" xml:space="preserve"><value>Larger shipping label</value></data>
   <data name="配置录像保存位置，以及每个磁盘要留给系统和其他软件的空间" xml:space="preserve"><value>Configure the recording storage location and the space on each disk to be reserved for the system and other software</value></data>
-  <data name="配置向导" xml:space="preserve"><value>Configuration wizard</value></data>
+  <data name="配置向导" xml:space="preserve"><value>Setup wizard</value></data>
   <data name="平滑过渡" xml:space="preserve"><value>smooth transition</value></data>
   <data name="平均输入间隔" xml:space="preserve"><value>Average input interval</value></data>
   <data name="普通播报声线" xml:space="preserve"><value>Standard voice</value></data>
@@ -243,7 +243,7 @@
   <data name="全局键盘监听" xml:space="preserve"><value>Global keyboard listener</value></data>
   <data name="软件在后台也能扫码开始录制" xml:space="preserve"><value>The software can also scan the QR code to start recording in the background.</value></data>
   <data name="托盘期间扫码监听" xml:space="preserve"><value>Scanner listening in the system tray</value></data>
-  <data name="选择每次询问、继续监听或不监听；恢复主界面后自动继续监听" xml:space="preserve"><value>Ask every time, keep listening, or stop listening in the tray; listening resumes when the main window is restored</value></data>
+  <data name="选择每次询问、继续监听或不监听；恢复主界面后自动继续监听" xml:space="preserve"><value>Ask each time, keep listening, or stop in the tray; listening resumes in the main window</value></data>
   <data name="扫码间隔保护" xml:space="preserve"><value>Scan cooldown</value></data>
   <data name="扫码事件预录" xml:space="preserve"><value>Scan event pre-recording</value></data>
   <data name="扫码前保留画面，占用运行内存" xml:space="preserve"><value>Keep the moments before scanning; uses system memory</value></data>
@@ -263,10 +263,10 @@
   <data name="更多" xml:space="preserve"><value>More</value></data>
   <data name="同码停录收尾" xml:space="preserve"><value>Same-code stop roll-out</value></data>
   <data name="同码停录后继续保留的画面时长" xml:space="preserve"><value>How much video to keep after same-code stop</value></data>
-  <data name="扫码内容至少达到这个长度才会提交。全局键盘监听和无回车窗口内识别都会用到" xml:space="preserve"><value>The scanned code content will be submitted if it reaches at least this length. Both global keyboard monitoring and recognition within a carriage-enter-free window are used.</value></data>
-  <data name="扫码枪可能连续发送多次内容，这里用于避免重复触发录制切换" xml:space="preserve"><value>The code scanner may send content multiple times in succession. This is used to avoid triggering the recording switch repeatedly.</value></data>
+  <data name="扫码内容至少达到这个长度才会提交。全局键盘监听和无回车窗口内识别都会用到" xml:space="preserve"><value>Minimum characters before a scan is submitted</value></data>
+  <data name="扫码枪可能连续发送多次内容，这里用于避免重复触发录制切换" xml:space="preserve"><value>Prevents repeated scans from switching recordings twice</value></data>
   <data name="扫码枪没开自动回车时打开。需要软件窗口在前台" xml:space="preserve"><value>Enable when the scanner does not send Enter. The application window must be in the foreground</value></data>
-  <data name="扫码枪没有自动回车时使用。只在软件窗口内识别，避免影响其他程序输入" xml:space="preserve"><value>Use when the scanner does not send Enter. Recognition is limited to this window so other applications are unaffected</value></data>
+  <data name="扫码枪没有自动回车时使用。只在软件窗口内识别，避免影响其他程序输入" xml:space="preserve"><value>For scanners that don't send Enter. Only scans in this window</value></data>
   <data name="扫码最小长度" xml:space="preserve"><value>Minimum scan length</value></data>
   <data name="扫描残留的 MKV 和 WAV，合并为 MP4" xml:space="preserve"><value>Scan residual MKV and WAV and merge into MP4</value></data>
   <data name="ScanInput.PlaceholderGlobal" xml:space="preserve"><value>Supports background scanning; you can also type manually</value></data>
@@ -284,19 +284,19 @@
   <data name="输入一段文字，试听当前播报效果" xml:space="preserve"><value>Enter a piece of text to listen to the current broadcast effect</value></data>
   <data name="数值越小，对手动输入越严格" xml:space="preserve"><value>The smaller the value, the stricter the manual input</value></data>
   <data name="太短的不当作单号，防止误触发" xml:space="preserve"><value>If it is too short, it will not be regarded as an order number to prevent false triggering.</value></data>
-  <data name="太短的视频自动丢弃" xml:space="preserve"><value>Videos that are too short will be automatically discarded</value></data>
-  <data name="提前提醒时间" xml:space="preserve"><value>Reminder time in advance</value></data>
+  <data name="太短的视频自动丢弃" xml:space="preserve"><value>Discard very short videos</value></data>
+  <data name="提前提醒时间" xml:space="preserve"><value>Reminder lead time</value></data>
   <data name="添加磁盘" xml:space="preserve"><value>Add drive</value></data>
-  <data name="停顿越短越灵敏，越长越不易误触" xml:space="preserve"><value>The shorter the pause, the more sensitive it is; the longer the pause, the less likely it is to accidentally touch.</value></data>
+  <data name="停顿越短越灵敏，越长越不易误触" xml:space="preserve"><value>Shorter pauses are more sensitive; longer pauses reduce false scans</value></data>
   <data name="停止" xml:space="preserve"><value>Stop</value></data>
   <data name="同一网络里的电脑或手机可以用浏览器查看录像，首次开启可能请求管理员权限" xml:space="preserve"><value>Computers or mobile phones on the same network can use a browser to view the recording. Administrator permissions may be required when opening it for the first time.</value></data>
   <data name="网页访问端口" xml:space="preserve"><value>Web access port</value></data>
   <data name="网页临时缓存上限" xml:space="preserve"><value>Web page temporary cache limit</value></data>
   <data name="往右更清晰，已限制极端画质避免文件过大" xml:space="preserve"><value>Move right for clearer video. Extreme quality is limited to prevent oversized files.</value></data>
   <data name="无回车窗口内识别" xml:space="preserve"><value>In-window recognition without Enter</value></data>
-  <data name="无回车窗口内识别时，最后一次输入后超过这个时间没有新字符，才判断一次扫码是否完成" xml:space="preserve"><value>Without Enter, a scan is submitted only after no new characters arrive for this period</value></data>
+  <data name="无回车窗口内识别时，最后一次输入后超过这个时间没有新字符，才判断一次扫码是否完成" xml:space="preserve"><value>Wait after the last character before submitting a scan</value></data>
   <data name="系统语音" xml:space="preserve"><value>System voice</value></data>
-  <data name="系统语音不需要网络；联网语音声音更自然；离线语音使用本地模型，需要额外运行依赖" xml:space="preserve"><value>System voice does not require a network; networked voice sounds more natural; offline voice uses a local model and requires additional running dependencies.</value></data>
+  <data name="系统语音不需要网络；联网语音声音更自然；离线语音使用本地模型，需要额外运行依赖" xml:space="preserve"><value>Online sounds better; offline needs extra runtime</value></data>
   <data name="下移" xml:space="preserve"><value>Move down</value></data>
   <data name="显示已清理记录" xml:space="preserve"><value>Show cleared records</value></data>
   <data name="限制录像时长" xml:space="preserve"><value>Limit recording duration</value></data>
@@ -305,7 +305,7 @@
   <data name="修改后对外分发或提供网络服务时，需要遵守 AGPL-3.0 的开源义务" xml:space="preserve"><value>When distributing or providing network services after modification, you need to comply with the open source obligations of AGPL-3.0</value></data>
   <data name="需要保留现场声音时开启" xml:space="preserve"><value>Turn on when you need to preserve live sound</value></data>
   <data name="选择录制声音使用的麦克风" xml:space="preserve"><value>Select the microphone used to record sound</value></data>
-  <data name="选择拍摄打包过程的摄像头" xml:space="preserve"><value>Choose a camera to capture the packaging process</value></data>
+  <data name="选择拍摄打包过程的摄像头" xml:space="preserve"><value>Camera used to record packing</value></data>
   <data name="选择提醒声音使用系统语音、联网语音还是离线语音" xml:space="preserve"><value>Choose whether the reminder sound uses system voice, online voice, or offline voice</value></data>
   <data name="选择这台电脑负责录像还是打印" xml:space="preserve"><value>Choose whether this computer is responsible for recording or printing</value></data>
   <data name="移除选中" xml:space="preserve"><value>Remove selected</value></data>
@@ -317,19 +317,19 @@
   <data name="用于判断扫码内容是不是有效单号" xml:space="preserve"><value>Used to determine whether the scanned code is a valid order number</value></data>
   <data name="用于正常订单提示" xml:space="preserve"><value>Used for normal order prompts</value></data>
   <data name="用于重复单号、非法单号等提醒" xml:space="preserve"><value>Used to remind duplicate order numbers, illegal order numbers, etc.</value></data>
-  <data name="优先使用显卡进行视频编码，可降低 CPU 占用；如果录像异常，可改为自动或 CPU" xml:space="preserve"><value>Prioritize using the graphics card for video encoding, which can reduce CPU usage; if the recording is abnormal, it can be changed to automatic or CPU</value></data>
+  <data name="优先使用显卡进行视频编码，可降低 CPU 占用；如果录像异常，可改为自动或 CPU" xml:space="preserve"><value>Uses the GPU to reduce CPU load; switch if recording fails</value></data>
   <data name="语速" xml:space="preserve"><value>Speech rate</value></data>
   <data name="语音引擎" xml:space="preserve"><value>Voice engine</value></data>
   <data name="语音预览" xml:space="preserve"><value>Voice preview</value></data>
-  <data name="越高越流畅，也更占空间" xml:space="preserve"><value>The higher it is, the smoother it is, and it also takes up more space.</value></data>
-  <data name="越高越清晰，文件也越大" xml:space="preserve"><value>The higher it is, the clearer it is and the larger the file is.</value></data>
+  <data name="越高越流畅，也更占空间" xml:space="preserve"><value>Higher is smoother; uses more space</value></data>
+  <data name="越高越清晰，文件也越大" xml:space="preserve"><value>Higher is clearer; files get larger</value></data>
   <data name="再次扫描同一单号才停止录像，扫到其他单号不停止" xml:space="preserve"><value>Scan the same order number again to stop recording. Scan other order numbers and it will not stop.</value></data>
   <data name="原单号离开画面多久后，才允许摄像头再次确认" xml:space="preserve"><value>How long the original code must leave the frame before the camera can confirm it again</value></data>
   <data name="同码重新出现后，在该时间内识别到 3 次即可停录" xml:space="preserve"><value>Stop after the same code is recognized 3 times within this window after reappearing</value></data>
   <data name="在线警告声音" xml:space="preserve"><value>Online warning sound</value></data>
   <data name="在线普通声音" xml:space="preserve"><value>Online normal voice</value></data>
-  <data name="长时间不用时关闭摄像头" xml:space="preserve"><value>Turn off the camera when not in use for an extended period of time</value></data>
-  <data name="正则表达式用于过滤非法扫码内容。不了解正则时请不要修改" xml:space="preserve"><value>Regular expressions are used to filter illegal code scanning content. Please do not modify it if you do not understand the regular rules.</value></data>
+  <data name="长时间不用时关闭摄像头" xml:space="preserve"><value>Turn off camera when idle</value></data>
+  <data name="正则表达式用于过滤非法扫码内容。不了解正则时请不要修改" xml:space="preserve"><value>Regex used to validate order numbers; edit only if familiar</value></data>
   <data name="只有声音和画面不同步时再调整" xml:space="preserve"><value>Only adjust if the sound and picture are out of sync</value></data>
   <data name="至少 16 个字符；留空会自动生成，修改后旧链接立即失效" xml:space="preserve"><value>At least 16 characters; if left blank, it will be automatically generated. After modification, the old link will become invalid immediately.</value></data>
   <data name="重新检查打包模式、摄像头、麦克风和可选扫码枪" xml:space="preserve"><value>Recheck packing mode, camera, microphone, and optional scanner</value></data>
@@ -342,9 +342,9 @@
   <data name="自动提交停顿" xml:space="preserve"><value>Auto-submit pause</value></data>
   <data name="最大时长" xml:space="preserve"><value>Maximum duration</value></data>
   <data name="最小文件大小" xml:space="preserve"><value>Minimum file size</value></data>
-  <data name="Edge 声线来自微软在线语音服务，网络不可用时会回退到系统语音" xml:space="preserve"><value>Edge voice comes from Microsoft's online voice service and will fall back to system voice when the network is unavailable.</value></data>
-  <data name="H.265/HEVC 体积更小，但部分电脑或浏览器可能无法直接播放；H.264 兼容性更好" xml:space="preserve"><value>H.265/HEVC is smaller, but some computers or browsers may not be able to play it directly; H.264 has better compatibility</value></data>
-  <data name="Kokoro 声线编号由本地模型决定；不了解时保持默认即可" xml:space="preserve"><value>Kokoro's voice number is determined by the local model; if you don't know, just keep the default</value></data>
+  <data name="Edge 声线来自微软在线语音服务，网络不可用时会回退到系统语音" xml:space="preserve"><value>Falls back to system voice when offline</value></data>
+  <data name="H.265/HEVC 体积更小，但部分电脑或浏览器可能无法直接播放；H.264 兼容性更好" xml:space="preserve"><value>H.265 saves space; H.264 plays more widely</value></data>
+  <data name="Kokoro 声线编号由本地模型决定；不了解时保持默认即可" xml:space="preserve"><value>Kokoro voice IDs come from the local model</value></data>
   <data name="分钟" xml:space="preserve"><value> min</value></data>
   <data name="秒" xml:space="preserve"><value> sec</value></data>
   <data name="倍" xml:space="preserve"><value>x</value></data>
@@ -373,7 +373,7 @@
   <data name="打包总件数" xml:space="preserve"><value>Total packed items</value></data>
   <data name="打开网页并复制地址" xml:space="preserve"><value>Open page and copy address</value></data>
   <data name="大小" xml:space="preserve"><value>size</value></data>
-  <data name="单号精准搜索:" xml:space="preserve"><value>Accurate search for single number:</value></data>
+  <data name="单号精准搜索:" xml:space="preserve"><value>Exact tracking number search:</value></data>
   <data name="没有扫码枪可直接进入下一步" xml:space="preserve"><value>If you do not have a scanner, continue to the next step</value></data>
   <data name="点击切换模式" xml:space="preserve"><value>Click to switch modes</value></data>
   <data name="点击任意位置或扫码唤醒" xml:space="preserve"><value>Click anywhere or scan the QR code to wake up</value></data>
@@ -388,20 +388,20 @@
   <data name="局域网查看视频" xml:space="preserve"><value>View video on LAN</value></data>
   <data name="聚合方式: " xml:space="preserve"><value>Aggregation method:</value></data>
   <data name="累计工作时长" xml:space="preserve"><value>Total working time</value></data>
-  <data name="历史录像检索与回放" xml:space="preserve"><value>Historical video retrieval and playback</value></data>
-  <data name="连接" xml:space="preserve"><value>connect</value></data>
+  <data name="历史录像检索与回放" xml:space="preserve"><value>Recording search &amp; playback</value></data>
+  <data name="连接" xml:space="preserve"><value>Connect</value></data>
   <data name="连续打包模式" xml:space="preserve"><value>Continuous packing mode</value></data>
-  <data name="连续打包模式（推荐）" xml:space="preserve"><value>Continuous packing mode (recommended)</value></data>
+  <data name="连续打包模式（推荐）" xml:space="preserve"><value>Continuous (recommended)</value></data>
   <data name="录像日期范围:" xml:space="preserve"><value>Recording date range:</value></data>
   <data name="录制中" xml:space="preserve"><value>Recording</value></data>
   <data name="能看到实时画面，就说明摄像头基础配置正常" xml:space="preserve"><value>If you can see the real-time picture, it means that the basic configuration of the camera is normal.</value></data>
-  <data name="配置完成" xml:space="preserve"><value>Configuration completed</value></data>
+  <data name="配置完成" xml:space="preserve"><value>Configured</value></data>
   <data name="平均" xml:space="preserve"><value>Average</value></data>
   <data name="平均:" xml:space="preserve"><value>Average:</value></data>
   <data name="平均单件用时" xml:space="preserve"><value>Average time per item</value></data>
   <data name="前往下载" xml:space="preserve"><value>Download</value></data>
   <data name="打开更新页面" xml:space="preserve"><value>Open update page</value></data>
-  <data name="请选择这台电脑的用途" xml:space="preserve"><value>Please select what you want to use this computer for</value></data>
+  <data name="请选择这台电脑的用途" xml:space="preserve"><value>What will this computer do?</value></data>
   <data name="请用扫码枪扫描一个快递面单条码。检测到自动回车时可后台扫码；没有自动回车时会切到窗口内识别" xml:space="preserve"><value>Please use a code scanner to scan the barcode of a shipping label. When an automatic carriage return is detected, the code can be scanned in the background; when there is no automatic carriage return, the code will be switched to the window for identification.</value></data>
   <data name="全部" xml:space="preserve"><value>All</value></data>
   <data name="扫码动态" xml:space="preserve"><value>Scan activity</value></data>
@@ -424,11 +424,11 @@
   <data name="说话时音量条有跳动，就说明麦克风基础配置正常" xml:space="preserve"><value>If the volume bar jumps when speaking, it means that the basic configuration of the microphone is normal.</value></data>
   <data name="条码冷却中…" xml:space="preserve"><value>Scan cooldown…</value></data>
   <data name="跳过" xml:space="preserve"><value>jump over</value></data>
-  <data name="同码停录模式" xml:space="preserve"><value>Same-code stop mode</value></data>
+  <data name="同码停录模式" xml:space="preserve"><value>Same-code stop</value></data>
   <data name="同一局域网内的电脑、手机等设备，可以通过主界面底部显示的局域网访问地址，打开打包视频和回放页面。请确认这些设备连接在同一个局域网内" xml:space="preserve"><value>Computers, mobile phones and other devices within the same LAN can open the packaged video and playback page through the LAN access address displayed at the bottom of the main interface. Please make sure these devices are connected to the same LAN.</value></data>
   <data name="推荐" xml:space="preserve"><value>recommend</value></data>
   <data name="推荐连续打包模式，摄像头识别下一张面单条码时自动保存上一单" xml:space="preserve"><value>Continuous packing is recommended; the previous recording is saved when the camera recognizes the next shipping label.</value></data>
-  <data name="下面是日常打包流程" xml:space="preserve"><value>The following is the daily packaging process.</value></data>
+  <data name="下面是日常打包流程" xml:space="preserve"><value>Daily packing workflow</value></data>
   <data name="打包模式" xml:space="preserve"><value>Packing mode</value></data>
   <data name="选择打包模式" xml:space="preserve"><value>Select packaging mode</value></data>
   <data name="选择麦克风" xml:space="preserve"><value>Select microphone</value></data>
@@ -460,7 +460,7 @@
   <data name="设备备份服务：等待连接" xml:space="preserve"><value>Device backup service: Waiting for connection</value></data>
   <data name="手机/电脑备份" xml:space="preserve"><value>Phone/computer backup</value></data>
   <data name="暂无手机/电脑设备" xml:space="preserve"><value>No phone/computer devices</value></data>
-  <data name="连接手机/电脑" xml:space="preserve"><value>Connect phone/computer</value></data>
+  <data name="连接手机/电脑" xml:space="preserve"><value>Connect</value></data>
   <data name="录制电脑" xml:space="preserve"><value>Recording computer</value></data>
   <data name="Main.PrintTestOrder" xml:space="preserve"><value>{0} Test order received</value></data>
   <data name="Main.PrintNoRefund" xml:space="preserve"><value>{0} Responded; no orders received</value></data>
@@ -488,7 +488,8 @@
   <data name="Main.ClientPrintStation" xml:space="preserve"><value>Phone recording backup</value></data>
   <data name="Main.ClientMobileApp" xml:space="preserve"><value>Mobile app</value></data>
   <data name="Main.ClientOther" xml:space="preserve"><value>Other device</value></data>
-  <data name="Main.Title" xml:space="preserve"><value>Packing Monitor {0}</value></data>
+  <data name="Main.Title" xml:space="preserve"><value>PackingProof package evidence {0}</value></data>
+  <data name="App.ProductName" xml:space="preserve"><value>PackingProof package evidence</value></data>
   <data name="Main.BarcodeClear" xml:space="preserve"><value>Scan: Clear input</value></data>
   <data name="Main.BarcodeReturn" xml:space="preserve"><value>Scan: Return mode</value></data>
   <data name="Main.BarcodeShipping" xml:space="preserve"><value>Scan: Shipping mode</value></data>
@@ -566,8 +567,8 @@
   <data name="将面单条形码放入框内" xml:space="preserve"><value>Place the shipping-label barcode inside the guide</value></data>
   <data name="主摄像头" xml:space="preserve"><value>Main camera</value></data>
   <data name="画面旋转" xml:space="preserve"><value>Image rotation</value></data>
-  <data name="决定录出来的视频方向" xml:space="preserve"><value>Determines the orientation of the recorded video</value></data>
-  <data name="决定画中画的方向" xml:space="preserve"><value>Determines the orientation of the picture-in-picture</value></data>
+  <data name="决定录出来的视频方向" xml:space="preserve"><value>Sets recorded video orientation</value></data>
+  <data name="决定画中画的方向" xml:space="preserve"><value>Sets overlay orientation</value></data>
   <data name="不旋转" xml:space="preserve"><value>No rotation</value></data>
   <data name="旋转 90°" xml:space="preserve"><value>Rotate 90°</value></data>
   <data name="旋转 270°" xml:space="preserve"><value>Rotate 270°</value></data>
@@ -590,7 +591,7 @@
   <data name="将面单条形码放入预览引导框，稳定识别后会自动开始或切换录像" xml:space="preserve"><value>Place the shipping-label barcode inside the preview guide to start or switch recordings after a stable read</value></data>
   <data name="扫码枪仍可同时使用，建议保留作为后备" xml:space="preserve"><value>Your scanner will keep working and can remain connected as a fallback</value></data>
   <data name="支持常见快递面单的一维条码，商品条码不会触发录像" xml:space="preserve"><value>Common shipping-label barcodes are supported; product barcodes will not start recording</value></data>
-  <data name="启用摄像头识别" xml:space="preserve"><value>Enable camera recognition</value></data>
+  <data name="启用摄像头识别" xml:space="preserve"><value>Enable camera</value></data>
   <data name="暂不启用" xml:space="preserve"><value>Not now</value></data>
   <data name="已启用摄像头识别面单" xml:space="preserve"><value>Camera shipping-label recognition enabled</value></data>
   <data name="已保留当前设置，可随时在设置中开启" xml:space="preserve"><value>Current setting kept; camera recognition can be enabled in Settings at any time</value></data>
@@ -606,7 +607,7 @@
   <data name="时间格式为 HH:mm" xml:space="preserve"><value>Time format: HH:mm</value></data>
   <data name="时间格式错误" xml:space="preserve"><value>Invalid time format</value></data>
   <data name="不休眠时段 {0} 请填写完整的 HH:mm 开始和结束时间，或全部留空" xml:space="preserve"><value>Enter both the HH:mm start and end times for no-sleep period {0}, or leave both empty</value></data>
-  <data name="完成向导后会显示手机连接二维码。手机与这台电脑连接同一个局域网，扫码即可打开打包视频和回放页面" xml:space="preserve"><value>A phone connection QR code will appear after the wizard. Connect the phone to the same LAN as this computer and scan it to open recordings and playback.</value></data>
+  <data name="完成向导后会显示手机连接二维码。手机与这台电脑连接同一个局域网，扫码即可打开打包视频和回放页面" xml:space="preserve"><value>After setup, scan the phone QR code on the same LAN to open recordings and playback</value></data>
   <data name="手机/电脑连接" xml:space="preserve"><value>Connect devices</value></data>
   <data name="连接录像网页" xml:space="preserve"><value>Connect to recordings</value></data>
   <data name="手机或其他电脑连接同一个局域网后，扫描二维码即可打开录像" xml:space="preserve"><value>Connect a phone or another computer to the same LAN, then scan the QR code to open recordings</value></data>
@@ -638,7 +639,7 @@
   <data name="暂时无法生成二维码" xml:space="preserve"><value>Unable to generate a QR code right now</value></data>
   <data name="打开设置" xml:space="preserve"><value>Open Settings</value></data>
   <data name="复制网址" xml:space="preserve"><value>Copy URL</value></data>
-  <data name="电脑打开" xml:space="preserve"><value>Open on this computer</value></data>
+  <data name="电脑打开" xml:space="preserve"><value>Open here</value></data>
   <data name="当前地址：" xml:space="preserve"><value>Current address: </value></data>
   <data name="手机或其他电脑连接同一个局域网后，可扫码或复制网址打开录像网页" xml:space="preserve"><value>Connect the phone or another computer to the same LAN, then scan or copy the URL to open the recordings page</value></data>
   <data name="显示二维码" xml:space="preserve"><value>Show QR code</value></data>
@@ -647,8 +648,8 @@
   <data name="下一页" xml:space="preserve"><value>Next</value></data>
   <data name="显示高级设置" xml:space="preserve"><value>Show advanced settings</value></data>
   <data name="高级模式" xml:space="preserve"><value>Advanced mode</value></data>
-  <data name="点击显示高级选项" xml:space="preserve"><value>Click to show advanced options</value></data>
-  <data name="点击隐藏高级选项" xml:space="preserve"><value>Click to hide advanced options</value></data>
+  <data name="点击显示高级选项" xml:space="preserve"><value>Show advanced</value></data>
+  <data name="点击隐藏高级选项" xml:space="preserve"><value>Hide advanced</value></data>
   <data name="Commit 未知" xml:space="preserve"><value>Commit unknown</value></data>
   <data name="Commit {0}" xml:space="preserve"><value>Commit {0}</value></data>
   <data name="完整 Commit ID：{0}" xml:space="preserve"><value>Full commit ID: {0}</value></data>
@@ -659,7 +660,7 @@
   <data name="了解风险并开启" xml:space="preserve"><value>Accept risk and enable</value></data>
   <data name="保持关闭" xml:space="preserve"><value>Keep off</value></data>
   <data name="实时 AAC 音频管道初始化失败，已取消开录" xml:space="preserve"><value>Could not initialize the real-time AAC audio pipe. Recording was not started</value></data>
-  <data name="兼容性提示：部分麦克风、驱动或 FFmpeg 环境可能出现录制启动失败、声音缺失或不同步" xml:space="preserve"><value>Compatibility note: some microphones, drivers, or FFmpeg environments may fail to start, lose audio, or drift out of sync</value></data>
+  <data name="兼容性提示：部分麦克风、驱动或 FFmpeg 环境可能出现录制启动失败、声音缺失或不同步" xml:space="preserve"><value>Some microphones or drivers may lose audio or drift</value></data>
   <data name="显示编码、阈值、时序等专业参数" xml:space="preserve"><value>Show professional options for encoding, thresholds, and timing</value></data>
   <data name="选择录像方式" xml:space="preserve"><value>Choose recording mode</value></data>
   <data name="请选择录像方式" xml:space="preserve"><value>Choose how to record</value></data>
@@ -674,8 +675,8 @@
   <data name="切换用途" xml:space="preserve"><value>Switch purpose</value></data>
   <data name="录像方式" xml:space="preserve"><value>Recording mode</value></data>
   <data name="部署场景" xml:space="preserve"><value>Deployment preset</value></data>
-  <data name="电脑用途" xml:space="preserve"><value>Computer purpose</value></data>
-  <data name="选择这台电脑在 PackingProof 中承担的职责" xml:space="preserve"><value>Choose this computer's role in PackingProof</value></data>
+  <data name="电脑用途" xml:space="preserve"><value>Computer role</value></data>
+  <data name="选择这台电脑在 PackingProof 中承担的职责" xml:space="preserve"><value>Choose this computer's role</value></data>
   <data name="使用这台电脑录像" xml:space="preserve"><value>Record with this computer</value></data>
   <data name="连接已有主机" xml:space="preserve"><value>Connect to an existing host</value></data>
   <data name="接收手机录像" xml:space="preserve"><value>Receive mobile recordings</value></data>
@@ -692,7 +693,7 @@
   <data name="打开录像网页" xml:space="preserve"><value>Open recording website</value></data>
   <data name="重新选择这台电脑的用途" xml:space="preserve"><value>Choose a different purpose for this computer</value></data>
   <data name="在浏览器中打开主机网页回放" xml:space="preserve"><value>Open the host web playback page in your browser</value></data>
-  <data name="打开网页回放" xml:space="preserve"><value>Open web playback</value></data>
+  <data name="打开网页回放" xml:space="preserve"><value>Open web</value></data>
   <data name="重新扫描局域网中的 PackingProof 主机" xml:space="preserve"><value>Scan the LAN again for PackingProof hosts</value></data>
   <data name="解除当前显示并选择另一台主机" xml:space="preserve"><value>Clear the current selection and choose another host</value></data>
   <data name="保存并连接列表中选中的主机" xml:space="preserve"><value>Save and connect to the selected host</value></data>
@@ -732,12 +733,12 @@
   <data name="关闭窗口" xml:space="preserve"><value>Close window</value></data>
   <data name="关闭窗口后，你希望程序怎么做？" xml:space="preserve"><value>What should the app do when you close the window?</value></data>
   <data name="最小化到托盘后，录像、设备备份和网页服务会继续运行" xml:space="preserve"><value>Recording, device backup, and web services continue running when minimized to the tray</value></data>
-  <data name="最小化到托盘后，已有录像、设备备份和网页服务会继续运行；扫码枪是否继续监听由你的设置决定" xml:space="preserve"><value>Existing recordings, device backups, and web services continue after minimizing to the tray; scanner listening follows your preference</value></data>
+  <data name="最小化到托盘后，已有录像、设备备份和网页服务会继续运行；扫码枪是否继续监听由你的设置决定" xml:space="preserve"><value>Recordings, device backups, and web services keep running in the tray. Scanner listening follows your setting</value></data>
   <data name="托盘期间继续监听扫码枪？" xml:space="preserve"><value>Continue listening to the scanner while in the tray?</value></data>
-  <data name="继续监听" xml:space="preserve"><value>Continue listening</value></data>
+  <data name="继续监听" xml:space="preserve"><value>Keep listening</value></data>
   <data name="不监听" xml:space="preserve"><value>Stop listening</value></data>
   <data name="继续监听：托盘期间扫码仍会触发录像" xml:space="preserve"><value>Continue listening: scanner input can still trigger recording while the app is in the tray</value></data>
-  <data name="不监听只会停止扫码枪触发录像，网页服务、主机备份和已有录像仍会继续运行；恢复主界面后自动恢复监听" xml:space="preserve"><value>Stopping listening only prevents scanner-triggered recording; web services, host backup, and existing recordings keep running. Listening resumes when the main window is restored</value></data>
+  <data name="不监听只会停止扫码枪触发录像，网页服务、主机备份和已有录像仍会继续运行；恢复主界面后自动恢复监听" xml:space="preserve"><value>Stopping listening only pauses scanner-triggered recording. Web, backup, and recordings keep running; listening resumes in the main window</value></data>
   <data name="托盘扫码监听选择保存失败，本次仍按你的选择执行，下次进入托盘时会再次询问：{0}" xml:space="preserve"><value>Could not save the tray scanner preference. Your choice will apply this time, and you will be asked again next time: {0}</value></data>
   <data name="不再提示，记住我的选择" xml:space="preserve"><value>Don't ask again; remember my choice</value></data>
   <data name="最小化到托盘" xml:space="preserve"><value>Minimize to tray</value></data>
@@ -753,7 +754,7 @@
   <data name="局域网回放" xml:space="preserve"><value>LAN playback</value></data>
   <data name="服务启动后显示局域网地址" xml:space="preserve"><value>The LAN address appears after the service starts</value></data>
   <data name="复制局域网地址" xml:space="preserve"><value>Copy LAN address</value></data>
-  <data name="修复局域网" xml:space="preserve"><value>Repair LAN access</value></data>
+  <data name="修复局域网" xml:space="preserve"><value>Repair LAN</value></data>
   <data name="订单工具" xml:space="preserve"><value>Order tools</value></data>
   <data name="订单备注直接发送到本机，并写入录像数据库供录像设备关联" xml:space="preserve"><value>Order notes are sent to this computer and stored in the recording database for recording device matching</value></data>
   <data name="测试接收" xml:space="preserve"><value>Test receiving</value></data>
@@ -763,19 +764,19 @@
   <data name="录像回放" xml:space="preserve"><value>Recording playback</value></data>
   <data name="记录局域网服务和设备备份的详细信息" xml:space="preserve"><value>Record detailed LAN service and device backup information</value></data>
   <data name="可能包含订单内容和文件路径，仅在深度排查时开启" xml:space="preserve"><value>May include order details and file paths; enable only for in-depth troubleshooting</value></data>
-  <data name="暂不可用" xml:space="preserve"><value>Temporarily unavailable</value></data>
+  <data name="暂不可用" xml:space="preserve"><value>Unavailable</value></data>
   <data name="设备连接服务启用失败，请检查配置文件权限" xml:space="preserve"><value>Unable to enable the device connection service. Check configuration file permissions</value></data>
   <data name="正在启动设备连接服务..." xml:space="preserve"><value>Starting the device connection service...</value></data>
   <data name="安装或更新快递助手订单联动脚本" xml:space="preserve"><value>Install or update the Express Assistant order integration script</value></data>
   <data name="脚本会读取最近使用过的录像设备，并把订单同时发送给所有设备" xml:space="preserve"><value>The script reads recently used recording devices and sends orders to all of them</value></data>
   <data name="尚未配置订单联动" xml:space="preserve"><value>Order integration is not configured</value></data>
-  <data name="安装订单联动" xml:space="preserve"><value>Install order integration</value></data>
-  <data name="发送测试订单" xml:space="preserve"><value>Send test order</value></data>
+  <data name="安装订单联动" xml:space="preserve"><value>Install script</value></data>
+  <data name="发送测试订单" xml:space="preserve"><value>Send test</value></data>
   <data name="向当前在线的全部录像设备发送测试订单" xml:space="preserve"><value>Send a test order to all recording devices currently online</value></data>
   <data name="集中保存手机/电脑上传的录像，并提供局域网回放和订单联动" xml:space="preserve"><value>Store recordings uploaded by phones/computers and provide LAN playback and order integration</value></data>
   <data name="正在获取电脑名称" xml:space="preserve"><value>Getting the computer name</value></data>
-  <data name="今日备份" xml:space="preserve"><value>Backed up today</value></data>
-  <data name="累计备份" xml:space="preserve"><value>Total backups</value></data>
+  <data name="今日备份" xml:space="preserve"><value>Today</value></data>
+  <data name="累计备份" xml:space="preserve"><value>Total</value></data>
   <data name="个" xml:space="preserve"><value> recordings</value></data>
   <data name="已打开订单联动安装向导" xml:space="preserve"><value>Order integration setup guide opened</value></data>
   <data name="当前已经是录像文件备份主机用途" xml:space="preserve"><value>This computer is already set as a recording file backup host</value></data>
@@ -785,7 +786,7 @@
   <data name="5. 扫码枪（可选）" xml:space="preserve"><value>5. Barcode scanner (optional)</value></data>
   <data name="6. 完成" xml:space="preserve"><value>6. Finish</value></data>
   <data name="检测录制性能" xml:space="preserve"><value>Test recording performance</value></data>
-  <data name="正在根据这台电脑的编码能力，为已选摄像头推荐稳定的原生分辨率和帧率" xml:space="preserve"><value>Testing this computer's encoding performance to recommend a stable native resolution and frame rate for the selected camera</value></data>
+  <data name="正在根据这台电脑的编码能力，为已选摄像头推荐稳定的原生分辨率和帧率" xml:space="preserve"><value>Testing encoding to recommend a stable resolution and frame rate for this camera</value></data>
   <data name="正在测试 720P、1080P、2K 和 4K 的实时编码能力，请稍候" xml:space="preserve"><value>Testing real-time encoding performance at 720p, 1080p, 2K, and 4K. Please wait</value></data>
   <data name="已自动选择录制配置" xml:space="preserve"><value>Recording settings selected automatically</value></data>
   <data name="点击“下一步”继续测试麦克风；完成整个向导后配置才会保存" xml:space="preserve"><value>Select Next to test the microphone. Settings are saved only after the wizard is complete</value></data>
@@ -795,7 +796,7 @@
   <data name="5. 选择麦克风" xml:space="preserve"><value>5. Select microphone</value></data>
   <data name="6. 扫码枪（可选）" xml:space="preserve"><value>6. Barcode scanner (optional)</value></data>
   <data name="7. 完成" xml:space="preserve"><value>7. Finish</value></data>
-  <data name="推荐连续打包模式，识别或扫描下一张面单时自动保存上一单" xml:space="preserve"><value>Continuous packing mode is recommended. Recognizing or scanning the next shipping label automatically saves the previous recording.</value></data>
+  <data name="推荐连续打包模式，识别或扫描下一张面单时自动保存上一单" xml:space="preserve"><value>Recommended. Scanning the next label saves the previous order and starts the next</value></data>
   <data name="识别或扫描下一张面单条码后，自动结束上一单并开始下一单" xml:space="preserve"><value>Recognizing or scanning the next shipping-label barcode ends the previous recording and starts the next one.</value></data>
   <data name="识别或扫描面单条码开始录制，再次识别同一条码停止录制" xml:space="preserve"><value>Recognize or scan a shipping-label barcode to start recording, then recognize the same barcode again to stop.</value></data>
   <data name="选择录像使用的摄像头，并确认实时画面显示正常" xml:space="preserve"><value>Select the camera used for recording and confirm that its live preview works correctly</value></data>
@@ -816,13 +817,13 @@
   <data name="打开主机录像" xml:space="preserve"><value>Open host recordings</value></data>
   <data name="本机录像缓存" xml:space="preserve"><value>Local recording cache</value></data>
   <data name="上传到保存主机前，录像先保存在这里；录像从机固定使用一个本地磁盘" xml:space="preserve"><value>Recordings are stored here before upload to the storage host; a recording workstation uses one local disk.</value></data>
-  <data name="软件支持 NAS 备份，需要切换到主机后配置" xml:space="preserve"><value>NAS backup is supported and can be configured after switching this computer to a host.</value></data>
+  <data name="软件支持 NAS 备份，需要切换到主机后配置" xml:space="preserve"><value>NAS backup is available after switching this computer to a host</value></data>
   <data name="录像备份位置需要在主机上配置，是否现在切换用途？" xml:space="preserve"><value>Recording backup locations are configured on a host. Switch this computer's purpose now?</value></data>
   <data name="更改磁盘" xml:space="preserve"><value>Change disk</value></data>
   <data name="录像会自动上传到保存主机。本机缓存用于断网重试和临时保留，只会清理已经成功上传的录像" xml:space="preserve"><value>Recordings are uploaded to the storage host automatically. The local cache supports offline retries and temporary retention; only successfully uploaded recordings are removed</value></data>
   <data name="缓存策略" xml:space="preserve"><value>Cache policy</value></data>
   <data name="三种策略互斥，上传未确认的录像不会被清理" xml:space="preserve"><value>Choose one policy. Recordings without confirmed uploads are never removed</value></data>
-  <data name="上传成功后立即删除" xml:space="preserve"><value>Delete immediately after a confirmed upload</value></data>
+  <data name="上传成功后立即删除" xml:space="preserve"><value>Delete after upload</value></data>
   <data name="上传成功后保留指定天数" xml:space="preserve"><value>Keep for a specified number of days after upload</value></data>
   <data name="限制已上传缓存容量" xml:space="preserve"><value>Limit uploaded cache size</value></data>
   <data name="保留天数" xml:space="preserve"><value>Retention days</value></data>
@@ -853,13 +854,13 @@
   <data name=" · 待上传 " xml:space="preserve"><value> · Pending </value></data>
   <data name="可连接" xml:space="preserve"><value>Available</value></data>
   <data name="确认后选择另一台保存主机" xml:space="preserve"><value>Choose another storage host after confirmation</value></data>
-  <data name="更换保存主机" xml:space="preserve"><value>Change storage host</value></data>
+  <data name="更换保存主机" xml:space="preserve"><value>Change host</value></data>
   <data name="解除当前显示并选择另一台保存主机" xml:space="preserve"><value>Disconnect the current host and select another storage host</value></data>
-  <data name="选择保存主机" xml:space="preserve"><value>Select a storage host</value></data>
+  <data name="选择保存主机" xml:space="preserve"><value>Select host</value></data>
   <data name="正在搜索同一网络中的保存主机" xml:space="preserve"><value>Searching for storage hosts on the same network</value></data>
   <data name="重新搜索同一网络中的保存主机" xml:space="preserve"><value>Search again for storage hosts on the same network</value></data>
   <data name="连接列表中选中的保存主机" xml:space="preserve"><value>Connect to the selected storage host</value></data>
-  <data name="连接保存主机" xml:space="preserve"><value>Connect to storage host</value></data>
+  <data name="连接保存主机" xml:space="preserve"><value>Connect host</value></data>
   <data name="连接保存主机失败：{0}" xml:space="preserve"><value>Failed to connect to storage host: {0}</value></data>
   <data name="确认使用列表中选中的保存主机" xml:space="preserve"><value>Confirm the selected storage host</value></data>
   <data name="使用这台保存主机" xml:space="preserve"><value>Use this storage host</value></data>
@@ -898,12 +899,12 @@
   <data name="要，使用这台电脑录像" xml:space="preserve"><value>Yes, record with this computer</value></data>
   <data name="启用摄像头、麦克风、面单识别、扫码枪、订单联动和语音提醒" xml:space="preserve"><value>Enable the camera, microphone, shipping-label recognition, scanner, order integration, and voice alerts</value></data>
   <data name="不要，这台电脑不录像" xml:space="preserve"><value>No, this computer will not record</value></data>
-  <data name="不初始化本机录像设备，仍可保存其他设备录像或只连接主机查看" xml:space="preserve"><value>Do not initialize local recording devices; this computer can still store recordings from other devices or connect to a host for viewing only</value></data>
+  <data name="不初始化本机录像设备，仍可保存其他设备录像或只连接主机查看" xml:space="preserve"><value>Leaves local recording devices untouched. This PC can still store device recordings or connect as a viewer</value></data>
   <data name="2. 这台电脑要负责长期保存录像吗？" xml:space="preserve"><value>2. Will this computer store recordings long term?</value></data>
   <data name="要，作为保存录像的电脑" xml:space="preserve"><value>Yes, use it as the storage computer</value></data>
   <data name="长期保存录像，并可接收和备份手机或其他录制电脑上传的录像" xml:space="preserve"><value>Store recordings long term and receive backups uploaded by phones or other recording computers</value></data>
-  <data name="不要，交给其他电脑保存" xml:space="preserve"><value>No, another computer will store them</value></data>
-  <data name="本机录像时作为“录像从机”，录像先保存在本机，再上传给保存主机；不录像时作为“查看端”，连接主机查看录像" xml:space="preserve"><value>When recording, this computer acts as a recording workstation: it saves locally first, then uploads to the storage host. Without recording, it acts as a viewer connected to the host</value></data>
+  <data name="不要，交给其他电脑保存" xml:space="preserve"><value>No, store on another computer</value></data>
+  <data name="本机录像时作为“录像从机”，录像先保存在本机，再上传给保存主机；不录像时作为“查看端”，连接主机查看录像" xml:space="preserve"><value>When recording, save locally then upload to the host. When not recording, connect to the host as a viewer</value></data>
   <data name="选择结果" xml:space="preserve"><value>Result</value></data>
   <data name="请完成上面两个选择" xml:space="preserve"><value>Please answer both questions above</value></data>
   <data name="完成后会在这里显示最终用途和支持的能力" xml:space="preserve"><value>The final purpose and supported capabilities will appear here</value></data>
@@ -916,7 +917,7 @@
   <data name="录像长期保存在本机" xml:space="preserve"><value>Store recordings on this computer long term</value></data>
   <data name="可接收并备份手机录像" xml:space="preserve"><value>Receive and back up phone recordings</value></data>
   <data name="可接收并备份其他录制电脑上传的录像" xml:space="preserve"><value>Receive and back up recordings uploaded by other recording computers</value></data>
-  <data name="提供局域网录像回放" xml:space="preserve"><value>Provide recording playback on the local network</value></data>
+  <data name="提供局域网录像回放" xml:space="preserve"><value>LAN recording playback</value></data>
   <data name="电脑录像并保存到其他电脑" xml:space="preserve"><value>Record here and store on another computer</value></data>
   <data name="使用这台电脑录像，完成后安全上传到绑定的保存电脑" xml:space="preserve"><value>Record with this computer and securely upload completed recordings to the bound storage computer</value></data>
   <data name="录像先安全保存在本地缓存" xml:space="preserve"><value>Keep recordings safely in the local cache first</value></data>
@@ -926,17 +927,17 @@
   <data name="本机不使用摄像头录像" xml:space="preserve"><value>Do not use this computer's camera to record</value></data>
   <data name="接收并长期保存手机录像" xml:space="preserve"><value>Receive and store phone recordings long term</value></data>
   <data name="接收并长期保存其他录制电脑上传的录像" xml:space="preserve"><value>Receive and store recordings uploaded by other recording computers long term</value></data>
-  <data name="只连接主机查看" xml:space="preserve"><value>Connect to a host for viewing only</value></data>
+  <data name="只连接主机查看" xml:space="preserve"><value>View from host only</value></data>
   <data name="这台电脑不录像也不保存录像，只连接现有主机使用" xml:space="preserve"><value>This computer neither records nor stores recordings; it only connects to an existing host</value></data>
   <data name="本机不录像、不长期保存录像" xml:space="preserve"><value>Do not record or retain recordings on this computer</value></data>
   <data name="连接现有主机查看录像" xml:space="preserve"><value>Connect to an existing host to view recordings</value></data>
   <data name="保留订单联动和测试订单能力" xml:space="preserve"><value>Keep order integration and test-order capabilities</value></data>
-  <data name="不接收其他设备录像" xml:space="preserve"><value>Do not receive recordings from other devices</value></data>
+  <data name="不接收其他设备录像" xml:space="preserve"><value>Don't receive device uploads</value></data>
   <data name="保存主机" xml:space="preserve"><value>Storage host</value></data>
   <data name="录像上传" xml:space="preserve"><value>Recording upload</value></data>
   <data name="待上传" xml:space="preserve"><value>Pending</value></data>
-  <data name="电脑昵称" xml:space="preserve"><value>Computer nickname</value></data>
-  <data name="用于区分不同的录像电脑，例如电脑1、电脑2" xml:space="preserve"><value>Used to distinguish recording computers, such as Computer 1 and Computer 2</value></data>
+  <data name="电脑昵称" xml:space="preserve"><value>Computer name</value></data>
+  <data name="用于区分不同的录像电脑，例如电脑1、电脑2" xml:space="preserve"><value>Tells recording computers apart</value></data>
   <data name="手机备份" xml:space="preserve"><value>Phone backup</value></data>
   <data name="接收到的订单" xml:space="preserve"><value>Received orders</value></data>
   <data name="使用本机录像摄像头扫描手机上的临时连接码" xml:space="preserve"><value>Scan the temporary connection code on the phone with this computer's recording camera</value></data>
@@ -944,10 +945,10 @@
   <data name="旋转 180°" xml:space="preserve"><value>Rotate 180°</value></data>
   <data name="摄像头画面方向" xml:space="preserve"><value>Camera orientation</value></data>
   <data name="摄像头倒装时，将预览和录像旋转 180°" xml:space="preserve"><value>Rotate the preview and recording 180° when the camera is mounted upside down</value></data>
-  <data name="仅支持 MP4。请先放入录像文件夹；导入后不要自行移动或删除，由程序统一管理" xml:space="preserve"><value>MP4 only. Place videos in the recording folder first; after import, let the app manage them without moving or deleting them manually</value></data>
+  <data name="仅支持 MP4。请先放入录像文件夹；导入后不要自行移动或删除，由程序统一管理" xml:space="preserve"><value>MP4 only. Put videos in the recording folder first. After import, let the app manage them for playback, backup, and storage</value></data>
   <data name="导入发货" xml:space="preserve"><value>Import shipping</value></data>
   <data name="导入退货" xml:space="preserve"><value>Import returns</value></data>
-  <data name="导入录像" xml:space="preserve"><value>Import recordings</value></data>
+  <data name="导入录像" xml:space="preserve"><value>Import</value></data>
   <data name="选择视频类型后，再选择存放视频的文件夹" xml:space="preserve"><value>Choose the video type, then select the folder containing the videos</value></data>
   <data name="导入前请确认" xml:space="preserve"><value>Before importing</value></data>
   <data name="仅支持 MP4。请先把视频放入程序的录像文件夹；导入后不要自行移动或删除，程序会负责回放、备份和空间管理" xml:space="preserve"><value>MP4 only. Place videos in the app's recording folder first. After importing, do not move or delete them manually; the app will manage playback, backup, and storage space</value></data>
@@ -962,19 +963,19 @@
   <data name="拒绝" xml:space="preserve"><value>Deny</value></data>
   <data name="当前电脑无法实时使用 AV1，已改用 H.265" xml:space="preserve"><value>This computer cannot use AV1 for real-time recording. H.265 is now selected</value></data>
   <data name="可以在这里直接下载并校验 AppPatch；准备完成后，将在下次从根目录启动器启动时安装" xml:space="preserve"><value>Download and verify the AppPatch here; it will be installed the next time you start from the root launcher</value></data>
-  <data name="下载并准备更新" xml:space="preserve"><value>Download and prepare update</value></data>
-  <data name="请选择录像开始播放" xml:space="preserve"><value>Select a recording to start playback</value></data>
+  <data name="下载并准备更新" xml:space="preserve"><value>Download update</value></data>
+  <data name="请选择录像开始播放" xml:space="preserve"><value>Select a recording</value></data>
   <data name="正在准备视频..." xml:space="preserve"><value>Preparing video...</value></data>
   <data name="视频播放失败" xml:space="preserve"><value>Video playback failed</value></data>
   <data name="视频解码失败" xml:space="preserve"><value>Video decoding failed</value></data>
-  <data name="导出诊断日志" xml:space="preserve"><value>Export diagnostic logs</value></data>
+  <data name="导出诊断日志" xml:space="preserve"><value>Export logs</value></data>
   <data name="导出日志、配置和数据库，便于定位问题" xml:space="preserve"><value>Export logs, settings, and the database for troubleshooting</value></data>
   <data name="网络摄像头（手动地址）" xml:space="preserve"><value>Network camera (manual URL)</value></data>
   <data name="网络摄像头地址" xml:space="preserve"><value>Network camera URL</value></data>
   <data name="例如：rtsp://账号:密码@192.168.1.64:554/stream" xml:space="preserve"><value>e.g. rtsp://user:password@192.168.1.64:554/stream</value></data>
   <data name="支持 RTSP、RTMP、HTTP 视频流，需手动填写地址" xml:space="preserve"><value>Supports RTSP, RTMP, and HTTP video streams; enter the stream URL manually</value></data>
   <data name="测试连接" xml:space="preserve"><value>Test connection</value></data>
-  <data name="识别频率" xml:space="preserve"><value>Recognition frequency</value></data>
+  <data name="识别频率" xml:space="preserve"><value>Scan rate</value></data>
   <data name="电脑性能好可选“实时识别”，普通电脑保持默认即可" xml:space="preserve"><value>Choose real-time recognition on powerful computers; keep the default otherwise</value></data>
   <data name="实时识别" xml:space="preserve"><value>Real-time</value></data>
   <data name="标准识别（默认）" xml:space="preserve"><value>Standard (default)</value></data>
@@ -994,31 +995,31 @@
   <data name="偏右" xml:space="preserve"><value>Right</value></data>
   <data name="偏上" xml:space="preserve"><value>Up</value></data>
   <data name="偏下" xml:space="preserve"><value>Down</value></data>
-  <data name="识别确认时间" xml:space="preserve"><value>Recognition confirmation time</value></data>
+  <data name="识别确认时间" xml:space="preserve"><value>Confirmation time</value></data>
   <data name="识别到条码后，在该时间内达到确认次数即可触发开始、切换或停录" xml:space="preserve"><value>After a code is recognized, reaching the confirmation count within this time triggers start, switch, or stop</value></data>
-  <data name="识别确认次数" xml:space="preserve"><value>Recognition confirmation count</value></data>
+  <data name="识别确认次数" xml:space="preserve"><value>Scan confirmations</value></data>
   <data name="需要识别到几次才触发，次数越少响应越快" xml:space="preserve"><value>How many times the code must be recognized before triggering; fewer hits respond faster</value></data>
   <data name="1 次（最快）" xml:space="preserve"><value>1 hit (fastest)</value></data>
-  <data name="2 次（推荐）" xml:space="preserve"><value>2 hits (recommended)</value></data>
+  <data name="2 次（推荐）" xml:space="preserve"><value>2 hits</value></data>
   <data name="3 次（更稳）" xml:space="preserve"><value>3 hits (more stable)</value></data>
   <data name="4 次（最稳）" xml:space="preserve"><value>4 hits (most stable)</value></data>
   <data name="实时识别跟随摄像头帧率，响应最快；普通电脑保持默认即可" xml:space="preserve"><value>Real-time follows the camera frame rate for the fastest response; keep the default on regular computers</value></data>
   <data name="录像备份位置" xml:space="preserve"><value>Recording backup locations</value></data>
   <data name="录像备份" xml:space="preserve"><value>Recording backup</value></data>
   <data name="录像文件备份主机 · 集中保存手机/电脑上传的录像，并提供局域网回放和订单联动" xml:space="preserve"><value>Recording backup host · centrally stores recordings uploaded by phones/computers, and provides LAN playback and order integration</value></data>
-  <data name="添加网络位置" xml:space="preserve"><value>Add network location</value></data>
-  <data name="录像会按列表顺序备份到当前可用的位置；NAS 满时自动切换到下一个，NAS 中已备份的文件不会被程序删除" xml:space="preserve"><value>Recordings are backed up to the first currently available location in list order; when a NAS is full the program automatically switches to the next one, and files already backed up to the NAS are never deleted</value></data>
+  <data name="添加网络位置" xml:space="preserve"><value>Add network share</value></data>
+  <data name="录像会按列表顺序备份到当前可用的位置；NAS 满时自动切换到下一个，NAS 中已备份的文件不会被程序删除" xml:space="preserve"><value>Back up to available locations in list order. A full NAS switches to the next; files already on the NAS are never deleted</value></data>
   <data name="本地磁盘直接保存录像，空间不足时按保护期自动循环清理" xml:space="preserve"><value>Local disks store recordings directly; old recordings are recycled after a protection period when space is low</value></data>
-  <data name="备份按顺序切换可用位置，当前位置空间不足时自动跳到下一个。系统会为每个备份位置保留安全空间，按整个位置计算；需要调整时右键该位置；校验通过后才会清理旧本地副本；程序不会删除 NAS 上的文件" xml:space="preserve"><value>Backups move to the next available location when the current one runs low on space. The system keeps a safety margin for the whole location; right-click a location to adjust it. Old local copies are cleaned only after verification, and files on the NAS are not deleted</value></data>
+  <data name="备份按顺序切换可用位置，当前位置空间不足时自动跳到下一个。系统会为每个备份位置保留安全空间，按整个位置计算；需要调整时右键该位置；校验通过后才会清理旧本地副本；程序不会删除 NAS 上的文件" xml:space="preserve"><value>Space runs out: backups move to the next location. Each location keeps a safety margin. Right-click to adjust. Local copies are removed only after verification; NAS files are never deleted</value></data>
   <data name="录像清理" xml:space="preserve"><value>Recording cleanup</value></data>
   <data name="清理只影响电脑本地录像，NAS 中已备份的文件不会受到影响" xml:space="preserve"><value>Cleanup only affects local recordings on this computer; files already backed up to the NAS are not affected</value></data>
-  <data name="按时间清理…" xml:space="preserve"><value>Clean up by time…</value></data>
-  <data name="按空间释放…" xml:space="preserve"><value>Free up space…</value></data>
+  <data name="按时间清理…" xml:space="preserve"><value>Clean by time…</value></data>
+  <data name="按空间释放…" xml:space="preserve"><value>Free by size…</value></data>
    <data name="开始清理" xml:space="preserve"><value>Start cleanup</value></data>
    <data name="选择录像保存文件夹" xml:space="preserve"><value>Choose a recording folder</value></data>
    <data name="本地文件夹或 UNC 网络路径" xml:space="preserve"><value>Local folder or UNC network path</value></data>
   <data name="显示清理记录" xml:space="preserve"><value>Show cleaned recordings</value></data>
-  <data name="导出单号" xml:space="preserve"><value>Export order numbers</value></data>
+  <data name="导出单号" xml:space="preserve"><value>Export</value></data>
   <data name="正在导出单号" xml:space="preserve"><value>Exporting order numbers</value></data>
   <data name="数据较多时可能需要一些时间" xml:space="preserve"><value>Large exports may take some time</value></data>
   <data name="正在准备导出" xml:space="preserve"><value>Preparing export</value></data>
@@ -1032,20 +1033,20 @@
   <data name="导入第三方油猴脚本，导入后可在安装向导中选择" xml:space="preserve"><value>Import third-party userscripts, then select one in the installation guide</value></data>
   <data name="导入自定义脚本" xml:space="preserve"><value>Import custom script</value></data>
   <data name="PackingProof 扩展市场" xml:space="preserve"><value>PackingProof Extension Marketplace</value></data>
-  <data name="扩展市场" xml:space="preserve"><value>Extension Marketplace</value></data>
+  <data name="扩展市场" xml:space="preserve"><value>Marketplace</value></data>
   <data name="自动更新扩展" xml:space="preserve"><value>Update extensions automatically</value></data>
   <data name="市场里登记过的扩展有新版本时自动安装" xml:space="preserve"><value>Install newer versions of extensions listed in the marketplace automatically</value></data>
   <data name="正在读取经过签名的市场目录" xml:space="preserve"><value>Loading the signed marketplace catalog</value></data>
-  <data name="安装本地扩展" xml:space="preserve"><value>Install local extension</value></data>
+  <data name="安装本地扩展" xml:space="preserve"><value>Install local</value></data>
   <data name="刷新" xml:space="preserve"><value>Refresh</value></data>
   <data name="请选择一个扩展" xml:space="preserve"><value>Select an extension</value></data>
   <data name="安装" xml:space="preserve"><value>Install</value></data>
-  <data name="安装其他版本" xml:space="preserve"><value>Install another version</value></data>
+  <data name="安装其他版本" xml:space="preserve"><value>Other version</value></data>
   <data name="打开目录" xml:space="preserve"><value>Open folder</value></data>
   <data name="自定义扩展" xml:space="preserve"><value>Custom extensions</value></data>
   <data name="从扩展市场或本地文件安装用户脚本和外部适配器" xml:space="preserve"><value>Install userscripts and external adapters from the marketplace or a local file</value></data>
   <data name="扩展 API 授权" xml:space="preserve"><value>Extension API authorizations</value></data>
-  <data name="管理 ERP、称重设备等 API 客户端的访问权限；导入的订单脚本在上方单独管理" xml:space="preserve"><value>Manage API access for ERP systems, measuring devices, and other clients; imported order scripts are managed separately above</value></data>
+  <data name="管理 ERP、称重设备等 API 客户端的访问权限；导入的订单脚本在上方单独管理" xml:space="preserve"><value>Manage API access for ERP, scales, and other clients. Imported order scripts are managed above</value></data>
   <data name="扩展" xml:space="preserve"><value>Extension</value></data>
   <data name="权限与绑定" xml:space="preserve"><value>Permissions and binding</value></data>
   <data name="轮换凭据" xml:space="preserve"><value>Rotate credentials</value></data>
@@ -1062,11 +1063,11 @@
   <data name="版本 " xml:space="preserve"><value>Version </value></data>
   <data name="删除" xml:space="preserve"><value>Remove</value></data>
   <data name="播报商品件数" xml:space="preserve"><value>Announce item count</value></data>
-  <data name="接收第三方水印" xml:space="preserve"><value>Receive third-party watermark data</value></data>
+  <data name="接收第三方水印" xml:space="preserve"><value>Accept third-party watermark data</value></data>
   <data name="允许称重等第三方程序把数据显示到录像水印中" xml:space="preserve"><value>Allow weighing systems and other third-party apps to add data to recording watermarks</value></data>
   <data name="允许第三方扩展连接？" xml:space="preserve"><value>Allow third-party extension?</value></data>
   <data name="申请访问范围" xml:space="preserve"><value>Requested access</value></data>
-  <data name="PackingProof 不会执行此扩展的代码。允许后，扩展只能调用上面列出的接口；请仅批准你信任的来源" xml:space="preserve"><value>PackingProof does not execute this extension's code. If allowed, it can only call the APIs listed above; approve only sources you trust</value></data>
+  <data name="PackingProof 不会执行此扩展的代码。允许后，扩展只能调用上面列出的接口；请仅批准你信任的来源" xml:space="preserve"><value>PackingProof does not run this extension's code. It can only call the APIs above; approve trusted sources only</value></data>
   <data name="允许扩展" xml:space="preserve"><value>Allow extension</value></data>
   <data name="Extension.EnrollmentSourceUnknown" xml:space="preserve"><value>Source not provided</value></data>
   <data name="Extension.EnrollmentAddressUnknown" xml:space="preserve"><value>Address unknown</value></data>
@@ -1086,7 +1087,7 @@
   <data name="Extension.Access.None" xml:space="preserve"><value>• No usable API access requested</value></data>
   <data name="扫码预录制" xml:space="preserve"><value>Scan pre-recording</value></data>
   <data name="约 0 秒 / 0 MB 内存" xml:space="preserve"><value>About 0 seconds / 0 MB memory</value></data>
-  <data name="播报时调为最大音量" xml:space="preserve"><value>Set volume to maximum during announcements</value></data>
+  <data name="播报时调为最大音量" xml:space="preserve"><value>Max volume for announcements</value></data>
   <data name="关闭保护后才能修改，修改后旧链接立即失效" xml:space="preserve"><value>Turn protection off to edit; old links become invalid immediately after modification</value></data>
   <data name="Main.PreRecord.Status" xml:space="preserve"><value>Pre-recorded {0:0.0} seconds, continuously updating</value></data>
   <data name="Main.PreRecord.FrameSummary" xml:space="preserve"><value>{0} / {1} frames</value></data>
@@ -1103,17 +1104,17 @@
   <data name="回到主画面框选要放大的区域，点完成或按 Esc 退出" xml:space="preserve"><value>Go back to the main view and drag the box over the area to zoom; click Done or press Esc to exit.</value></data>
   <data name="显示放大取景框" xml:space="preserve"><value>Show zoom guide box</value></data>
   <data name="平时也在主画面上画出放大区域，方便随时确认" xml:space="preserve"><value>Keep the zoom area outlined on the main view so you can check it at any time.</value></data>
-  <data name="调整大小与位置…" xml:space="preserve"><value>Adjust size and position…</value></data>
+  <data name="调整大小与位置…" xml:space="preserve"><value>Resize &amp; move…</value></data>
   <data name="粘贴单号，自动去掉首尾多余字符" xml:space="preserve"><value>Paste the order number and trim extra characters at both ends</value></data>
   <data name="要，作为保存主机（支持 NAS）" xml:space="preserve"><value>Yes, use as storage host (NAS supported)</value></data>
-  <data name="主机就是负责长期保存录像的电脑，可配置 NAS／网络共享备份，也可接收手机和其他电脑的录像" xml:space="preserve"><value>A host stores recordings long term, supports NAS / network share backup, and receives recordings from phones and other computers</value></data>
+  <data name="主机就是负责长期保存录像的电脑，可配置 NAS／网络共享备份，也可接收手机和其他电脑的录像" xml:space="preserve"><value>Stores recordings long term, supports NAS shares, and receives recordings from other devices</value></data>
   <data name="这台电脑既录像也负责长期保存，是保存主机，支持 NAS／网络共享备份" xml:space="preserve"><value>This computer records and stores recordings long term as a storage host, with NAS / network share backup support</value></data>
   <data name="这台电脑不录像，作为保存主机接收其他设备录像，支持 NAS／网络共享备份" xml:space="preserve"><value>This computer receives recordings as a storage host without recording locally, with NAS / network share backup support</value></data>
   <data name="支持备份到 NAS／网络共享文件夹" xml:space="preserve"><value>Supports backup to NAS / shared network folders</value></data>
   <data name="软件支持 NAS 备份。主机就是负责长期保存录像的电脑；点击“添加网络位置”，在用途选择第 2 问选“要”即可配置" xml:space="preserve"><value>NAS backup is supported. A host stores recordings long term. Click Add network location and select Yes for question 2 in the purpose selector to configure it</value></data>
   <data name="主机就是负责长期保存录像的电脑，支持 NAS／网络共享备份。要在这台电脑配置，请在用途选择第 2 问选“要”。是否现在打开用途选择？" xml:space="preserve"><value>A host stores recordings long term and supports NAS / network share backup. Select Yes for question 2 to configure it on this computer. Open the purpose selector now?</value></data>
   <data name="录像主机" xml:space="preserve"><value>Recording host</value></data>
-  <data name="录像从机" xml:space="preserve"><value>Recording workstation</value></data>
+  <data name="录像从机" xml:space="preserve"><value>Recording client</value></data>
   <data name="备份主机" xml:space="preserve"><value>Backup host</value></data>
   <data name="录像查看端" xml:space="preserve"><value>Recording viewer</value></data>
   <data name="本机录像并长期保存，支持备份到 NAS／网络共享文件夹" xml:space="preserve"><value>Record and store locally long term, with backup to NAS / shared network folders</value></data>
@@ -1121,12 +1122,12 @@
   <data name="本机录像，自动上传到保存主机" xml:space="preserve"><value>Record locally and automatically upload to the storage host</value></data>
   <data name="连接保存主机，查看和回放录像" xml:space="preserve"><value>Connect to a storage host to browse and play recordings</value></data>
   <data name="PackingProof 备份主机" xml:space="preserve"><value>PackingProof Backup Host</value></data>
-  <data name="备份主机 · 接收并长期保存手机或其他电脑的录像，支持备份到 NAS／网络共享文件夹" xml:space="preserve"><value>Backup host · Receive and store recordings from phones or computers, with backup to NAS / shared network folders</value></data>
+  <data name="备份主机 · 接收并长期保存手机或其他电脑的录像，支持备份到 NAS／网络共享文件夹" xml:space="preserve"><value>Backup host · Store recordings from phones and computers, with NAS backup</value></data>
   <data name="空间清理" xml:space="preserve"><value>Storage cleanup</value></data>
-  <data name="空间不足时会按存储规则自动清理旧录像，通常无需手动操作" xml:space="preserve"><value>Old recordings are cleaned up automatically under the storage rules when space runs low; manual cleanup is usually unnecessary</value></data>
-  <data name="缓存接近上限时自动清理已上传的录像，未上传的录像会保留" xml:space="preserve"><value>Uploaded recordings are cleaned up automatically as the cache approaches its limit; recordings not yet uploaded are retained</value></data>
-  <data name="手动提前清理本机录像，不影响已备份的远端文件" xml:space="preserve"><value>Clean up local recordings manually without affecting remote backup files</value></data>
-  <data name="手动提前释放本机空间，不影响已备份的远端文件" xml:space="preserve"><value>Free local space manually without affecting remote backup files</value></data>
+  <data name="空间不足时会按存储规则自动清理旧录像，通常无需手动操作" xml:space="preserve"><value>Low disk space: old recordings are removed by the storage rules. Manual cleanup is rarely needed</value></data>
+  <data name="缓存接近上限时自动清理已上传的录像，未上传的录像会保留" xml:space="preserve"><value>As the cache nears its limit, uploaded recordings are removed; pending uploads are kept</value></data>
+  <data name="手动提前清理本机录像，不影响已备份的远端文件" xml:space="preserve"><value>Delete local recordings now; remote backups are untouched</value></data>
+  <data name="手动提前释放本机空间，不影响已备份的远端文件" xml:space="preserve"><value>Free local space now; remote backups are untouched</value></data>
   <data name="回到主界面" xml:space="preserve"><value>Back to main window</value></data>
   <data name="关闭小窗" xml:space="preserve"><value>Close mini window</value></data>
   <data name="选择播放设备" xml:space="preserve"><value>Select playback device</value></data>
@@ -1271,7 +1272,7 @@
   <data name="编码器不可用" xml:space="preserve"><value>The encoder is unavailable</value></data>
   <data name="播放器解码失败，请确认视频文件完整" xml:space="preserve"><value>Player decoding failed. Check that the video file is complete</value></data>
   <data name="参数无效" xml:space="preserve"><value>Invalid parameter</value></data>
-  <data name="程序会自动使用所选磁盘下的“快递打包视频”目录" xml:space="preserve"><value>The app automatically uses the “快递打包视频” folder on the selected disk</value></data>
+  <data name="程序会自动使用所选磁盘下的“PackingProofVideos”目录" xml:space="preserve"><value>The app automatically uses the “PackingProofVideos” folder on the selected disk</value></data>
   <data name="此地址仅用于接收订单联动，不提供本机录像浏览或备份主机服务" xml:space="preserve"><value>This address only receives order integration data; it does not provide local recording browsing or backup host services</value></data>
   <data name="存储初始化失败: {ex.Message}" xml:space="preserve"><value>Storage initialization failed: {0}</value></data>
   <data name="存储路径不可写，请检查磁盘" xml:space="preserve"><value>The storage path is not writable. Check the disk</value></data>
@@ -1281,7 +1282,7 @@
   <data name="打开快递助手联动安装向导失败：{error}" xml:space="preserve"><value>Failed to open the Express Assistant integration setup guide: {0}</value></data>
   <data name="打开链接失败" xml:space="preserve"><value>Failed to open the link</value></data>
   <data name="打开失败" xml:space="preserve"><value>Failed to open</value></data>
-  <data name="打开完整更新页面" xml:space="preserve"><value>Open the full update page</value></data>
+  <data name="打开完整更新页面" xml:space="preserve"><value>Manual download</value></data>
   <data name="打开主机录像失败" xml:space="preserve"><value>Failed to open host recordings</value></data>
   <data name="单号不一致：{upperResult}" xml:space="preserve"><value>Order number mismatch: {0}</value></data>
   <data name="当前 PackingProof 版本过低" xml:space="preserve"><value>The current PackingProof version is too old</value></data>
@@ -1299,7 +1300,7 @@
   <data name="导入失败" xml:space="preserve"><value>Import failed</value></data>
   <data name="导入视频失败" xml:space="preserve"><value>Failed to import the video</value></data>
   <data name="地址无效：{error}" xml:space="preserve"><value>Invalid address: {0}</value></data>
-  <data name="等待备份完成" xml:space="preserve"><value>Waiting for the backup to finish</value></data>
+  <data name="等待备份完成" xml:space="preserve"><value>Waiting for backup</value></data>
   <data name="订单联动接收 · {verifiedAddress}" xml:space="preserve"><value>Order integration receiver · {0}</value></data>
   <data name="读取失败" xml:space="preserve"><value>Read failed</value></data>
   <data name="断句: {processed}" xml:space="preserve"><value>Pauses: {0}</value></data>
@@ -1320,7 +1321,7 @@
   <data name="开启局域网查看后可显示在线设备" xml:space="preserve"><value>Online devices appear after LAN access is enabled</value></data>
   <data name="开始录像" xml:space="preserve"><value>Start recording</value></data>
   <data name="可选扫码枪测试条码：{_testBarcodeValue}，也可以扫描任意真实面单条码" xml:space="preserve"><value>Optional scanner test barcode: {0}. You can also scan any real shipping-label barcode</value></data>
-  <data name="扩展市场不可用" xml:space="preserve"><value>The extension marketplace is unavailable</value></data>
+  <data name="扩展市场不可用" xml:space="preserve"><value>Marketplace unavailable</value></data>
   <data name="扩展授权已撤销" xml:space="preserve"><value>Extension authorization revoked</value></data>
   <data name="扩展已安装，但无法定位本地文件，请尝试重新安装" xml:space="preserve"><value>The extension is installed, but its local files cannot be found. Try reinstalling</value></data>
   <data name="离线" xml:space="preserve"><value>Offline</value></data>
@@ -1423,7 +1424,7 @@
   <data name="无法开始录制" xml:space="preserve"><value>Cannot start recording</value></data>
   <data name="无法连接保存主机网页，请检查网络后重试" xml:space="preserve"><value>Cannot connect to the storage host web page. Check the network and try again</value></data>
   <data name="无法删除扩展" xml:space="preserve"><value>Cannot remove the extension</value></data>
-  <data name="性能建议未完成" xml:space="preserve"><value>The performance recommendation is not ready</value></data>
+  <data name="性能建议未完成" xml:space="preserve"><value>Performance check incomplete</value></data>
   <data name="选择一台电脑保存录像；暂时不设置也可以先录像" xml:space="preserve"><value>Choose a computer to store recordings; you can also record first and set this later</value></data>
   <data name="已保持当前录制配置" xml:space="preserve"><value>Kept the current recording settings</value></data>
   <data name="已触发停录，将继续录制 {Config.SameCodePostRecordSeconds:F1} 秒" xml:space="preserve"><value>Stop was triggered; recording continues for {0} seconds</value></data>
@@ -1457,7 +1458,7 @@
   <data name="正在加载播放器..." xml:space="preserve"><value>Loading the player...</value></data>
   <data name="正在加载列表..." xml:space="preserve"><value>Loading the list...</value></data>
   <data name="正在检查..." xml:space="preserve"><value>Checking...</value></data>
-  <data name="正在检查待备份录像" xml:space="preserve"><value>Checking recordings waiting to be backed up</value></data>
+  <data name="正在检查待备份录像" xml:space="preserve"><value>Checking pending backups</value></data>
   <data name="正在检查待上传录像" xml:space="preserve"><value>Checking recordings waiting to be uploaded</value></data>
   <data name="正在连接" xml:space="preserve"><value>Connecting</value></data>
   <data name="正在连接网络摄像头..." xml:space="preserve"><value>Connecting to the network camera...</value></data>
@@ -1501,14 +1502,220 @@
   <data name="搜索设置" xml:space="preserve"><value>Search settings</value></data>
   <data name="没有找到设置项" xml:space="preserve"><value>No matching settings</value></data>
   <data name="共 {0} 项" xml:space="preserve"><value>{0} matches</value></data>
-  <data name="主画面之外还能叠几路副摄像头，改了以后按新路数重启这些画面" xml:space="preserve"><value>How many secondary cameras can be overlaid beyond the main view; changing this restarts them with the new count</value></data>
+  <data name="主画面之外还能叠几路副摄像头，改了以后按新路数重启这些画面" xml:space="preserve"><value>How many secondary cameras overlay the main view; changing it restarts those cameras</value></data>
   <data name="1 路" xml:space="preserve"><value>1 channel</value></data>
   <data name="2 路" xml:space="preserve"><value>2 channels</value></data>
   <data name="3 路" xml:space="preserve"><value>3 channels</value></data>
   <data name="4 路" xml:space="preserve"><value>4 channels</value></data>
   <data name="主画面" xml:space="preserve"><value>Main view</value></data>
-  <data name="副画面" xml:space="preserve"><value>Secondary view</value></data>
-<data name="这一路不接就选“无”" xml:space="preserve"><value>Choose "None" to leave this overlay unused</value></data>
-<data name="副画面只是小窗，不用选太高" xml:space="preserve"><value>The overlay is a small window, a low resolution is enough</value></data>
-<data name="越高越流畅，但也更吃性能" xml:space="preserve"><value>Higher is smoother, but also costs more CPU</value></data>
+  <data name="副画面" xml:space="preserve"><value>Overlay</value></data>
+  <data name="这一路不接就选“无”" xml:space="preserve"><value>Choose None to disable this overlay</value></data>
+  <data name="副画面只是小窗，不用选太高" xml:space="preserve"><value>Small overlay; a lower resolution is fine</value></data>
+  <data name="越高越流畅，但也更吃性能" xml:space="preserve"><value>Higher is smoother but uses more CPU</value></data>
+  <data name="隐私政策" xml:space="preserve"><value>Privacy policy</value></data>
+  <data name="打开隐私政策" xml:space="preserve"><value>Privacy policy</value></data>
+  <data name="查看应用如何处理录像、订单信息和本机数据" xml:space="preserve"><value>See how the app handles recordings, order data and local files</value></data>
+  <data name="正在关闭程序..." xml:space="preserve"><value>Closing...</value></data>
+  <data name="启动中" xml:space="preserve"><value>Starting</value></data>
+  <data name="连接服务未开启" xml:space="preserve"><value>Connection service off</value></data>
+  <data name="等待录像完成" xml:space="preserve"><value>Waiting for recording</value></data>
+  <data name="程序已经在运行" xml:space="preserve"><value>PackingProof is already running</value></data>
+  <data name="数据库不可用，无法清理" xml:space="preserve"><value>Database unavailable, cannot clean up</value></data>
+  <data name="尚未设置本地缓存位置" xml:space="preserve"><value>Local cache folder not set</value></data>
+  <data name="日本語" xml:space="preserve"><value>Japanese</value></data>
+  <data name="未识别面单" xml:space="preserve"><value>No waybill</value></data>
+  <data name="电脑上传" xml:space="preserve"><value>PC upload</value></data>
+  <data name="PackingProofVideos" xml:space="preserve"><value>PackingProofVideos</value></data>
+  <data name="PhoneBackup" xml:space="preserve"><value>PhoneBackup</value></data>
+  <data name="PCUpload" xml:space="preserve"><value>PCUpload</value></data>
+  <data name="副摄像头 {0}" xml:space="preserve"><value>Sub camera {0}</value></data>
+  <data name="循环可录 {0} 小时" xml:space="preserve"><value>Up to {0} h loop</value></data>
+  <data name="，预计循环可录 {0} 小时" xml:space="preserve"><value>, up to {0} h loop</value></data>
+  <data name="，预计循环可录 {0} 分钟" xml:space="preserve"><value>, up to {0} min loop</value></data>
+  <data name="这种模式需要软件窗口在前台，避免影响其他输入" xml:space="preserve"><value>This mode requires the app window to stay in front so other input is unaffected</value></data>
+  <data name="建议按扫码枪说明书，或联系卖家开启“扫描后自动回车 / Enter 后缀”，体验会更稳定" xml:space="preserve"><value>Enable auto Enter / a scanner Enter suffix for the most reliable result</value></data>
+  <data name="1. 使用扫码枪或在主页面输入面单号开始录制" xml:space="preserve"><value>1. Scan or enter the order number to start recording</value></data>
+  <data name="2. 完成当前包裹的打包" xml:space="preserve"><value>2. Finish packing the current parcel</value></data>
+  <data name="3. 再次扫描或输入同一面单号停止录制" xml:space="preserve"><value>3. Scan or enter the same number again to stop</value></data>
+  <data name="4. 未连接扫码枪时也可直接使用主页面输入框" xml:space="preserve"><value>4. You can also use the field on the main page without a scanner</value></data>
+  <data name="3. 扫描或输入下一张面单号" xml:space="preserve"><value>3. Scan or enter the next order number</value></data>
+  <data name="4. 软件自动保存上一单并开始下一单" xml:space="preserve"><value>4. The app saves the previous order and starts the next</value></data>
+  <data name="2. 打包完成后将面单移出识别框至少 1.5 秒" xml:space="preserve"><value>2. Move the label out of the guide for at least 1.5 seconds</value></data>
+  <data name="3. 再次放入同一面单，软件停止录制并保存视频" xml:space="preserve"><value>3. Put the same label back to stop and save the recording</value></data>
+  <data name="4. 可选扫码枪仍可随时作为后备方案" xml:space="preserve"><value>4. A scanner still works as a fallback</value></data>
+  <data name="3. 将下一张面单放入识别框" xml:space="preserve"><value>3. Place the next label in the guide</value></data>
+  <data name="5. 可选扫码枪仍可随时作为后备方案" xml:space="preserve"><value>5. A scanner still works as a fallback</value></data>
+  <data name="未检测到扫码枪自动回车，已准备切换为窗口内识别。" xml:space="preserve"><value>No scanner Enter key detected. Switched to in-window recognition.</value></data>
+  <data name="1. 将面单条形码放入识别框开始录制" xml:space="preserve"><value>1. Place the label barcode inside the guide to start</value></data>
+  <data name="按最旧录像优先清理，直到释放所选空间；NAS 中已备份的文件不受影响" xml:space="preserve"><value>Remove the oldest local recordings until the selected space is free. NAS backups are untouched</value></data>
+  <data name="请选择健康、可写的本机固定磁盘" xml:space="preserve"><value>Choose a healthy, writable local fixed disk</value></data>
+  <data name="立即重启升级" xml:space="preserve"><value>Restart and update</value></data>
+  <data name="管理保存主机" xml:space="preserve"><value>Manage host</value></data>
+  <data name="连接、绑定或管理保存电脑" xml:space="preserve"><value>Connect, bind, or manage the storage computer</value></data>
+  <data name="订单联动接收：等待启动" xml:space="preserve"><value>Order link: waiting to start</value></data>
+  <data name="订单联动接收：启动失败" xml:space="preserve"><value>Order link: failed to start</value></data>
+  <data name="订单联动接收：未连接" xml:space="preserve"><value>Order link: not connected</value></data>
+  <data name="订单联动接收：等待连接" xml:space="preserve"><value>Order link: waiting for connection</value></data>
+  <data name="访问保护已开启。请点击手机/电脑连接查看二维码或复制完整访问链接，再发送到需要查看录像的设备" xml:space="preserve"><value>Access protection is on. Open Connect device to show the QR code or copy the full link</value></data>
+  <data name="其他电脑在浏览器输入 http://{monitorAccessAddress}，即可搜索、下载和播放视频。若打不开，请确认两台电脑在同一局域网，并检查防火墙" xml:space="preserve"><value>Open http://{0} on another computer to search, download, and play videos. If it fails, check the LAN and firewall</value></data>
+  <data name="局域网服务尚未准备完成，请稍后重试" xml:space="preserve"><value>LAN service is not ready. Try again shortly</value></data>
+  <data name="输入保存主机地址，或粘贴连接链接；设备令牌会自动领取" xml:space="preserve"><value>Enter the storage host address or paste a connection link; the device token is fetched automatically</value></data>
+  <data name="旋转摄像头画面 180 度" xml:space="preserve"><value>Rotate camera 180°</value></data>
+  <data name="手机 App 更新提示" xml:space="preserve"><value>Mobile app update</value></data>
+  <data name="修复局域网连接" xml:space="preserve"><value>Repair LAN connection</value></data>
+  <data name="取消导出单号" xml:space="preserve"><value>Cancel export</value></data>
+  <data name="导入发货视频" xml:space="preserve"><value>Import shipping videos</value></data>
+  <data name="导入退货视频" xml:space="preserve"><value>Import return videos</value></data>
+  <data name="取消导入录像" xml:space="preserve"><value>Cancel video import</value></data>
+  <data name="重新搜索保存主机" xml:space="preserve"><value>Search again for hosts</value></data>
+  <data name="正在搜索主机" xml:space="preserve"><value>Searching for hosts</value></data>
+  <data name="可连接的主机" xml:space="preserve"><value>Available hosts</value></data>
+  <data name="扫描保存主机二维码" xml:space="preserve"><value>Scan host QR code</value></data>
+  <data name="稍后设置保存主机" xml:space="preserve"><value>Set up a host later</value></data>
+  <data name="连接选中的保存主机" xml:space="preserve"><value>Connect to the selected host</value></data>
+  <data name="清除输入" xml:space="preserve"><value>Clear input</value></data>
+  <data name="粘贴单号" xml:space="preserve"><value>Paste order number</value></data>
+  <data name="设置 {0} ({1})" xml:space="preserve"><value>Settings {0} ({1})</value></data>
+  <data name="PackingProof 保存主机 {0}" xml:space="preserve"><value>PackingProof Storage Host {0}</value></data>
+  <data name="选择要导入的{0}视频文件夹" xml:space="preserve"><value>Choose the {0} video folder</value></data>
+  <data name="编译日期 {0}" xml:space="preserve"><value>Built {0}</value></data>
+  <data name="编译日期未知" xml:space="preserve"><value>Build date unknown</value></data>
+  <data name="本地缓存位置不存在，请重新选择" xml:space="preserve"><value>The local cache folder is missing. Choose another folder</value></data>
+  <data name="{0} 件" xml:space="preserve"><value>{0} items</value></data>
+  <data name="自动检测（按实测性能）" xml:space="preserve"><value>Auto (benchmark)</value></data>
+  <data name="警告：没有单号" xml:space="preserve"><value>Warning: no order number</value></data>
+  <data name="没有单号" xml:space="preserve"><value>No order number</value></data>
+  <data name="警告：重复单号，请确认" xml:space="preserve"><value>Warning: duplicate order number. Please verify</value></data>
+  <data name="非法单号，已拦截" xml:space="preserve"><value>Invalid order number blocked</value></data>
+  <data name="单号不一致：{0}" xml:space="preserve"><value>Order number mismatch: {0}</value></data>
+  <data name="警告：快递单 {0}，{1}" xml:space="preserve"><value>Warning: waybill {0}, {1}</value></data>
+  <data name="存在打印后退款，请人工核对" xml:space="preserve"><value>Printed refund detected; verify manually</value></data>
+  <data name="退款状态未知（{0}），请人工核对" xml:space="preserve"><value>Unknown refund status ({0}); verify manually</value></data>
+  <data name="订单号不一致，请确认" xml:space="preserve"><value>Order numbers do not match. Please verify</value></data>
+  <data name="实际录制规格未达到设置值，可到“设置 → 高级设置 → 检测并推荐录制规格”获取推荐，或在录制设置中自行降低分辨率或帧率" xml:space="preserve"><value>Recorded format is below the configured value. Open Settings → Advanced → Test and recommend recording settings, or lower the resolution or frame rate</value></data>
+  <data name="副画面 {0} 的网络摄像头地址无效：{1}" xml:space="preserve"><value>Camera {0} has an invalid network URL: {1}</value></data>
+  <data name="副画面 {0} 不能和其它路用同一个网络摄像头地址" xml:space="preserve"><value>Camera {0} cannot use the same network URL as another camera</value></data>
+  <data name="副画面 {0} 的网络摄像头连接失败：{1}" xml:space="preserve"><value>Camera {0} could not connect to the network camera: {1}</value></data>
+  <data name="副画面 {0} 没有画面，请检查它是否与主摄冲突、被其它程序占用或地址不可用" xml:space="preserve"><value>Camera {0} has no picture. Check for a conflict with the main camera, another app using it, or an invalid URL</value></data>
+  <data name="NAS 空间不足，已循环清理最旧归档后仍不足，请清理 NAS 或调整备份位置" xml:space="preserve"><value>NAS is full and cleanup did not free enough space. Clean the NAS or adjust backup locations</value></data>
+  <data name="NAS 不可用或未配置，已删除最旧未归档录像 {0} 条" xml:space="preserve"><value>{0} oldest unarchived recordings were deleted because NAS is unavailable or not configured</value></data>
+  <data name="摄像头连上了但没有画面（自检：{0}）。{1}" xml:space="preserve"><value>Camera connected but shows no picture (self-check: {0}). {1}</value></data>
+  <data name="有 {0} 个录像未生成兼容 MP4，原始录像已保留，可在维护工具中查看" xml:space="preserve"><value>{0} recordings did not produce a compatible MP4; originals were kept. Review them in maintenance tools</value></data>
+  <data name="已整理 {0} 个设备录像目录" xml:space="preserve"><value>Organized {0} device recording folders</value></data>
+  <data name="该路径是网络位置或网盘挂载盘，不能作为本地录像保存位置；如需备份到该位置，请添加到备份位置" xml:space="preserve"><value>A network or cloud-mounted path cannot be used for local recordings. Add it as a backup location instead</value></data>
+  <data name="无法确认存储位置类型，请确认该路径是本地磁盘后重试" xml:space="preserve"><value>Could not confirm the storage type. Choose a local disk and try again</value></data>
+  <data name="请输入文件夹路径" xml:space="preserve"><value>Enter a folder path</value></data>
+  <data name="周一" xml:space="preserve"><value>Mon</value></data>
+  <data name="周二" xml:space="preserve"><value>Tue</value></data>
+  <data name="周三" xml:space="preserve"><value>Wed</value></data>
+  <data name="周四" xml:space="preserve"><value>Thu</value></data>
+  <data name="周五" xml:space="preserve"><value>Fri</value></data>
+  <data name="周六" xml:space="preserve"><value>Sat</value></data>
+  <data name="周日" xml:space="preserve"><value>Sun</value></data>
+  <data name="第{0}周" xml:space="preserve"><value>W{0}</value></data>
+  <data name="{0}年第{1}周" xml:space="preserve"><value>Week {1}, {0}</value></data>
+  <data name="已清理（{0}）" xml:space="preserve"><value>Cleaned up ({0})</value></data>
+  <data name="按当前筛选导出单号" xml:space="preserve"><value>Export order numbers with the current filters</value></data>
+  <data name="当前筛选没有匹配的录像，没有可导出的单号" xml:space="preserve"><value>No recordings match the current filters; nothing to export</value></data>
+  <data name="手动" xml:space="preserve"><value>Manual</value></data>
+  <data name="程序退出" xml:space="preserve"><value>App exit</value></data>
+  <data name="时长超时" xml:space="preserve"><value>Duration limit</value></data>
+  <data name="本地缓存空间不足" xml:space="preserve"><value>Low local cache space</value></data>
+  <data name="同码停录" xml:space="preserve"><value>Same-code stop</value></data>
+  <data name="扫码切换" xml:space="preserve"><value>Switched by scan</value></data>
+  <data name="音频异常" xml:space="preserve"><value>Audio error</value></data>
+  <data name="导入" xml:space="preserve"><value>Imported</value></data>
+  <data name="电脑工位上传" xml:space="preserve"><value>Uploaded from PC workstation</value></data>
+  <data name="上传完成" xml:space="preserve"><value>Upload complete</value></data>
+  <data name="扫码枪停止" xml:space="preserve"><value>Scanner stop</value></data>
+  <data name="录像过短，少于 {0} 秒" xml:space="preserve"><value>Recording too short; under {0} s</value></data>
+  <data name="文件过小，小于 {0} KB" xml:space="preserve"><value>File too small; under {0} KB</value></data>
+  <data name="{0}（音频异常）" xml:space="preserve"><value>{0} (audio error)</value></data>
+  <data name="用户删除" xml:space="preserve"><value>Deleted by user</value></data>
+  <data name="系统清理" xml:space="preserve"><value>System cleanup</value></data>
+  <data name="已删除" xml:space="preserve"><value>Deleted</value></data>
+  <data name="手动清理本地录像" xml:space="preserve"><value>Manually cleaned local recordings</value></data>
+  <data name="本地文件已缺失，状态自动修复" xml:space="preserve"><value>Local file missing; status repaired automatically</value></data>
+  <data name="本地文件已缺失，NAS 归档已确认" xml:space="preserve"><value>Local file missing; NAS archive confirmed</value></data>
+  <data name="本地副本缺失，等待确认 NAS 归档" xml:space="preserve"><value>Local copy missing; awaiting NAS archive confirmation</value></data>
+  <data name="本地与 NAS 均无可信副本（外部删除或缺失）" xml:space="preserve"><value>No trusted copy on this PC or NAS (externally deleted or missing)</value></data>
+  <data name="归档冲突且本地副本丢失" xml:space="preserve"><value>Archive conflict and local copy missing</value></data>
+  <data name="硬循环清理（本地空间不足）" xml:space="preserve"><value>Emergency cleanup (low local space)</value></data>
+  <data name="容量清理（NAS 不可用或未配置）" xml:space="preserve"><value>Capacity cleanup (NAS unavailable or not configured)</value></data>
+  <data name="本地循环清理（NAS 副本已循环清理）" xml:space="preserve"><value>Local cleanup (NAS copy already rotated out)</value></data>
+  <data name="全局配额清理" xml:space="preserve"><value>Global quota cleanup</value></data>
+  <data name="全局配额清理（NAS 不可达，本地副本未经远端确认）" xml:space="preserve"><value>Global quota cleanup (NAS unreachable; local copy unconfirmed)</value></data>
+  <data name="NAS 容量循环清理" xml:space="preserve"><value>NAS capacity rotation</value></data>
+  <data name="NAS 归档文件不存在，检测到外部删除或缺失（非本程序删除）" xml:space="preserve"><value>NAS archive missing (external deletion, not by this app)</value></data>
+  <data name="卸载时删除" xml:space="preserve"><value>Deleted during uninstall</value></data>
+  <data name="已清理（{0} {1}）" xml:space="preserve"><value>Cleaned up ({0} {1})</value></data>
+  <data name="已为最新" xml:space="preserve"><value>Up to date</value></data>
+  <data name="共 0 条" xml:space="preserve"><value>No recordings</value></data>
+  <data name="第 {0} / {1} 页，共 {2} 条" xml:space="preserve"><value>Page {0} of {1} · {2} items</value></data>
+  <data name="（已安装）" xml:space="preserve"><value> (installed)</value></data>
+  <data name="{0}{1}  ·  需要 PackingProof {2}+" xml:space="preserve"><value>{0}{1}  ·  Requires PackingProof {2}+</value></data>
+  <data name="安装扩展失败：{0}" xml:space="preserve"><value>Failed to install the extension: {0}</value></data>
+  <data name="此磁盘当前建议最多 {0}，实际使用会随磁盘剩余空间动态调整" xml:space="preserve"><value>Recommended maximum for this disk: {0}. Actual usage adjusts with free space</value></data>
+  <data name="读取扩展详情失败：{0}" xml:space="preserve"><value>Failed to read extension details: {0}</value></data>
+  <data name="发现新版本：{0}" xml:space="preserve"><value>Update available: {0}</value></data>
+  <data name="更新标题：未填写" xml:space="preserve"><value>Update title: not provided</value></data>
+  <data name="更新标题：{0}" xml:space="preserve"><value>Update title: {0}</value></data>
+  <data name="已处理 {0}/{1} · 成功 {2} · 跳过 {3}" xml:space="preserve"><value>Processed {0}/{1} · {2} imported · {3} skipped</value></data>
+  <data name="正在导入{0}录像" xml:space="preserve"><value>Importing {0} recordings</value></data>
+  <data name="已用时 {0} 秒" xml:space="preserve"><value>Elapsed: {0} s</value></data>
+  <data name="{0}，请改用完整版本更新" xml:space="preserve"><value>{0}. Use the full package instead</value></data>
+  <data name="最新版本：暂无" xml:space="preserve"><value>Latest version: none</value></data>
+  <data name="最新版本：{0}" xml:space="preserve"><value>Latest version: {0}</value></data>
+  <data name="⚠ 闭源外部程序。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>⚠ Closed-source app. PackingProof cannot audit it or limit its system access</value></data>
+  <data name="⚠ 外部程序由用户手动运行。PackingProof 不会自动启动，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>⚠ External app runs manually. PackingProof cannot auto-start it or limit its system access</value></data>
+  <data name="重新安装" xml:space="preserve"><value>Reinstall</value></data>
+  <data name="更新" xml:space="preserve"><value>Update</value></data>
+  <data name="尚未安装" xml:space="preserve"><value>Not installed</value></data>
+  <data name="已安装：{0}" xml:space="preserve"><value>Installed: {0}</value></data>
+  <data name="没有可安装版本" xml:space="preserve"><value>No installable version</value></data>
+  <data name="需要 PackingProof {0} 或更高版本" xml:space="preserve"><value>Requires PackingProof {0} or later</value></data>
+  <data name="需要 PackingProof {0} 或更高版本，当前版本无法安装" xml:space="preserve"><value>Requires PackingProof {0} or later; this version cannot be installed</value></data>
+  <data name="没有扫码枪可直接进入下一步；如需使用，可在这里测试扫码枪，作为摄像头识别的后备方案" xml:space="preserve"><value>No scanner? Continue without one, or test a scanner here as a backup to camera recognition</value></data>
+  <data name="没有扫码枪也可手动输入面单号；如需使用，可在这里测试扫码枪" xml:space="preserve"><value>You can enter tracking numbers manually without a scanner, or test one here</value></data>
+  <data name="已旋转 {0}°" xml:space="preserve"><value>Rotated {0}°</value></data>
+  <data name="正在连接网络摄像头并测试实时编码能力，请稍候" xml:space="preserve"><value>Connecting to the network camera and testing live encoding...</value></data>
+  <data name="{0}，已采用可用的原生配置，仍可继续" xml:space="preserve"><value>{0}. Using an available native profile; you can continue</value></data>
+  <data name="{0}，已保留程序默认配置，仍可继续" xml:space="preserve"><value>{0}. Keeping the app defaults; you can continue</value></data>
+  <data name="录制性能检测失败，已采用可用的原生配置，仍可继续" xml:space="preserve"><value>Recording test failed; using an available native profile. You can continue</value></data>
+  <data name="录制性能检测失败，已保留程序默认配置，仍可继续" xml:space="preserve"><value>Recording test failed; keeping app defaults. You can continue</value></data>
+  <data name="复制网址失败：{0}" xml:space="preserve"><value>Could not copy the URL: {0}</value></data>
+  <data name="已处理 {0} / {1} 条" xml:space="preserve"><value>Processed {0} / {1}</value></data>
+  <data name="已缓存 {0} / 上限 {1} GB" xml:space="preserve"><value>Cached {0} / limit {1} GB</value></data>
+  <data name="当前使用系统盘，系统会保留至少 {0}，不会占满磁盘" xml:space="preserve"><value>Using the system drive; at least {0} is reserved</value></data>
+  <data name="系统会为此磁盘保留至少 {0}" xml:space="preserve"><value>At least {0} is reserved on this disk</value></data>
+  <data name="可以选择本地磁盘中的任意文件夹，也可以输入网络共享路径，例如：\\192.168.1.100\共享目录\PackingProofVideos" xml:space="preserve"><value>Choose any local folder, or enter a network share path, e.g. \\192.168.1.100\share\PackingProofVideos</value></data>
+  <data name="已绑定的保存主机" xml:space="preserve"><value>Bound storage host</value></data>
+  <data name="该视频已被覆盖删除，无法播放" xml:space="preserve"><value>This recording was overwritten and deleted, so it cannot be played</value></data>
+  <data name="单号: {0}" xml:space="preserve"><value>Order number: {0}</value></data>
+  <data name="删除原因: {0}" xml:space="preserve"><value>Delete reason: {0}</value></data>
+  <data name="删除时间: {0}" xml:space="preserve"><value>Deleted at: {0}</value></data>
+  <data name="原始大小: {0}" xml:space="preserve"><value>Original size: {0}</value></data>
+  <data name="录制时长: {0}" xml:space="preserve"><value>Duration: {0}</value></data>
+  <data name="视频已删除" xml:space="preserve"><value>Recording deleted</value></data>
+  <data name="未知" xml:space="preserve"><value>Unknown</value></data>
+  <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>The video file was deleted or moved externally, so it cannot be played</value></data>
+  <data name="路径: {0}" xml:space="preserve"><value>Path: {0}</value></data>
+  <data name="文件丢失" xml:space="preserve"><value>File missing</value></data>
+  <data name="这段录像已转移到绑定主机，请从录制工位主界面打开主机录像页面查看" xml:space="preserve"><value>This recording was moved to the bound host. Open the host recordings page from the recording workstation</value></data>
+  <data name="、" xml:space="preserve"><value>, </value></data>
+  <data name="所有本机录像工位" xml:space="preserve"><value>All local recording workstations</value></data>
+  <data name="{0} 收到 {1} 条数据" xml:space="preserve"><value>{0} · {1} received</value></data>
+  <data name="暂未收到数据" xml:space="preserve"><value>No data received yet</value></data>
+  <data name="手机录像设备" xml:space="preserve"><value>Phone recording device</value></data>
+  <data name="电脑录像设备" xml:space="preserve"><value>PC recording device</value></data>
+  <data name="{0} 已处理 {1} 条联动数据" xml:space="preserve"><value>{0} · {1} processed</value></data>
+  <data name="暂无联动数据" xml:space="preserve"><value>No integration data yet</value></data>
+  <data name="预留空间偏小：{0} 只保留 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行" xml:space="preserve"><value>Reserve space is low: {0} keeps only {1}; at least {2} is recommended. A full disk affects recordings and the system</value></data>
+  <data name="预留空间偏小：{0} 个位置只保留约 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行" xml:space="preserve"><value>Reserve space is low: {0} locations keep only about {1}; at least {2} is recommended. A full disk affects recordings and the system</value></data>
+  <data name="归档冲突：网络端已有不同版本，请检查 {0}" xml:space="preserve"><value>Archive conflict: the network copy differs. Check {0}</value></data>
+  <data name="归档失败，等待自动重试：{0}" xml:space="preserve"><value>Archive failed; retrying automatically: {0}</value></data>
+  <data name="归档暂停：NAS 空间不足，请清理 {0}" xml:space="preserve"><value>Archive paused: NAS is full. Clean up {0}</value></data>
+  <data name="已归档（本地副本已清理）" xml:space="preserve"><value>Archived (local copy cleaned up)</value></data>
+  <data name="本地录像已清理，未备份到 NAS" xml:space="preserve"><value>Local recording cleaned up; not backed up to NAS</value></data>
+  <data name="NAS 副本已循环清理" xml:space="preserve"><value>NAS copy rotated out</value></data>
 </root>

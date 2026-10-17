@@ -134,6 +134,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Services\ManualCleanupService.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\MobileAppUpdatePolicyProvider.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\MobileBackupService.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Services\StorageFolderAliases.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\MobileBackupSharedFileMigrator.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\MobileConnectionService.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\MobileOrderReceiverRegistry.cs" />

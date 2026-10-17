@@ -422,13 +422,13 @@ namespace ExpressPackingMonitoring.ViewModels
                 }
 
                 if (anyPassed && encs.Any(scores.ContainsKey))
-                    list.Add(new GpuEncoderOption { Value = gpu, DisplayName = label });
+                    list.Add(new GpuEncoderOption { Value = gpu, DisplayName = GpuEncoderOption.BuildDisplayName(gpu) });
             }
 
             if (scores.Count > 0)
-                list.Insert(0, new GpuEncoderOption { Value = "auto", DisplayName = "自动检测（按实测性能）" });
+                list.Insert(0, new GpuEncoderOption { Value = "auto", DisplayName = GpuEncoderOption.BuildDisplayName("auto") });
             if (validated.Any(encoder => encoder is "libx264" or "libx265" or "libsvtav1"))
-                list.Add(new GpuEncoderOption { Value = "cpu", DisplayName = "CPU 软编码" });
+                list.Add(new GpuEncoderOption { Value = "cpu", DisplayName = GpuEncoderOption.BuildDisplayName("cpu") });
 
             log.AppendLine($"\nGPU 选项: {string.Join(", ", list.Select(e => e.Value))}");
             log.AppendLine($"已验证编码器: {string.Join(", ", validated)}");

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 
 namespace ExpressPackingMonitoring.UI
@@ -37,7 +38,7 @@ namespace ExpressPackingMonitoring.UI
         /// <summary>通道号：1 = 副画面 1。与识别来源、日志里的通道号同一套编号。</summary>
         public int Number => _index + 1;
 
-        public string Title => $"副摄像头 {Number}";
+        public string Title => AppLanguage.Format("副摄像头 {0}", Number);
 
         internal CameraChannelConfig? Config =>
             _owner.Config is { } config && _index >= 0 && _index < config.CameraChannels.Count
@@ -307,12 +308,14 @@ namespace ExpressPackingMonitoring.UI
 
                 var choices = new List<BarcodeRecognitionChannelOption>
                 {
-                    new(0, "主摄像头")
+                    new(0, AppLanguage.Get("主摄像头"))
                 };
                 for (int i = 0; i < config.CameraChannels.Count; i++)
                 {
                     if (config.CameraChannels[i].IsConfigured)
-                        choices.Add(new BarcodeRecognitionChannelOption(i + 1, $"副摄像头 {i + 1}"));
+                        choices.Add(new BarcodeRecognitionChannelOption(
+                            i + 1,
+                            AppLanguage.Format("副摄像头 {0}", i + 1)));
                 }
 
                 return choices;
@@ -559,13 +562,13 @@ namespace ExpressPackingMonitoring.UI
 
                 List<CameraDeviceChoice> choices = new()
                 {
-                    new CameraDeviceChoice("无", AppConfig.OverlayChannelSourceNone, "", -1)
+                    new CameraDeviceChoice(AppLanguage.Get("无"), AppConfig.OverlayChannelSourceNone, "", -1)
                 };
                 choices.AddRange(
                     CameraDeviceSelectionPolicy
                         .Project(all, requested[selfIndex], requested.Where((_, index) => index != selfIndex))
                         .Where(choice => choice.Kind != "network"));
-                choices.Add(new CameraDeviceChoice("网络摄像头", "network", "", -1));
+                choices.Add(new CameraDeviceChoice(AppLanguage.Get("网络摄像头"), "network", "", -1));
                 card.UpdateDeviceChoices(choices);
             }
         }

@@ -22,7 +22,7 @@ namespace ExpressPackingMonitoring.UI
             Title = title ?? "选择录像保存文件夹";
             DialogTitleText.Text = Title;
             DialogHintText.Text = hint
-                ?? "可以选择本地磁盘中的任意文件夹，也可以输入网络共享路径，例如：\\\\192.168.1.100\\共享目录\\快递打包视频";
+                ?? "可以选择本地磁盘中的任意文件夹，也可以输入网络共享路径，例如：\\\\192.168.1.100\\共享目录\\PackingProofVideos";
             BrowseButton.Content = "浏览…";
             OkButton.Content = "确定";
             CancelButton.Content = "取消";

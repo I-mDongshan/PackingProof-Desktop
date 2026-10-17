@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Logging;
+using ExpressPackingMonitoring.Localization;
 using System.Windows;
 using ExpressPackingMonitoring.Services;
 
@@ -31,10 +32,10 @@ namespace ExpressPackingMonitoring.UI
             _downloadService = downloadService;
             _isRecordingProvider = isRecordingProvider ?? (() => false);
             DownloadUrl = result.DownloadUrl;
-            VersionText.Text = $"发现新版本：{result.LatestVersion}";
+            VersionText.Text = AppLanguage.Format("发现新版本：{0}", result.LatestVersion);
             TitleText.Text = string.IsNullOrWhiteSpace(result.Title)
-                ? "更新标题：未填写"
-                : $"更新标题：{result.Title}";
+                ? AppLanguage.Get("更新标题：未填写")
+                : AppLanguage.Format("更新标题：{0}", result.Title);
             var document = MarkdownFlowDocumentRenderer.Render(result.Body);
             document.FontFamily = BodyViewer.FontFamily;
             BodyViewer.Document = document;
@@ -106,7 +107,9 @@ namespace ExpressPackingMonitoring.UI
 
                 case AppPatchPreparationStatus.FullPackageRequired:
                     DownloadProgressBar.Visibility = Visibility.Collapsed;
-                    DownloadStatusText.Text = preparation.Message + "，请改用完整版本更新";
+                    DownloadStatusText.Text = AppLanguage.Format(
+                        "{0}，请改用完整版本更新",
+                        preparation.Message);
                     DownloadUrl = string.IsNullOrWhiteSpace(preparation.FullDownloadUrl)
                         ? _result.DownloadUrl
                         : preparation.FullDownloadUrl;

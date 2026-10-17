@@ -62,10 +62,11 @@ namespace ExpressPackingMonitoring.ViewModels
 
         private void PresentAlert(AlertRequest request)
         {
+            string message = AppLanguage.Translate(request.Message);
             if (ShouldShowPreviewAlert(request))
-                PresentPreviewAlert(request);
+                PresentPreviewAlert(request, message);
             else
-                PresentToast(request.Message, request.DisplayDuration, request.Severity);
+                PresentToast(message, request.DisplayDuration, request.Severity);
         }
 
         internal static bool ShouldShowPreviewAlert(AlertRequest request)
@@ -206,14 +207,14 @@ namespace ExpressPackingMonitoring.ViewModels
 
         private void ClearPreviewOrderNotice() => SetPreviewOrderNotice(null);
 
-        private void PresentPreviewAlert(AlertRequest request)
+        private void PresentPreviewAlert(AlertRequest request, string localizedMessage = null)
         {
             Application.Current?.Dispatcher?.InvokeAsync(async () =>
             {
                 _previewAlertCts?.Cancel();
                 _previewAlertCts = new CancellationTokenSource();
                 var token = _previewAlertCts.Token;
-                PreviewAlertText = request.Message;
+                PreviewAlertText = localizedMessage ?? AppLanguage.Translate(request.Message);
                 IsPreviewAlertCritical = request.Priority == AlertPriority.Critical || request.Sound == AlertSound.IndustrialAlarm;
                 IsPreviewAlertVisible = true;
                 TimeSpan duration = request.DisplayDuration < TimeSpan.FromSeconds(5)

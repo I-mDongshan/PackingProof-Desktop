@@ -15,7 +15,11 @@ public static class AppLanguage
         new("ExpressPackingMonitoring.Resources.Strings", typeof(AppLanguage).Assembly);
 
     public static string Current { get; private set; } = Chinese;
-    public static bool IsChinese => Current == Chinese;
+    public static bool IsChinese =>
+        string.Equals(
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
+            "zh",
+            StringComparison.OrdinalIgnoreCase);
     public static bool IsJapanese => Current == Japanese;
     public static string StartRecordingText => Get("开始录制");
     public static string StopRecordingText => Get("停止录制");
@@ -72,18 +76,8 @@ public static class AppLanguage
 
         PhraseTable table = GetPhraseTable(culture);
 
-        // “已连接 主机名”“找到 3 台主机”这类带占位符的完整句式，直接按模板整句替换。
-        foreach ((string prefix, System.Text.RegularExpressions.Regex pattern, string template) in table.Templates)
-        {
-            // 先做一次廉价的前缀判断，避免每个界面字符串都跑几十条正则。
-            if (prefix.Length > 0 && !value.StartsWith(prefix, StringComparison.Ordinal)) continue;
-            System.Text.RegularExpressions.Match match = pattern.Match(value);
-            if (!match.Success) continue;
-            var arguments = new object[match.Groups.Count - 1];
-            for (int index = 1; index < match.Groups.Count; index++)
-                arguments[index - 1] = match.Groups[index].Value;
-            return string.Format(culture, template, arguments);
-        }
+        string templated = TranslateTemplate(value, table, culture);
+        if (!ReferenceEquals(templated, value)) return templated;
 
         // “快递单号：SF001”这类“标签＋冒号＋内容”的拼接串，只翻标签，内容保持原样。
         string translated = TranslateLabel(value, table, culture);
@@ -97,6 +91,21 @@ public static class AppLanguage
         if (translated.StartsWith("版本 ", StringComparison.Ordinal))
             translated = Get("版本") + translated[2..];
         return translated;
+    }
+
+    /// <summary>
+    /// 翻译绑定到界面的运行时字符串：支持整条词条和带参数的完整句式，
+    /// 但不去拆“标签：用户数据”，避免把设备名、单号或备注当成界面文案。
+    /// </summary>
+    public static string TranslateRuntime(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return value;
+        CultureInfo culture = CultureInfo.CurrentUICulture;
+        string? exact = Resources.GetString(value, culture);
+        if (exact != null) return exact;
+        if (string.Equals(culture.TwoLetterISOLanguageName, "zh", StringComparison.OrdinalIgnoreCase))
+            return value;
+        return TranslateTemplate(value, GetPhraseTable(culture), culture);
     }
 
     private sealed record PhraseTable(
@@ -195,12 +204,33 @@ public static class AppLanguage
         bool changed = false;
         for (int index = 0; index < lines.Length; index++)
         {
-            string translatedLine = TranslateSingleLabel(lines[index], table, culture);
+            string line = lines[index];
+            string translatedLine = Resources.GetString(line, culture)
+                ?? TranslateTemplate(line, table, culture);
+            if (ReferenceEquals(translatedLine, line))
+                translatedLine = TranslateSingleLabel(line, table, culture);
             if (ReferenceEquals(translatedLine, lines[index])) continue;
             lines[index] = translatedLine;
             changed = true;
         }
         return changed ? string.Join(Environment.NewLine, lines) : value;
+    }
+
+    /// <summary>按资源里的完整句式匹配运行时常量，例如“已连接 {0}”。</summary>
+    private static string TranslateTemplate(string value, PhraseTable table, CultureInfo culture)
+    {
+        foreach ((string prefix, System.Text.RegularExpressions.Regex pattern, string template) in table.Templates)
+        {
+            // 先做一次廉价的前缀判断，避免每个界面字符串都跑几十条正则。
+            if (prefix.Length > 0 && !value.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            System.Text.RegularExpressions.Match match = pattern.Match(value);
+            if (!match.Success) continue;
+            var arguments = new object[match.Groups.Count - 1];
+            for (int index = 1; index < match.Groups.Count; index++)
+                arguments[index - 1] = match.Groups[index].Value;
+            return string.Format(culture, template, arguments);
+        }
+        return value;
     }
 
     private static string TranslateSingleLabel(string value, PhraseTable table, CultureInfo culture)

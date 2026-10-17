@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using System.IO;
 
 namespace ExpressPackingMonitoring.Services;
@@ -67,8 +68,8 @@ internal static class StorageUsageCalculator
                     / (databaseBytes / (double)databaseSeconds)
                     / 3600;
                 estimateText = retentionHours >= 1
-                    ? $"，预计循环可录 {retentionHours:F0} 小时"
-                    : $"，预计循环可录 {retentionHours * 60:F0} 分钟";
+                    ? AppLanguage.Format("，预计循环可录 {0} 小时", retentionHours.ToString("F0"))
+                    : AppLanguage.Format("，预计循环可录 {0} 分钟", (retentionHours * 60).ToString("F0"));
             }
         }
         catch

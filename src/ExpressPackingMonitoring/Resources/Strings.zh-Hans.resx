@@ -482,7 +482,8 @@
   <data name="Main.ClientPrintStation" xml:space="preserve"><value>手机录像备份</value></data>
   <data name="Main.ClientMobileApp" xml:space="preserve"><value>手机 APP</value></data>
   <data name="Main.ClientOther" xml:space="preserve"><value>其他设备</value></data>
-  <data name="Main.Title" xml:space="preserve"><value>快递打包监控 {0}</value></data>
+  <data name="Main.Title" xml:space="preserve"><value>PackingProof 包裹留证 {0}</value></data>
+  <data name="App.ProductName" xml:space="preserve"><value>PackingProof 包裹留证</value></data>
   <data name="Main.BarcodeClear" xml:space="preserve"><value>扫码清空输入</value></data>
   <data name="Main.BarcodeReturn" xml:space="preserve"><value>扫码切换退货</value></data>
   <data name="Main.BarcodeShipping" xml:space="preserve"><value>扫码切换发货</value></data>
@@ -1272,7 +1273,7 @@
   <data name="编码器不可用" xml:space="preserve"><value>编码器不可用</value></data>
   <data name="播放器解码失败，请确认视频文件完整" xml:space="preserve"><value>播放器解码失败，请确认视频文件完整</value></data>
   <data name="参数无效" xml:space="preserve"><value>参数无效</value></data>
-  <data name="程序会自动使用所选磁盘下的“快递打包视频”目录" xml:space="preserve"><value>程序会自动使用所选磁盘下的“快递打包视频”目录</value></data>
+  <data name="程序会自动使用所选磁盘下的“PackingProofVideos”目录" xml:space="preserve"><value>程序会自动使用所选磁盘下的“PackingProofVideos”目录</value></data>
   <data name="此地址仅用于接收订单联动，不提供本机录像浏览或备份主机服务" xml:space="preserve"><value>此地址仅用于接收订单联动，不提供本机录像浏览或备份主机服务</value></data>
   <data name="存储初始化失败: {ex.Message}" xml:space="preserve"><value>存储初始化失败: {ex.Message}</value></data>
   <data name="存储路径不可写，请检查磁盘" xml:space="preserve"><value>存储路径不可写，请检查磁盘</value></data>
@@ -1513,4 +1514,210 @@
 <data name="这一路不接就选“无”" xml:space="preserve"><value>这一路不接就选“无”</value></data>
 <data name="副画面只是小窗，不用选太高" xml:space="preserve"><value>副画面只是小窗，不用选太高</value></data>
 <data name="越高越流畅，但也更吃性能" xml:space="preserve"><value>越高越流畅，但也更吃性能</value></data>
+  <data name="隐私政策" xml:space="preserve"><value>隐私政策</value></data>
+  <data name="打开隐私政策" xml:space="preserve"><value>打开隐私政策</value></data>
+  <data name="查看应用如何处理录像、订单信息和本机数据" xml:space="preserve"><value>查看应用如何处理录像、订单信息和本机数据</value></data>
+  <data name="正在关闭程序..." xml:space="preserve"><value>正在关闭程序...</value></data>
+  <data name="启动中" xml:space="preserve"><value>启动中</value></data>
+  <data name="连接服务未开启" xml:space="preserve"><value>连接服务未开启</value></data>
+  <data name="等待录像完成" xml:space="preserve"><value>等待录像完成</value></data>
+  <data name="程序已经在运行" xml:space="preserve"><value>程序已经在运行</value></data>
+  <data name="数据库不可用，无法清理" xml:space="preserve"><value>数据库不可用，无法清理</value></data>
+  <data name="尚未设置本地缓存位置" xml:space="preserve"><value>尚未设置本地缓存位置</value></data>
+  <data name="日本語" xml:space="preserve"><value>日语</value></data>
+  <data name="未识别面单" xml:space="preserve"><value>未识别面单</value></data>
+  <data name="电脑上传" xml:space="preserve"><value>电脑上传</value></data>
+  <data name="PackingProofVideos" xml:space="preserve"><value>快递打包视频</value></data>
+  <data name="PhoneBackup" xml:space="preserve"><value>手机备份</value></data>
+  <data name="PCUpload" xml:space="preserve"><value>电脑上传</value></data>
+  <data name="副摄像头 {0}" xml:space="preserve"><value>副摄像头 {0}</value></data>
+  <data name="循环可录 {0} 小时" xml:space="preserve"><value>循环可录 {0} 小时</value></data>
+  <data name="，预计循环可录 {0} 小时" xml:space="preserve"><value>，预计循环可录 {0} 小时</value></data>
+  <data name="，预计循环可录 {0} 分钟" xml:space="preserve"><value>，预计循环可录 {0} 分钟</value></data>
+  <data name="这种模式需要软件窗口在前台，避免影响其他输入" xml:space="preserve"><value>这种模式需要软件窗口在前台，避免影响其他输入</value></data>
+  <data name="建议按扫码枪说明书，或联系卖家开启“扫描后自动回车 / Enter 后缀”，体验会更稳定" xml:space="preserve"><value>建议按扫码枪说明书，或联系卖家开启“扫描后自动回车 / Enter 后缀”，体验会更稳定</value></data>
+  <data name="1. 使用扫码枪或在主页面输入面单号开始录制" xml:space="preserve"><value>1. 使用扫码枪或在主页面输入面单号开始录制</value></data>
+  <data name="2. 完成当前包裹的打包" xml:space="preserve"><value>2. 完成当前包裹的打包</value></data>
+  <data name="3. 再次扫描或输入同一面单号停止录制" xml:space="preserve"><value>3. 再次扫描或输入同一面单号停止录制</value></data>
+  <data name="4. 未连接扫码枪时也可直接使用主页面输入框" xml:space="preserve"><value>4. 未连接扫码枪时也可直接使用主页面输入框</value></data>
+  <data name="3. 扫描或输入下一张面单号" xml:space="preserve"><value>3. 扫描或输入下一张面单号</value></data>
+  <data name="4. 软件自动保存上一单并开始下一单" xml:space="preserve"><value>4. 软件自动保存上一单并开始下一单</value></data>
+  <data name="2. 打包完成后将面单移出识别框至少 1.5 秒" xml:space="preserve"><value>2. 打包完成后将面单移出识别框至少 1.5 秒</value></data>
+  <data name="3. 再次放入同一面单，软件停止录制并保存视频" xml:space="preserve"><value>3. 再次放入同一面单，软件停止录制并保存视频</value></data>
+  <data name="4. 可选扫码枪仍可随时作为后备方案" xml:space="preserve"><value>4. 可选扫码枪仍可随时作为后备方案</value></data>
+  <data name="3. 将下一张面单放入识别框" xml:space="preserve"><value>3. 将下一张面单放入识别框</value></data>
+  <data name="5. 可选扫码枪仍可随时作为后备方案" xml:space="preserve"><value>5. 可选扫码枪仍可随时作为后备方案</value></data>
+  <data name="未检测到扫码枪自动回车，已准备切换为窗口内识别。" xml:space="preserve"><value>未检测到扫码枪自动回车，已准备切换为窗口内识别</value></data>
+  <data name="1. 将面单条形码放入识别框开始录制" xml:space="preserve"><value>1. 将面单条形码放入识别框开始录制</value></data>
+  <data name="按最旧录像优先清理，直到释放所选空间；NAS 中已备份的文件不受影响" xml:space="preserve"><value>按最旧录像优先清理，直到释放所选空间；NAS 中已备份的文件不受影响</value></data>
+  <data name="请选择健康、可写的本机固定磁盘" xml:space="preserve"><value>请选择健康、可写的本机固定磁盘</value></data>
+  <data name="立即重启升级" xml:space="preserve"><value>立即重启升级</value></data>
+  <data name="管理保存主机" xml:space="preserve"><value>管理保存主机</value></data>
+  <data name="连接、绑定或管理保存电脑" xml:space="preserve"><value>连接、绑定或管理保存电脑</value></data>
+  <data name="订单联动接收：等待启动" xml:space="preserve"><value>订单联动接收：等待启动</value></data>
+  <data name="订单联动接收：启动失败" xml:space="preserve"><value>订单联动接收：启动失败</value></data>
+  <data name="订单联动接收：未连接" xml:space="preserve"><value>订单联动接收：未连接</value></data>
+  <data name="订单联动接收：等待连接" xml:space="preserve"><value>订单联动接收：等待连接</value></data>
+  <data name="访问保护已开启。请点击手机/电脑连接查看二维码或复制完整访问链接，再发送到需要查看录像的设备" xml:space="preserve"><value>访问保护已开启。请点击手机/电脑连接查看二维码或复制完整访问链接，再发送到需要查看录像的设备</value></data>
+  <data name="其他电脑在浏览器输入 http://{monitorAccessAddress}，即可搜索、下载和播放视频。若打不开，请确认两台电脑在同一局域网，并检查防火墙" xml:space="preserve"><value>其他电脑在浏览器输入 http://{monitorAccessAddress}，即可搜索、下载和播放视频。若打不开，请确认两台电脑在同一局域网，并检查防火墙</value></data>
+  <data name="局域网服务尚未准备完成，请稍后重试" xml:space="preserve"><value>局域网服务尚未准备完成，请稍后重试</value></data>
+  <data name="输入保存主机地址，或粘贴连接链接；设备令牌会自动领取" xml:space="preserve"><value>输入保存主机地址，或粘贴连接链接；设备令牌会自动领取</value></data>
+  <data name="旋转摄像头画面 180 度" xml:space="preserve"><value>旋转摄像头画面 180 度</value></data>
+  <data name="手机 App 更新提示" xml:space="preserve"><value>手机 App 更新提示</value></data>
+  <data name="修复局域网连接" xml:space="preserve"><value>修复局域网连接</value></data>
+  <data name="取消导出单号" xml:space="preserve"><value>取消导出单号</value></data>
+  <data name="导入发货视频" xml:space="preserve"><value>导入发货视频</value></data>
+  <data name="导入退货视频" xml:space="preserve"><value>导入退货视频</value></data>
+  <data name="取消导入录像" xml:space="preserve"><value>取消导入录像</value></data>
+  <data name="重新搜索保存主机" xml:space="preserve"><value>重新搜索保存主机</value></data>
+  <data name="正在搜索主机" xml:space="preserve"><value>正在搜索主机</value></data>
+  <data name="可连接的主机" xml:space="preserve"><value>可连接的主机</value></data>
+  <data name="扫描保存主机二维码" xml:space="preserve"><value>扫描保存主机二维码</value></data>
+  <data name="稍后设置保存主机" xml:space="preserve"><value>稍后设置保存主机</value></data>
+  <data name="连接选中的保存主机" xml:space="preserve"><value>连接选中的保存主机</value></data>
+  <data name="清除输入" xml:space="preserve"><value>清除输入</value></data>
+  <data name="粘贴单号" xml:space="preserve"><value>粘贴单号</value></data>
+  <data name="设置 {0} ({1})" xml:space="preserve"><value>设置 {0} ({1})</value></data>
+  <data name="PackingProof 保存主机 {0}" xml:space="preserve"><value>PackingProof 保存主机 {0}</value></data>
+  <data name="选择要导入的{0}视频文件夹" xml:space="preserve"><value>选择要导入的{0}视频文件夹</value></data>
+  <data name="编译日期 {0}" xml:space="preserve"><value>编译日期 {0}</value></data>
+  <data name="编译日期未知" xml:space="preserve"><value>编译日期未知</value></data>
+  <data name="本地缓存位置不存在，请重新选择" xml:space="preserve"><value>本地缓存位置不存在，请重新选择</value></data>
+  <data name="{0} 件" xml:space="preserve"><value>{0} 件</value></data>
+  <data name="自动检测（按实测性能）" xml:space="preserve"><value>自动检测（按实测性能）</value></data>
+  <data name="警告：没有单号" xml:space="preserve"><value>警告：没有单号</value></data>
+  <data name="没有单号" xml:space="preserve"><value>没有单号</value></data>
+  <data name="警告：重复单号，请确认" xml:space="preserve"><value>警告：重复单号，请确认</value></data>
+  <data name="非法单号，已拦截" xml:space="preserve"><value>非法单号，已拦截</value></data>
+  <data name="单号不一致：{0}" xml:space="preserve"><value>单号不一致：{0}</value></data>
+  <data name="警告：快递单 {0}，{1}" xml:space="preserve"><value>警告：快递单 {0}，{1}</value></data>
+  <data name="存在打印后退款，请人工核对" xml:space="preserve"><value>存在打印后退款，请人工核对</value></data>
+  <data name="退款状态未知（{0}），请人工核对" xml:space="preserve"><value>退款状态未知（{0}），请人工核对</value></data>
+  <data name="订单号不一致，请确认" xml:space="preserve"><value>订单号不一致，请确认</value></data>
+  <data name="实际录制规格未达到设置值，可到“设置 → 高级设置 → 检测并推荐录制规格”获取推荐，或在录制设置中自行降低分辨率或帧率" xml:space="preserve"><value>实际录制规格未达到设置值，可到“设置 → 高级设置 → 检测并推荐录制规格”获取推荐，或在录制设置中自行降低分辨率或帧率</value></data>
+  <data name="副画面 {0} 的网络摄像头地址无效：{1}" xml:space="preserve"><value>副画面 {0} 的网络摄像头地址无效：{1}</value></data>
+  <data name="副画面 {0} 不能和其它路用同一个网络摄像头地址" xml:space="preserve"><value>副画面 {0} 不能和其它路用同一个网络摄像头地址</value></data>
+  <data name="副画面 {0} 的网络摄像头连接失败：{1}" xml:space="preserve"><value>副画面 {0} 的网络摄像头连接失败：{1}</value></data>
+  <data name="副画面 {0} 没有画面，请检查它是否与主摄冲突、被其它程序占用或地址不可用" xml:space="preserve"><value>副画面 {0} 没有画面，请检查它是否与主摄冲突、被其它程序占用或地址不可用</value></data>
+  <data name="NAS 空间不足，已循环清理最旧归档后仍不足，请清理 NAS 或调整备份位置" xml:space="preserve"><value>NAS 空间不足，已循环清理最旧归档后仍不足，请清理 NAS 或调整备份位置</value></data>
+  <data name="NAS 不可用或未配置，已删除最旧未归档录像 {0} 条" xml:space="preserve"><value>NAS 不可用或未配置，已删除最旧未归档录像 {0} 条</value></data>
+  <data name="摄像头连上了但没有画面（自检：{0}）。{1}" xml:space="preserve"><value>摄像头连上了但没有画面（自检：{0}）。{1}</value></data>
+  <data name="有 {0} 个录像未生成兼容 MP4，原始录像已保留，可在维护工具中查看" xml:space="preserve"><value>有 {0} 个录像未生成兼容 MP4，原始录像已保留，可在维护工具中查看</value></data>
+  <data name="已整理 {0} 个设备录像目录" xml:space="preserve"><value>已整理 {0} 个设备录像目录</value></data>
+  <data name="该路径是网络位置或网盘挂载盘，不能作为本地录像保存位置；如需备份到该位置，请添加到备份位置" xml:space="preserve"><value>该路径是网络位置或网盘挂载盘，不能作为本地录像保存位置；如需备份到该位置，请添加到备份位置</value></data>
+  <data name="无法确认存储位置类型，请确认该路径是本地磁盘后重试" xml:space="preserve"><value>无法确认存储位置类型，请确认该路径是本地磁盘后重试</value></data>
+  <data name="请输入文件夹路径" xml:space="preserve"><value>请输入文件夹路径</value></data>
+  <data name="周一" xml:space="preserve"><value>周一</value></data>
+  <data name="周二" xml:space="preserve"><value>周二</value></data>
+  <data name="周三" xml:space="preserve"><value>周三</value></data>
+  <data name="周四" xml:space="preserve"><value>周四</value></data>
+  <data name="周五" xml:space="preserve"><value>周五</value></data>
+  <data name="周六" xml:space="preserve"><value>周六</value></data>
+  <data name="周日" xml:space="preserve"><value>周日</value></data>
+  <data name="第{0}周" xml:space="preserve"><value>第{0}周</value></data>
+  <data name="{0}年第{1}周" xml:space="preserve"><value>{0}年第{1}周</value></data>
+  <data name="已清理（{0}）" xml:space="preserve"><value>已清理（{0}）</value></data>
+  <data name="按当前筛选导出单号" xml:space="preserve"><value>按当前筛选导出单号</value></data>
+  <data name="当前筛选没有匹配的录像，没有可导出的单号" xml:space="preserve"><value>当前筛选没有匹配的录像，没有可导出的单号</value></data>
+  <data name="手动" xml:space="preserve"><value>手动</value></data>
+  <data name="程序退出" xml:space="preserve"><value>程序退出</value></data>
+  <data name="时长超时" xml:space="preserve"><value>时长超时</value></data>
+  <data name="本地缓存空间不足" xml:space="preserve"><value>本地缓存空间不足</value></data>
+  <data name="同码停录" xml:space="preserve"><value>同码停录</value></data>
+  <data name="扫码切换" xml:space="preserve"><value>扫码切换</value></data>
+  <data name="音频异常" xml:space="preserve"><value>音频异常</value></data>
+  <data name="导入" xml:space="preserve"><value>导入</value></data>
+  <data name="电脑工位上传" xml:space="preserve"><value>电脑工位上传</value></data>
+  <data name="上传完成" xml:space="preserve"><value>上传完成</value></data>
+  <data name="扫码枪停止" xml:space="preserve"><value>扫码枪停止</value></data>
+  <data name="录像过短，少于 {0} 秒" xml:space="preserve"><value>录像过短，少于 {0} 秒</value></data>
+  <data name="文件过小，小于 {0} KB" xml:space="preserve"><value>文件过小，小于 {0} KB</value></data>
+  <data name="{0}（音频异常）" xml:space="preserve"><value>{0}（音频异常）</value></data>
+  <data name="用户删除" xml:space="preserve"><value>用户删除</value></data>
+  <data name="系统清理" xml:space="preserve"><value>系统清理</value></data>
+  <data name="已删除" xml:space="preserve"><value>已删除</value></data>
+  <data name="手动清理本地录像" xml:space="preserve"><value>手动清理本地录像</value></data>
+  <data name="本地文件已缺失，状态自动修复" xml:space="preserve"><value>本地文件已缺失，状态自动修复</value></data>
+  <data name="本地文件已缺失，NAS 归档已确认" xml:space="preserve"><value>本地文件已缺失，NAS 归档已确认</value></data>
+  <data name="本地副本缺失，等待确认 NAS 归档" xml:space="preserve"><value>本地副本缺失，等待确认 NAS 归档</value></data>
+  <data name="本地与 NAS 均无可信副本（外部删除或缺失）" xml:space="preserve"><value>本地与 NAS 均无可信副本（外部删除或缺失）</value></data>
+  <data name="归档冲突且本地副本丢失" xml:space="preserve"><value>归档冲突且本地副本丢失</value></data>
+  <data name="硬循环清理（本地空间不足）" xml:space="preserve"><value>硬循环清理（本地空间不足）</value></data>
+  <data name="容量清理（NAS 不可用或未配置）" xml:space="preserve"><value>容量清理（NAS 不可用或未配置）</value></data>
+  <data name="本地循环清理（NAS 副本已循环清理）" xml:space="preserve"><value>本地循环清理（NAS 副本已循环清理）</value></data>
+  <data name="全局配额清理" xml:space="preserve"><value>全局配额清理</value></data>
+  <data name="全局配额清理（NAS 不可达，本地副本未经远端确认）" xml:space="preserve"><value>全局配额清理（NAS 不可达，本地副本未经远端确认）</value></data>
+  <data name="NAS 容量循环清理" xml:space="preserve"><value>NAS 容量循环清理</value></data>
+  <data name="NAS 归档文件不存在，检测到外部删除或缺失（非本程序删除）" xml:space="preserve"><value>NAS 归档文件不存在，检测到外部删除或缺失（非本程序删除）</value></data>
+  <data name="卸载时删除" xml:space="preserve"><value>卸载时删除</value></data>
+  <data name="已清理（{0} {1}）" xml:space="preserve"><value>已清理（{0} {1}）</value></data>
+  <data name="已为最新" xml:space="preserve"><value>已为最新</value></data>
+  <data name="共 0 条" xml:space="preserve"><value>共 0 条</value></data>
+  <data name="第 {0} / {1} 页，共 {2} 条" xml:space="preserve"><value>第 {0} / {1} 页，共 {2} 条</value></data>
+  <data name="（已安装）" xml:space="preserve"><value>（已安装）</value></data>
+  <data name="{0}{1}  ·  需要 PackingProof {2}+" xml:space="preserve"><value>{0}{1}  ·  需要 PackingProof {2}+</value></data>
+  <data name="安装扩展失败：{0}" xml:space="preserve"><value>安装扩展失败：{0}</value></data>
+  <data name="此磁盘当前建议最多 {0}，实际使用会随磁盘剩余空间动态调整" xml:space="preserve"><value>此磁盘当前建议最多 {0}，实际使用会随磁盘剩余空间动态调整</value></data>
+  <data name="读取扩展详情失败：{0}" xml:space="preserve"><value>读取扩展详情失败：{0}</value></data>
+  <data name="发现新版本：{0}" xml:space="preserve"><value>发现新版本：{0}</value></data>
+  <data name="更新标题：未填写" xml:space="preserve"><value>更新标题：未填写</value></data>
+  <data name="更新标题：{0}" xml:space="preserve"><value>更新标题：{0}</value></data>
+  <data name="已处理 {0}/{1} · 成功 {2} · 跳过 {3}" xml:space="preserve"><value>已处理 {0}/{1} · 成功 {2} · 跳过 {3}</value></data>
+  <data name="正在导入{0}录像" xml:space="preserve"><value>正在导入{0}录像</value></data>
+  <data name="已用时 {0} 秒" xml:space="preserve"><value>已用时 {0} 秒</value></data>
+  <data name="{0}，请改用完整版本更新" xml:space="preserve"><value>{0}，请改用完整版本更新</value></data>
+  <data name="最新版本：暂无" xml:space="preserve"><value>最新版本：暂无</value></data>
+  <data name="最新版本：{0}" xml:space="preserve"><value>最新版本：{0}</value></data>
+  <data name="⚠ 闭源外部程序。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>⚠ 闭源外部程序。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源</value></data>
+  <data name="⚠ 外部程序由用户手动运行。PackingProof 不会自动启动，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>⚠ 外部程序由用户手动运行。PackingProof 不会自动启动，也无法限制它访问网络、文件或其他系统资源</value></data>
+  <data name="重新安装" xml:space="preserve"><value>重新安装</value></data>
+  <data name="更新" xml:space="preserve"><value>更新</value></data>
+  <data name="尚未安装" xml:space="preserve"><value>尚未安装</value></data>
+  <data name="已安装：{0}" xml:space="preserve"><value>已安装：{0}</value></data>
+  <data name="没有可安装版本" xml:space="preserve"><value>没有可安装版本</value></data>
+  <data name="需要 PackingProof {0} 或更高版本" xml:space="preserve"><value>需要 PackingProof {0} 或更高版本</value></data>
+  <data name="需要 PackingProof {0} 或更高版本，当前版本无法安装" xml:space="preserve"><value>需要 PackingProof {0} 或更高版本，当前版本无法安装</value></data>
+  <data name="没有扫码枪可直接进入下一步；如需使用，可在这里测试扫码枪，作为摄像头识别的后备方案" xml:space="preserve"><value>没有扫码枪可直接进入下一步；如需使用，可在这里测试扫码枪，作为摄像头识别的后备方案</value></data>
+  <data name="没有扫码枪也可手动输入面单号；如需使用，可在这里测试扫码枪" xml:space="preserve"><value>没有扫码枪也可手动输入面单号；如需使用，可在这里测试扫码枪</value></data>
+  <data name="已旋转 {0}°" xml:space="preserve"><value>已旋转 {0}°</value></data>
+  <data name="正在连接网络摄像头并测试实时编码能力，请稍候" xml:space="preserve"><value>正在连接网络摄像头并测试实时编码能力，请稍候</value></data>
+  <data name="{0}，已采用可用的原生配置，仍可继续" xml:space="preserve"><value>{0}，已采用可用的原生配置，仍可继续</value></data>
+  <data name="{0}，已保留程序默认配置，仍可继续" xml:space="preserve"><value>{0}，已保留程序默认配置，仍可继续</value></data>
+  <data name="录制性能检测失败，已采用可用的原生配置，仍可继续" xml:space="preserve"><value>录制性能检测失败，已采用可用的原生配置，仍可继续</value></data>
+  <data name="录制性能检测失败，已保留程序默认配置，仍可继续" xml:space="preserve"><value>录制性能检测失败，已保留程序默认配置，仍可继续</value></data>
+  <data name="复制网址失败：{0}" xml:space="preserve"><value>复制网址失败：{0}</value></data>
+  <data name="已处理 {0} / {1} 条" xml:space="preserve"><value>已处理 {0} / {1} 条</value></data>
+  <data name="已缓存 {0} / 上限 {1} GB" xml:space="preserve"><value>已缓存 {0} / 上限 {1} GB</value></data>
+  <data name="当前使用系统盘，系统会保留至少 {0}，不会占满磁盘" xml:space="preserve"><value>当前使用系统盘，系统会保留至少 {0}，不会占满磁盘</value></data>
+  <data name="系统会为此磁盘保留至少 {0}" xml:space="preserve"><value>系统会为此磁盘保留至少 {0}</value></data>
+  <data name="可以选择本地磁盘中的任意文件夹，也可以输入网络共享路径，例如：\\192.168.1.100\共享目录\PackingProofVideos" xml:space="preserve"><value>可以选择本地磁盘中的任意文件夹，也可以输入网络共享路径，例如：\\192.168.1.100\共享目录\PackingProofVideos</value></data>
+  <data name="已绑定的保存主机" xml:space="preserve"><value>已绑定的保存主机</value></data>
+  <data name="该视频已被覆盖删除，无法播放" xml:space="preserve"><value>该视频已被覆盖删除，无法播放</value></data>
+  <data name="单号: {0}" xml:space="preserve"><value>单号: {0}</value></data>
+  <data name="删除原因: {0}" xml:space="preserve"><value>删除原因: {0}</value></data>
+  <data name="删除时间: {0}" xml:space="preserve"><value>删除时间: {0}</value></data>
+  <data name="原始大小: {0}" xml:space="preserve"><value>原始大小: {0}</value></data>
+  <data name="录制时长: {0}" xml:space="preserve"><value>录制时长: {0}</value></data>
+  <data name="视频已删除" xml:space="preserve"><value>视频已删除</value></data>
+  <data name="未知" xml:space="preserve"><value>未知</value></data>
+  <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>视频文件已被外部删除或移动，无法播放</value></data>
+  <data name="路径: {0}" xml:space="preserve"><value>路径: {0}</value></data>
+  <data name="文件丢失" xml:space="preserve"><value>文件丢失</value></data>
+  <data name="这段录像已转移到绑定主机，请从录制工位主界面打开主机录像页面查看" xml:space="preserve"><value>这段录像已转移到绑定主机，请从录制工位主界面打开主机录像页面查看</value></data>
+  <data name="、" xml:space="preserve"><value>、</value></data>
+  <data name="所有本机录像工位" xml:space="preserve"><value>所有本机录像工位</value></data>
+  <data name="{0} 收到 {1} 条数据" xml:space="preserve"><value>{0} 收到 {1} 条数据</value></data>
+  <data name="暂未收到数据" xml:space="preserve"><value>暂未收到数据</value></data>
+  <data name="手机录像设备" xml:space="preserve"><value>手机录像设备</value></data>
+  <data name="电脑录像设备" xml:space="preserve"><value>电脑录像设备</value></data>
+  <data name="{0} 已处理 {1} 条联动数据" xml:space="preserve"><value>{0} 已处理 {1} 条联动数据</value></data>
+  <data name="暂无联动数据" xml:space="preserve"><value>暂无联动数据</value></data>
+  <data name="预留空间偏小：{0} 只保留 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行" xml:space="preserve"><value>预留空间偏小：{0} 只保留 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行</value></data>
+  <data name="预留空间偏小：{0} 个位置只保留约 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行" xml:space="preserve"><value>预留空间偏小：{0} 个位置只保留约 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行</value></data>
+  <data name="归档冲突：网络端已有不同版本，请检查 {0}" xml:space="preserve"><value>归档冲突：网络端已有不同版本，请检查 {0}</value></data>
+  <data name="归档失败，等待自动重试：{0}" xml:space="preserve"><value>归档失败，等待自动重试：{0}</value></data>
+  <data name="归档暂停：NAS 空间不足，请清理 {0}" xml:space="preserve"><value>归档暂停：NAS 空间不足，请清理 {0}</value></data>
+  <data name="已归档（本地副本已清理）" xml:space="preserve"><value>已归档（本地副本已清理）</value></data>
+  <data name="本地录像已清理，未备份到 NAS" xml:space="preserve"><value>本地录像已清理，未备份到 NAS</value></data>
+  <data name="NAS 副本已循环清理" xml:space="preserve"><value>NAS 副本已循环清理</value></data>
 </root>

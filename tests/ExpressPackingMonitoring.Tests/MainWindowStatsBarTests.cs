@@ -99,7 +99,7 @@ public sealed class MainWindowStatsBarTests
                 "UI",
                 "MainWindow.xaml"));
 
-        Assert.Contains("<Setter Property=\"MinWidth\" Value=\"130\"/>", xaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"MinWidth\" Value=\"160\"/>", xaml, StringComparison.Ordinal);
         Assert.Contains("<Setter Property=\"Width\" Value=\"160\"/>", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("MinWidth=\"130\"", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("Width=\"160\"", xaml, StringComparison.Ordinal);

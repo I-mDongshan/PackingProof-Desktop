@@ -437,7 +437,7 @@ namespace ExpressPackingMonitoring.ViewModels
             {
                 MobileBackupDeviceStatuses.Add(new MobileBackupDeviceStatus
                 {
-                    DisplayText = "暂无手机/电脑设备",
+                    DisplayText = AppLanguage.Get("暂无手机/电脑设备"),
                     IsOnline = false
                 });
             }
@@ -1099,22 +1099,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 _extensionAuthorizationStore = new ExtensionAuthorizationStore(AppPaths.MobileBackupStateDir);
             }
             return _extensionAuthorizationStore.GetAll(includeRevoked: false)
-                .Select(value => new ExtensionAuthorizationDisplayItem(
-                    value.ExtensionInstanceId,
-                    value.DisplayName,
-                    string.IsNullOrWhiteSpace(value.RuntimeVersion) ? value.Version : value.RuntimeVersion,
-                    value.Source,
-                    string.Join("、", value.Permissions),
-                    value.RoutingScope == ExtensionRoutingScope.AllLocalRecordingNodes
-                        ? "所有本机录像工位"
-                        : string.Join("、", value.BoundOriginNodeIds),
-                    value.CredentialGeneration,
-                    value.UpdatedAtUtc,
-                    value.LastSeenUtc.HasValue
-                        && DateTimeOffset.UtcNow - value.LastSeenUtc.Value <= TimeSpan.FromSeconds(45),
-                    value.LastBusinessActivityUtc.HasValue
-                        ? $"{value.LastBusinessActivityUtc.Value.ToLocalTime():HH:mm} 收到 {value.LastBusinessDataCount} 条数据"
-                        : "暂未收到数据"))
+                .Select(ExtensionAuthorizationDisplayFactory.Create)
                 .ToArray();
         }
 
@@ -1123,20 +1108,26 @@ namespace ExpressPackingMonitoring.ViewModels
                 .Select(device => new OrderIntegrationDeviceDisplayItem(
                     device.NodeId,
                     device.DisplayName,
-                    string.Equals(device.DeviceType, "mobile", StringComparison.OrdinalIgnoreCase)
-                        ? "手机录像设备"
-                        : "电脑录像设备",
+                    FormatOrderIntegrationDeviceType(device.DeviceType),
                     device.Online,
                     FormatOrderIntegrationDeviceActivity(device.LastActivityUtc, device.ReceivedCount)))
                 .ToArray();
+
+        internal static string FormatOrderIntegrationDeviceType(string deviceType) =>
+            string.Equals(deviceType, "mobile", StringComparison.OrdinalIgnoreCase)
+                ? AppLanguage.Get("手机录像设备")
+                : AppLanguage.Get("电脑录像设备");
 
         internal static string FormatOrderIntegrationDeviceActivity(
             DateTimeOffset? lastActivityUtc,
             int processedCount)
         {
             return lastActivityUtc.HasValue
-                ? $"{lastActivityUtc.Value.ToLocalTime():HH:mm} 已处理 {processedCount} 条联动数据"
-                : "暂无联动数据";
+                ? AppLanguage.Format(
+                    "{0} 已处理 {1} 条联动数据",
+                    lastActivityUtc.Value.ToLocalTime().ToString("HH:mm"),
+                    processedCount)
+                : AppLanguage.Get("暂无联动数据");
         }
 
         internal bool RevokeExtensionAuthorization(string extensionInstanceId) =>

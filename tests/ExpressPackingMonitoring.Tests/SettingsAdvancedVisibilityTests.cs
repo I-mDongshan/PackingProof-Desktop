@@ -1,6 +1,8 @@
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.UI;
 using ExpressPackingMonitoring.ViewModels;
+using System.Globalization;
 using System.Xml.Linq;
 using Xunit;
 
@@ -47,11 +49,22 @@ public sealed class SettingsAdvancedVisibilityTests
     [Fact]
     public void OrderIntegrationDeviceActivityDescribesProcessingWithoutAmbiguousDirection()
     {
-        string activity = MainViewModel.FormatOrderIntegrationDeviceActivity(DateTimeOffset.UtcNow, 3);
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("zh-Hans");
+            string activity = MainViewModel.FormatOrderIntegrationDeviceActivity(DateTimeOffset.UtcNow, 3);
 
-        Assert.Contains("已处理 3 条联动数据", activity, StringComparison.Ordinal);
-        Assert.DoesNotContain("收到", activity, StringComparison.Ordinal);
-        Assert.Equal("暂无联动数据", MainViewModel.FormatOrderIntegrationDeviceActivity(null, 0));
+            Assert.Contains("已处理 3 条联动数据", activity, StringComparison.Ordinal);
+            Assert.DoesNotContain("收到", activity, StringComparison.Ordinal);
+            Assert.Equal(
+                AppLanguage.Get("暂无联动数据"),
+                MainViewModel.FormatOrderIntegrationDeviceActivity(null, 0));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
     }
     [Fact]
     public void DirectMkvAudio_ConfirmsBeforeVisualToggleAndRollsBackBothStates()

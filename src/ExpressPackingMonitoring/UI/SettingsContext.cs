@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.ViewModels;
 using CommunityToolkit.Mvvm.Input;
@@ -154,3 +155,30 @@ public sealed record OrderIntegrationDeviceDisplayItem(
     string DeviceTypeText,
     bool Online,
     string ActivityText);
+
+internal static class ExtensionAuthorizationDisplayFactory
+{
+    internal static ExtensionAuthorizationDisplayItem Create(ExtensionAuthorizationContext value)
+    {
+        string separator = AppLanguage.Get("、");
+        return new ExtensionAuthorizationDisplayItem(
+            value.ExtensionInstanceId,
+            value.DisplayName,
+            string.IsNullOrWhiteSpace(value.RuntimeVersion) ? value.Version : value.RuntimeVersion,
+            value.Source,
+            string.Join(separator, value.Permissions),
+            value.RoutingScope == ExtensionRoutingScope.AllLocalRecordingNodes
+                ? AppLanguage.Get("所有本机录像工位")
+                : string.Join(separator, value.BoundOriginNodeIds),
+            value.CredentialGeneration,
+            value.UpdatedAtUtc,
+            value.LastSeenUtc.HasValue
+                && DateTimeOffset.UtcNow - value.LastSeenUtc.Value <= TimeSpan.FromSeconds(45),
+            value.LastBusinessActivityUtc.HasValue
+                ? AppLanguage.Format(
+                    "{0} 收到 {1} 条数据",
+                    value.LastBusinessActivityUtc.Value.ToLocalTime().ToString("HH:mm"),
+                    value.LastBusinessDataCount)
+                : AppLanguage.Get("暂未收到数据"));
+    }
+}

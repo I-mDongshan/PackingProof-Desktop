@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Data;
 using ExpressPackingMonitoring.Services;
@@ -97,6 +98,30 @@ public sealed class WindowConstructionTests
         Assert.True(failures.Count == 0, "这些窗口/控件构造失败：" + string.Join("；", failures));
     }
 
+    [Fact]
+    public void WorkstationSelectionFooterStaysOutsideScrollViewer()
+    {
+        RunOnStaThread(() =>
+        {
+            var window = new WorkstationSelectionWindow();
+            window.Measure(new Size(860, 720));
+            window.Arrange(new Rect(0, 0, 860, 720));
+            window.UpdateLayout();
+
+            var confirm = window.FindName("ConfirmPurposeButton") as DependencyObject;
+            Assert.NotNull(confirm);
+
+            DependencyObject? current = VisualTreeHelper.GetParent(confirm);
+            while (current != null)
+            {
+                Assert.IsNotType<ScrollViewer>(current);
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            window.Close();
+        });
+    }
+
     /// <summary>真构造的窗口与控件清单（与守卫的名单一一对应）。</summary>
     private static IEnumerable<(string Name, Func<object> Factory)> Factories()
     {
@@ -160,12 +185,12 @@ public sealed class WindowConstructionTests
                 Path.Combine(Path.GetTempPath(), "订单号导出.csv")));
         yield return (
             "ExpressPackingMonitoring.UI.StoragePathSelectionDialog",
-            () => new StoragePathSelectionDialog(Path.Combine(Path.GetTempPath(), "快递打包视频")));
+            () => new StoragePathSelectionDialog(Path.Combine(Path.GetTempPath(), "PackingProofVideos")));
         yield return (
             "ExpressPackingMonitoring.UI.StorageReserveDialog",
             () => new StorageReserveDialog(new StorageLocation
             {
-                Path = Path.Combine(Path.GetTempPath(), "快递打包视频"),
+                Path = Path.Combine(Path.GetTempPath(), "PackingProofVideos"),
                 Priority = 0
             }));
         yield return (

@@ -72,7 +72,24 @@ pwsh -NoProfile -File tools\Test-Release-Automated.ps1
 - 保持 UTF-8，避免整文件重写、换行和编码抖动，尤其是中文、XAML、HTML 和 userscript。
 - 新界面复用默认字体 `Microsoft YaHei UI, Segoe UI` 以及现有字号、字重和控件风格；使用不同字体时必须明确说明理由。
 - 用户可见文本最后一句不以中文句号结尾；多句文案只移除末尾句号，中间句号保留。
+- 网页下载弹层等固定宽度卡片内的操作按钮必须使用可换行或单列布局，不能只靠缩短翻译；用 Playwright 检查按钮不越界、不重叠、文字不被裁切。
+- 网页顶栏标题要优先获得内容所需宽度，由右侧操作区先收缩；用 Playwright 比较标题 `scrollWidth`/`clientWidth`，不能提前显示省略号。
+- 长内容对话框或选择窗口的操作按钮必须固定在滚动区外，内容过高时只让主体滚动；用回归测试确认按钮的可视父链中没有 `ScrollViewer`。
+- LibVLC 回放 UNC/NAS 路径必须走 `PlaybackMediaSource` 的 `FileStream` + `StreamMediaInput`（`imem`），沿用 Windows SMB 凭据；不要把 UNC 直接转成 `new Uri` 交给 `filesystem`，也不要为 NAS 回放重新加入 `libsmb_plugin.dll`。
 - 新增设置项时必须先定归属，并在提交说明里交代四件事：放在哪个页签/卡片、按哪个 `SettingsCapabilities` 能力门控（没有合适的能力就先补一个派生属性）、是否受高级模式控制、三语文案是否补齐。只有四个角色都该看到时才允许不加门控；不要靠事后补守卫测试来兜底。
+
+## 国际化与运行时文案
+
+- 所有用户可见文本都要走本地化：XAML 静态文案、代码生成的按钮/状态/选项、ToolTip、无障碍名称、Toast、Alert 和预览提示都算。默认资源、`zh-Hans`、`ja-JP` 三份词条必须同时补齐。
+- 不要直接把中文写进 `DisplayName`、`Name`、`Label` 等显示字段。界面自己的选项要用稳定 `Value`/ID 映射到资源（如 `GpuEncoderOption.BuildDisplayName`）；设备名、单号、买家留言等用户数据保持原样，不做标签拆解翻译。
+- 使用 `DisplayMemberPath`、`ItemTemplate` 或 `ContentPresenter` 的下拉框要单独验证选中值和展开项。资源存在不等于界面生效，`LocalizationTests` 中的 `ContentPresenter_StringContentUsesRuntimeLocalization` 和 `GpuEncoderOptionDisplayNames_DoNotUseChineseLiterals` 是这两类回归的守卫。
+- 自定义 ToolTip、图表坐标轴和图表悬浮卡片要在数据生成时本地化（如 `PlaybackTooltipBuilder`、`StatisticsWindow.FormatChartDate`），不要依赖 ToolTip 弹出后的可视化树遍历；日期、星期、周次和单位都要按当前界面语言生成。
+- 代码直接给 `Text`、`Content`、`Header`、`ToolTip` 赋值的状态文案也要有资源；`CodeAssignedUiText_AllHaveEnglishResources` 会检查跨行赋值、三元表达式和拼接，新增分页、检查更新等状态文案时不能只写中文字面量。
+- `ContextMenu`、`MenuItem.Header`、动态菜单项和 DataGrid 单元格不在常规可视树遍历里；静态中文必须用 `{loc:Localized ...}`，代码生成菜单必须用 `AppLanguage.Get/Format`，并保持 `WpfViews_MenuItemHeadersUseLocalizedExtension` 通过。
+- `AppDialog` 的标题和正文要按当前语言生成；多行详情用 `AppLanguage.Get/Format` 组合并补针对性测试，不能直接拼一整段中文。
+- 网页端 `Web/index.html` 的 `map` 与 `jaMap` 必须同步维护；动态 `textContent`、`title`、`aria-label`、`new Option`、自定义 tooltip 和导出/剪辑提示都必须经过 `tWeb()`。新增文案后要跑 `WebLocalizationTests` 和 `tools\Test-WebUi.ps1`。
+- Toast、扫码告警、预览大提示不能只写中文字面量。新增 `ShowToast`、`PublishScannerAlert`、`AlertRequest.Message` 或 `AppLanguage.Format` 句式时，同步补资源或模板词条，并让 `ToastLiterals_AllHaveEnglishResources`、`ScannerAlertLiterals_AllHaveEnglishResources` 通过。
+- 翻译优先使用短、自然、可直接上控件的表达；按钮、下拉框、页签和固定列宽区域必须用英文/日文实际布局检查，不能只看词条是否存在。静态中文列标题必须用 `{loc:Localized ...}`，并保持 `WpfViews_DataGridColumnHeadersUseLocalizedExtension` 通过。
 
 ## 测试与验证
 

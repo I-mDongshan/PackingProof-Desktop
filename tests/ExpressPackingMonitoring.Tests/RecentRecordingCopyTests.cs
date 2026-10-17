@@ -21,7 +21,7 @@ public sealed class RecentRecordingCopyTests
 
         // 右键菜单是窗口级的一个实例，行模板里引用它
         Assert.Contains("x:Key=\"RecentRecordingContextMenu\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Header=\"复制单号\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"{loc:Localized 复制单号}\"", xaml, StringComparison.Ordinal);
         Assert.Contains(
             "ContextMenu=\"{StaticResource RecentRecordingContextMenu}\"",
             xaml,

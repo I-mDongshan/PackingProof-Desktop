@@ -4,6 +4,7 @@
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:controls="clr-namespace:ExpressPackingMonitoring.UI.Controls"
         xmlns:local="clr-namespace:ExpressPackingMonitoring.UI"
+        xmlns:loc="clr-namespace:ExpressPackingMonitoring.Localization"
         Title="设置" Height="760" Width="920"
         MinHeight="700" MinWidth="860"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
@@ -473,7 +474,7 @@
              "本软件最多占用多少"，进而把整块盘算成不可用 -->
         <ContextMenu x:Key="StorageLocationContextMenu"
                      Style="{StaticResource AppContextMenuStyle}">
-            <MenuItem Header="设置预留空间…"
+            <MenuItem Header="{loc:Localized 设置预留空间…}"
                       Style="{StaticResource AppMenuItemStyle}"
                       Click="StorageReserveMenuItem_Click"/>
         </ContextMenu>
@@ -545,6 +546,7 @@
         </Style>
 
         <Style x:Key="AdvancedModeButtonStyle" TargetType="ToggleButton">
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
             <Setter Property="Background" Value="{StaticResource TransparentBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
@@ -595,6 +597,8 @@
         </Style>
 
         <Style x:Key="SidebarActionButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
             <Setter Property="Background" Value="{StaticResource TransparentBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
@@ -847,7 +851,7 @@
                                                  Loaded="SettingsSearchBox_Loaded"
                                                  AutomationProperties.Name="搜索设置"/>
                                         <TextBlock x:Name="SettingsSearchPlaceholder"
-                                                   Text="搜索设置"
+                                                   Text="{loc:Localized 搜索设置}"
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Center"
                                                    IsHitTestVisible="False"
@@ -887,13 +891,13 @@
                                                   Style="{StaticResource AdvancedModeButtonStyle}"
                                                   IsChecked="{Binding DataContext.Config.ShowAdvancedSettings, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                   Unchecked="AdvancedModeButton_Unchecked">
-                                        <TextBlock Text="{Binding IsChecked, ElementName=AdvancedModeButton, Mode=OneWay, Converter={StaticResource AdvancedModeTextConverter}}"
+                                        <TextBlock Text="{Binding IsChecked, ElementName=AdvancedModeButton, Mode=OneWay, Converter={StaticResource AdvancedModeTextConverter}}" TextWrapping="Wrap" TextAlignment="Center"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    FontWeight="SemiBold"/>
                                     </ToggleButton>
                                     <Button x:Name="SidebarExtensionMarketButton"
-                                            Content="扩展市场"
+                                            Content="{loc:Localized 扩展市场}"
                                             Click="OpenExtensionMarket_Click"
                                             Style="{StaticResource SidebarActionButtonStyle}"
                                             AutomationProperties.Name="扩展市场"/>
@@ -927,6 +931,14 @@
                     <Setter Property="FontWeight" Value="SemiBold"/>
                     <Setter Property="Padding" Value="14,8"/>
                     <Setter Property="MinWidth" Value="156"/>
+            <!-- 英文页签名比中文长，换行显示，避免被左栏宽度截断 -->
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
                     <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                     <Setter Property="Background" Value="{StaticResource TransparentBrush}"/>
                     <Setter Property="BorderThickness" Value="1"/>
@@ -1066,9 +1078,10 @@
                                                   SelectionChanged="LanguageComboBox_SelectionChanged"
                                                   Cursor="Hand">
                                             <ComboBoxItem Content="跟随系统" Tag="Auto"/>
-                                            <ComboBoxItem Content="简体中文" Tag="zh-Hans"/>
-                                            <ComboBoxItem Content="English" Tag="en-US"/>
-                                            <ComboBoxItem Content="日语" Tag="ja-JP"/>
+                                            <!-- 语言名用各语言自己的写法，不跟着界面语言翻译 -->
+                                            <ComboBoxItem Content="简体中文" Tag="zh-Hans" loc:WpfLocalization.AutoLocalize="False"/>
+                                            <ComboBoxItem Content="English" Tag="en-US" loc:WpfLocalization.AutoLocalize="False"/>
+                                            <ComboBoxItem Content="日本語" Tag="ja-JP" loc:WpfLocalization.AutoLocalize="False"/>
                                         </ComboBox>
                                     </Grid>
 
@@ -1211,7 +1224,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Margin="0,0,16,0">
                                                         <TextBlock Text="{Binding Title}" Style="{StaticResource FieldLabelStyle}"/>
-                                                        <TextBlock Text="这一路不接就选“无”"
+                                                        <TextBlock Text="{loc:Localized 这一路不接就选“无”}"
                                                                    Style="{StaticResource FieldHintStyle}"/>
                                                     </StackPanel>
                                                     <ComboBox Grid.Column="2"
@@ -2287,10 +2300,10 @@
                                                   RowStyle="{StaticResource StorageGridRowStyle}"
                                                   CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="存储路径"
+                                                <DataGridTemplateColumn Header="{loc:Localized 存储路径}"
                                                                         Width="*"
                                                                         CellTemplate="{StaticResource StoragePathCellTemplate}"/>
-                                                <DataGridTemplateColumn Header="录像空间上限" Width="170">
+                                                <DataGridTemplateColumn Header="{loc:Localized 录像空间上限}" Width="170">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Orientation="Horizontal"
@@ -2370,7 +2383,7 @@
                                                   RowStyle="{StaticResource StorageLocationRowStyle}"
                                                   CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="存储路径"
+                                                <DataGridTemplateColumn Header="{loc:Localized 存储路径}"
                                                                         Width="*"
                                                                         CellTemplate="{StaticResource StoragePathCellTemplate}"/>
                                             </DataGrid.Columns>
@@ -2442,7 +2455,7 @@
                                                   RowStyle="{StaticResource StorageLocationRowStyle}"
                                                   CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="存储路径"
+                                                <DataGridTemplateColumn Header="{loc:Localized 存储路径}"
                                                                         Width="*"
                                                                         CellTemplate="{StaticResource StoragePathCellTemplate}"/>
                                             </DataGrid.Columns>
@@ -3543,7 +3556,7 @@
                                                   RowStyle="{StaticResource StorageGridRowStyle}"
                                                   CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="已导入脚本" Width="*">
+                                                <DataGridTemplateColumn Header="{loc:Localized 已导入脚本}" Width="*">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Margin="12,0" VerticalAlignment="Center">
@@ -3562,11 +3575,11 @@
                                                         </DataTemplate>
                                                     </DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
-                                                <DataGridTemplateColumn Header="管理" Width="150">
+                                                <DataGridTemplateColumn Header="{loc:Localized 管理}" Width="150">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <Button Content="删除"
-                                                                    Width="72"
+                                                            <Button Content="{loc:Localized 删除}"
+                                                                    MinWidth="88"
                                                                     Height="32"
                                                                     CommandParameter="{Binding}"
                                                                     Click="RemoveUserscript_Click"
@@ -3603,18 +3616,18 @@
                                                   ColumnHeaderStyle="{StaticResource StorageGridColumnHeaderStyle}"
                                                   RowStyle="{StaticResource StorageGridRowStyle}" CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="扩展" Width="2*">
+                                                <DataGridTemplateColumn Header="{loc:Localized 扩展}" Width="2*">
                                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                         <StackPanel Orientation="Horizontal" Margin="12,0" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                             <Ellipse Width="8" Height="8" Margin="0,0,9,0">
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{DynamicResource TextSecondary}"/><Style.Triggers><DataTrigger Binding="{Binding Online}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentGreen}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
-                                                            <StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Style="{StaticResource FieldHintStyle}"><Run Text="版本 "/><Run Text="{Binding Version}"/><Run Text=" · "/><Run Text="{Binding Source}"/></TextBlock></StackPanel>
+                                                            <StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Style="{StaticResource FieldHintStyle}"><Run Text="{loc:Localized 版本}"/><Run Text=" "/><Run Text="{Binding Version}"/><Run Text=" · "/><Run Text="{Binding Source}"/></TextBlock></StackPanel>
                                                         </StackPanel>
                                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
-                                                <DataGridTemplateColumn Header="权限与绑定" Width="1.5*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="12,0" VerticalAlignment="Center"><TextBlock Text="{Binding PermissionsText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding PermissionsText}"/><TextBlock Text="{Binding BindingText}" Style="{StaticResource FieldHintStyle}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BindingText}"/><TextBlock Text="{Binding ActivityText}" Style="{StaticResource FieldHintStyle}" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                                                <DataGridTemplateColumn Header="管理" Width="150"><DataGridTemplateColumn.CellTemplate><DataTemplate><Button Content="撤销" Width="72" Height="32" CommandParameter="{Binding}" Click="RevokeExtensionAuthorization_Click" Style="{StaticResource DeleteUserscriptButtonStyle}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="{loc:Localized 权限与绑定}" Width="1.5*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="12,0" VerticalAlignment="Center"><TextBlock Text="{Binding PermissionsText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding PermissionsText}"/><TextBlock Text="{Binding BindingText}" Style="{StaticResource FieldHintStyle}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BindingText}"/><TextBlock Text="{Binding ActivityText}" Style="{StaticResource FieldHintStyle}" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="{loc:Localized 管理}" Width="150"><DataGridTemplateColumn.CellTemplate><DataTemplate><Button Content="{loc:Localized 撤销}" MinWidth="88" Height="32" CommandParameter="{Binding}" Click="RevokeExtensionAuthorization_Click" Style="{StaticResource DeleteUserscriptButtonStyle}" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     </Border>
@@ -3638,7 +3651,7 @@
                                                   ColumnHeaderStyle="{StaticResource StorageGridColumnHeaderStyle}"
                                                   RowStyle="{StaticResource StorageGridRowStyle}" CellStyle="{StaticResource StorageGridCellStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTemplateColumn Header="设备" Width="2*">
+                                                <DataGridTemplateColumn Header="{loc:Localized 设备}" Width="2*">
                                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                         <StackPanel Orientation="Horizontal" Margin="12,0" VerticalAlignment="Center">
                                                             <Ellipse Width="8" Height="8" Margin="0,0,9,0">
@@ -3660,7 +3673,7 @@
                                                         </StackPanel>
                                                     </DataTemplate></DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
-                                                <DataGridTemplateColumn Header="最近活动" Width="2*">
+                                                <DataGridTemplateColumn Header="{loc:Localized 最近活动}" Width="2*">
                                                     <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                         <TextBlock Text="{Binding ActivityText}"
                                                                    Margin="12,0"
@@ -3947,31 +3960,32 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
+                                            <ColumnDefinition Width="300"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Margin="0,0,16,0">
                                             <TextBlock Text="项目仓库" Style="{StaticResource FieldLabelStyle}"/>
                                             <TextBlock Text="打开 GitHub 仓库，查看源码、发布记录和问题反馈"
                                                        Style="{StaticResource FieldHintStyle}"/>
                                         </StackPanel>
-                                        <WrapPanel Grid.Column="2">
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
                                             <Button x:Name="CheckUpdateButton"
                                                     Content="检查更新"
                                                     Click="CheckUpdate_Click"
                                                     Style="{StaticResource SecondaryButtonStyle}"
                                                     Margin="0,0,8,8"/>
-                                            <Button Content="打开仓库"
+                                            <Button x:Name="OpenRepositoryButton"
+                                                    Content="打开仓库"
                                                     Click="OpenRepository_Click"
                                                     Style="{StaticResource SecondaryButtonStyle}"
                                                     Margin="0,0,8,8"/>
-                                        </WrapPanel>
+                                        </StackPanel>
                                     </Grid>
 
                                     <Grid Style="{StaticResource SettingRowStyle}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="24"/>
-                                            <ColumnDefinition Width="260"/>
+                                            <ColumnDefinition Width="300"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Margin="0,0,16,0">
                                             <TextBlock Text="导出诊断日志" Style="{StaticResource FieldLabelStyle}"/>
@@ -3981,6 +3995,28 @@
                                         <Button Grid.Column="2"
                                                 Content="导出诊断日志"
                                                 Click="ExportDiagnosticLogs_Click"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                HorizontalAlignment="Left"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource SectionCardStyle}">
+                                <StackPanel>
+                                    <Grid Style="{StaticResource SettingRowStyle}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="24"/>
+                                            <ColumnDefinition Width="300"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="隐私政策" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBlock Text="查看应用如何处理录像、订单信息和本机数据"
+                                                       Style="{StaticResource FieldHintStyle}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2"
+                                                Content="打开隐私政策"
+                                                Click="OpenPrivacyPolicy_Click"
                                                 Style="{StaticResource SecondaryButtonStyle}"
                                                 HorizontalAlignment="Left"/>
                                     </Grid>

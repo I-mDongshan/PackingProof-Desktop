@@ -187,7 +187,10 @@ namespace ExpressPackingMonitoring.UI
             _isRecording = isRecording;
             Config = clonedConfig;
             AppConfig.NormalizeAfterLoad(Config);
-            Title = $"设置 {ExpressPackingMonitoring.Config.AppVersion.Current} ({ExpressPackingMonitoring.Config.AppVersion.CommitShortId})";
+            Title = ExpressPackingMonitoring.Localization.AppLanguage.Format(
+                "设置 {0} ({1})",
+                ExpressPackingMonitoring.Config.AppVersion.Current,
+                ExpressPackingMonitoring.Config.AppVersion.CommitShortId);
             _originalNodeName = Config.NodeName;
             _originalWebAccessKey = Config.WebAccessKey;
             InitializeComponent();
@@ -401,7 +404,7 @@ namespace ExpressPackingMonitoring.UI
                                 ? AppPaths.UserDataDir
                                 : Environment.GetFolderPath(
                                     Environment.SpecialFolder.MyVideos),
-                            "快递打包视频"),
+                            AppConfig.DefaultStorageFolderName),
                         Priority = 0
                     }
                 ];
@@ -778,6 +781,11 @@ namespace ExpressPackingMonitoring.UI
                     : option.Value == "cpu"
                         ? validated.Any(encoder => encoder is "libx264" or "libx265" or "libsvtav1")
                         : HasScoredHardware(option.Value))
+                .Select(option => new GpuEncoderOption
+                {
+                    Value = option.Value,
+                    DisplayName = GpuEncoderOption.BuildDisplayName(option.Value)
+                })
                 .ToList();
             GpuEncoderComboBox.ItemsSource = encoders;
             string normalized = NormalizeGpuSetting(Config.GpuEncoder ?? "auto");
@@ -796,9 +804,9 @@ namespace ExpressPackingMonitoring.UI
             bool Available(string codec) => EncodingHelper.IsExactSelectionAvailable(
                 gpu, codec, validated, scores);
             var items = new List<GpuEncoderOption>();
-            if (Available("h264")) items.Add(new GpuEncoderOption { Value = "h264", DisplayName = "H.264 (兼容性好)" });
-            if (Available("h265")) items.Add(new GpuEncoderOption { Value = "h265", DisplayName = "H.265 / HEVC (体积更小)" });
-            if (Available("av1")) items.Add(new GpuEncoderOption { Value = "av1", DisplayName = "AV1 (极致压缩)" });
+            if (Available("h264")) items.Add(new GpuEncoderOption { Value = "h264", DisplayName = GpuEncoderOption.BuildDisplayName("h264") });
+            if (Available("h265")) items.Add(new GpuEncoderOption { Value = "h265", DisplayName = GpuEncoderOption.BuildDisplayName("h265") });
+            if (Available("av1")) items.Add(new GpuEncoderOption { Value = "av1", DisplayName = GpuEncoderOption.BuildDisplayName("av1") });
             VideoCodecComboBox.ItemsSource = items;
             string current = Config.VideoCodec?.ToLowerInvariant() ?? "h264";
             // 存的值在本机不可用时的兜底：优先 H.264（兼容性最好），而不是原来的 H.265
@@ -922,7 +930,9 @@ namespace ExpressPackingMonitoring.UI
             RecordingCacheUsageText.Text = Context.FormatRecordingCacheUsage?.Invoke(snapshot)
                 ?? $"已缓存 {FormatGb(snapshot.CacheBytes)} / 上限 {Config.RecordingCacheMaxGB} GB";
             RecordingCacheSafeCapacityText.Text =
-                $"此磁盘当前建议最多 {FormatGb(snapshot.EffectiveLimitBytes)}，实际使用会随磁盘剩余空间动态调整";
+                AppLanguage.Format(
+                    "此磁盘当前建议最多 {0}，实际使用会随磁盘剩余空间动态调整",
+                    FormatGb(snapshot.EffectiveLimitBytes));
             StorageLocation location =
                 RecordingWorkstationCachePolicy.GetConfiguredLocation(Config)!;
             string root = Path.GetPathRoot(Path.GetFullPath(location.Path)) ?? "";
@@ -1077,7 +1087,7 @@ namespace ExpressPackingMonitoring.UI
         {
             var dialog = new StoragePathSelectionDialog(
                 title: "添加备份位置",
-                hint: "录像会异步备份到此位置；可输入网络共享路径（如 \\\\192.168.1.100\\共享目录\\快递打包视频），也可选择网盘挂载成的本地磁盘（如 Z:\\快递打包视频）")
+                hint: "录像会异步备份到此位置；可输入网络共享路径（如 \\\\192.168.1.100\\共享目录\\PackingProofVideos），也可选择网盘挂载成的本地磁盘（如 Z:\\PackingProofVideos）")
             {
                 Owner = this
             };
@@ -1122,7 +1132,7 @@ namespace ExpressPackingMonitoring.UI
             {
                 AppDialog.Error(
                     this,
-                    "备份位置必须是网络共享路径或网盘挂载盘，例如 \\\\192.168.1.100\\共享目录\\快递打包视频；本地磁盘请添加到录像保存位置",
+                    "备份位置必须是网络共享路径或网盘挂载盘，例如 \\\\192.168.1.100\\共享目录\\PackingProofVideos；本地磁盘请添加到录像保存位置",
                     "备份位置无效");
                 return;
             }
@@ -1327,7 +1337,7 @@ namespace ExpressPackingMonitoring.UI
             if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.SelectedRootPath))
                 return "";
 
-            return Path.Combine(dialog.SelectedRootPath, "快递打包视频");
+            return Path.Combine(dialog.SelectedRootPath, AppConfig.DefaultStorageFolderName);
         }
 
         private bool TryPrepareStoragePath(string path, out string errorMessage)
@@ -2281,7 +2291,10 @@ namespace ExpressPackingMonitoring.UI
                 ? bufferMb * 1024d * 1024d / (width * height * 3d * fps)
                 : 0;
             string size = bufferMb >= 1024 ? $"{bufferMb / 1024d:0.#} GB" : $"{bufferMb:0} MB";
-            PreRecordEstimateText.Text = $"约 {seconds:0.0} 秒 / {size} 内存";
+            PreRecordEstimateText.Text = AppLanguage.Format(
+                "约 {0} 秒 / {1} 内存",
+                $"{seconds:0.0}",
+                size);
         }
 
         private void UpdateEventRecordingBufferControlState()
@@ -2621,7 +2634,7 @@ namespace ExpressPackingMonitoring.UI
             }
 
             CheckUpdateButton.IsEnabled = false;
-            CheckUpdateButton.Content = "正在检查...";
+            CheckUpdateButton.Content = AppLanguage.Get("正在检查...");
 
             try
             {
@@ -2636,14 +2649,13 @@ namespace ExpressPackingMonitoring.UI
                 if (result.HasUpdate)
                     ShowUpdateDialog(result);
 
-                CheckUpdateButton.Content = result.HasUpdate
-                    ? "发现新版本"
-                    : "已为最新";
+                CheckUpdateButton.Content = AppLanguage.Get(
+                    result.HasUpdate ? "发现新版本" : "已为最新");
             }
             catch (Exception ex)
             {
                 RuntimeLog.Error("Update", "Manual update check failed", ex);
-                CheckUpdateButton.Content = "检查失败";
+                CheckUpdateButton.Content = AppLanguage.Get("检查失败");
                 CheckUpdateButton.IsEnabled = true;
             }
         }
@@ -2735,7 +2747,7 @@ namespace ExpressPackingMonitoring.UI
 
             // 显示预处理后的文本
             string processed = SpeechService.PreprocessTextForTts(text);
-            TtsPreviewStatus.Text = $"断句: {processed}";
+            TtsPreviewStatus.Text = AppLanguage.Format("断句: {0}", processed);
 
             // 初始化或复用预览用 SpeechService
             if (_previewSpeechService == null)
@@ -2789,7 +2801,8 @@ namespace ExpressPackingMonitoring.UI
 
         private void OnPreviewSpeechError(string message)
         {
-            Dispatcher.InvokeAsync(() => TtsPreviewStatus.Text = $"试听失败：{message}");
+            Dispatcher.InvokeAsync(() =>
+                TtsPreviewStatus.Text = AppLanguage.Format("试听失败：{0}", message));
         }
 
         private CancellationTokenSource _migrationCts;
@@ -2842,7 +2855,7 @@ namespace ExpressPackingMonitoring.UI
             catch (Exception ex)
             {
                 if (!_isClosing)
-                    MigrationStatusText.Text = $"合并出错：{ex.Message}";
+                    MigrationStatusText.Text = AppLanguage.Format("合并出错：{0}", ex.Message);
             }
             finally
             {

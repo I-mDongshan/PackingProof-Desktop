@@ -49,7 +49,7 @@ public sealed class AppVersionTests
     {
         Assert.Equal("Commit unknown", AppLanguage.Get("Commit 未知", new("en-US")));
         Assert.Equal("Full commit ID: {0}", AppLanguage.Get("完整 Commit ID：{0}", new("en-US")));
-        Assert.Equal("Click to show advanced options", AppLanguage.Get("点击显示高级选项", new("en-US")));
-        Assert.Equal("Click to hide advanced options", AppLanguage.Get("点击隐藏高级选项", new("en-US")));
+        Assert.Equal("Show advanced", AppLanguage.Get("点击显示高级选项", new("en-US")));
+        Assert.Equal("Hide advanced", AppLanguage.Get("点击隐藏高级选项", new("en-US")));
     }
 }

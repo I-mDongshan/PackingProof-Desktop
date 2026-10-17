@@ -4,9 +4,10 @@
         xmlns:controls="clr-namespace:ExpressPackingMonitoring.UI.Controls"
         xmlns:ui="clr-namespace:ExpressPackingMonitoring.UI"
         xmlns:localization="clr-namespace:ExpressPackingMonitoring.Localization"
+        xmlns:loc="clr-namespace:ExpressPackingMonitoring.Localization"
         xmlns:core="clr-namespace:ExpressPackingMonitoring.Localization;assembly=ExpressPackingMonitoring.Core"
         xmlns:vm="clr-namespace:ExpressPackingMonitoring.ViewModels"
-        Title="打包监控" Height="850" Width="1350"
+        Title="{loc:Localized App.ProductName}" Height="850" Width="1350"
         Background="{DynamicResource WindowBackground}" WindowState="Maximized" Closing="Window_Closing"
         Icon="/app.ico"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
@@ -24,17 +25,17 @@
                      x:Shared="False"
                      Style="{StaticResource AppContextMenuStyle}"
                      Opened="BarcodeContextMenu_Opened">
-            <MenuItem Tag="current" Header="打印此条码" Style="{StaticResource AppMenuItemStyle}" Click="PrintCurrentBarcode_Click"/>
-            <MenuItem Header="打印整套指令条码" Style="{StaticResource AppMenuItemStyle}" Click="PrintAllBarcodes_Click"/>
+            <MenuItem Tag="current" Header="{loc:Localized 打印此条码}" Style="{StaticResource AppMenuItemStyle}" Click="PrintCurrentBarcode_Click"/>
+            <MenuItem Header="{loc:Localized 打印整套指令条码}" Style="{StaticResource AppMenuItemStyle}" Click="PrintAllBarcodes_Click"/>
             <Separator Style="{StaticResource AppSeparatorStyle}"/>
-            <MenuItem Header="打开指令条码所在位置" Style="{StaticResource AppMenuItemStyle}" Click="OpenBarcodeImageFolder_Click"/>
+            <MenuItem Header="{loc:Localized 打开指令条码所在位置}" Style="{StaticResource AppMenuItemStyle}" Click="OpenBarcodeImageFolder_Click"/>
         </ContextMenu>
         <!--
             本机录制动态的行右键菜单：50 行共用一个实例，不在模板里逐行 new 一个，
             否则首次右键会明显卡顿（与回放列表同一套做法）。
         -->
         <ContextMenu x:Key="RecentRecordingContextMenu" Style="{StaticResource AppContextMenuStyle}">
-            <MenuItem Header="复制单号"
+            <MenuItem Header="{loc:Localized 复制单号}"
                       Style="{StaticResource AppMenuItemStyle}"
                       Click="CopyRecentOrderId_Click"
                       DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
@@ -179,7 +180,8 @@
                                                      IsCompact="{Binding IsModeButtonCompact, RelativeSource={RelativeSource AncestorType=Window}}">
                                 <ui:ModeTransitionButton.Style>
                                     <Style TargetType="ui:ModeTransitionButton">
-                                        <Setter Property="MinWidth" Value="130"/>
+                                        <!-- 与录制按钮同一宽度，两个主按钮不会一长一短 -->
+                                        <Setter Property="MinWidth" Value="160"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsModeButtonCompact, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                                 <Setter Property="MinWidth" Value="52"/>
@@ -287,8 +289,18 @@
                                                         <Setter TargetName="RecordActionText" Property="Text" Value="{Binding BusyText}"/>
                                                         <Setter Property="ToolTip" Value="{Binding BusyText}"/>
                                                     </MultiDataTrigger>
+                                                    <!-- 英文/日文文案比中文长，固定 160 宽会把文字挤出按钮；紧凑态仍在后面压回 52 -->
+                                                    <DataTrigger Binding="{Binding Source={x:Static core:AppLanguage.Current}}" Value="en-US">
+                                                        <Setter Property="Width" Value="Auto"/>
+                                                        <Setter Property="MinWidth" Value="160"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Source={x:Static core:AppLanguage.Current}}" Value="ja-JP">
+                                                        <Setter Property="Width" Value="Auto"/>
+                                                        <Setter Property="MinWidth" Value="160"/>
+                                                    </DataTrigger>
                                                     <DataTrigger Binding="{Binding IsRecordButtonCompact, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                                         <Setter Property="Width" Value="52"/>
+                                                        <Setter Property="MinWidth" Value="52"/>
                                                         <Setter TargetName="RecordActionText" Property="Visibility" Value="Collapsed"/>
                                                         <Setter TargetName="RecordActionContent" Property="Margin" Value="0"/>
                                                         <Setter TargetName="RecordActionIcon" Property="Margin" Value="0"/>
@@ -825,19 +837,19 @@
                         </StackPanel>
 
                         <StackPanel x:Name="ActionButtonsPanel" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button x:Name="DataButton" Style="{StaticResource ModernBtn}" Command="{Binding OpenStatsCommand}" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="120" Height="42" Margin="0,0,10,0" ToolTip="数据">
+                            <Button x:Name="DataButton" Style="{StaticResource ModernBtn}" Command="{Binding OpenStatsCommand}" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="110" Height="42" Margin="0,0,8,0" ToolTip="数据">
                                 <StackPanel Orientation="Horizontal">
                                     <Path x:Name="DataButtonIcon" Data="{StaticResource FluentDataIcon}" Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource AccentBlue}" Margin="0,0,7,0"/>
                                     <TextBlock x:Name="DataButtonText" Text="数据" Foreground="{DynamicResource TextPrimary}"/>
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="PlaybackButton" Style="{StaticResource ModernBtn}" Command="{Binding OpenPlaybackCommand}" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="120" Height="42" Margin="0,0,10,0" ToolTip="回放">
+                            <Button x:Name="PlaybackButton" Style="{StaticResource ModernBtn}" Command="{Binding OpenPlaybackCommand}" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="110" Height="42" Margin="0,0,8,0" ToolTip="回放">
                                 <StackPanel Orientation="Horizontal">
                                     <Path x:Name="PlaybackButtonIcon" Data="{StaticResource FluentVideoIcon}" Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource AccentBlue}" Margin="0,0,7,0"/>
                                     <TextBlock x:Name="PlaybackButtonText" Text="回放" Foreground="{DynamicResource TextPrimary}"/>
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="SettingsButton" Style="{StaticResource ModernBtn}" Click="BtnSettings_Click" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="120" Height="42" ToolTip="设置">
+                            <Button x:Name="SettingsButton" Style="{StaticResource ModernBtn}" Click="BtnSettings_Click" Background="{DynamicResource ControlBackgroundHover}" BorderBrush="{DynamicResource BorderStrong}" BorderThickness="2" Width="110" Height="42" ToolTip="设置">
                                 <StackPanel Orientation="Horizontal">
                                     <Path x:Name="SettingsButtonIcon" Data="{StaticResource FluentSettingsIcon}" Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource TextSecondary}" Margin="0,0,7,0"/>
                                     <TextBlock x:Name="SettingsButtonText" Text="设置" Foreground="{DynamicResource TextPrimary}"/>

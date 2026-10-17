@@ -1,5 +1,7 @@
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.UI;
+using System.Globalization;
 using System.IO;
 using Xunit;
 
@@ -110,5 +112,30 @@ public sealed class StorageReserveWarningTests
 
         Assert.Equal(1, warning.LocationCount);
         Assert.Equal(SystemDriveRecordingPath, warning.SmallestLocationPath);
+    }
+
+    [Fact]
+    public void WarningMessage_FollowsCurrentLanguage()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            var locations = new[]
+            {
+                new StorageLocation { Path = SystemDriveRecordingPath, ReserveGB = 2 }
+            };
+
+            StorageReserveWarning warning =
+                StorageReserveWarningPolicy.Evaluate(locations)!;
+
+            Assert.Contains("Reserve space is low", warning.Message, StringComparison.Ordinal);
+            Assert.Contains("at least 10 GB is recommended", warning.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("预留空间", warning.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
     }
 }

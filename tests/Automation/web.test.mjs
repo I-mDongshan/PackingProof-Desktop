@@ -20,6 +20,55 @@ async function waitForQr(page, selector) {
   ));
 }
 
+async function assertDownloadActionsWithinCards(page) {
+  const cards = await page.locator('.app-download-platform').evaluateAll(platforms =>
+    platforms.map(platform => {
+      const rect = platform.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        buttons: [...platform.querySelectorAll('.app-download-actions .btn')].map(button => {
+          const box = button.getBoundingClientRect();
+          return {
+            left: box.left,
+            right: box.right,
+            top: box.top,
+            bottom: box.bottom,
+            scrollWidth: button.scrollWidth,
+            clientWidth: button.clientWidth
+          };
+        })
+      };
+    }));
+
+  assert.equal(cards.length, 2);
+  for (const card of cards) {
+    assert.equal(card.buttons.length, 2);
+    for (const button of card.buttons) {
+      assert.ok(button.left >= card.left - 1, 'download action should stay inside its platform card');
+      assert.ok(button.right <= card.right + 1, 'download action should not overflow its platform card');
+      assert.ok(button.scrollWidth <= button.clientWidth + 1, 'download action text should not be clipped');
+    }
+    assert.ok(
+      card.buttons[0].bottom <= card.buttons[1].top + 1
+        || card.buttons[1].bottom <= card.buttons[0].top + 1,
+      'download action buttons must not overlap'
+    );
+  }
+}
+
+async function assertHeaderTitleNotTruncated(page) {
+  const metrics = await page.locator('.title-block h1 a').evaluate(link => ({
+    clientWidth: link.clientWidth,
+    scrollWidth: link.scrollWidth,
+    text: link.innerText
+  }));
+  assert.ok(
+    metrics.scrollWidth <= metrics.clientWidth + 1,
+    `header title is truncated despite available space: ${metrics.text}`
+  );
+}
+
 test('isolated Web server supports search, playback and clip editor entry', { skip: !baseUrl }, async () => {
   const executablePath = process.env.EPM_BROWSER_EXECUTABLE;
   assert.ok(executablePath, 'EPM_BROWSER_EXECUTABLE is required');
@@ -83,6 +132,7 @@ test('isolated Web server supports search, playback and clip editor entry', { sk
     await assert.doesNotReject(() => page.locator('#desktopAppDownloadPopover.open').waitFor());
     await waitForQr(page, '#desktopAndroidDownloadQr');
     await waitForQr(page, '#desktopIosDownloadQr');
+    await assertDownloadActionsWithinCards(page);
     assert.match(
       await page.locator('#desktopAndroidDownloadOpen').getAttribute('href'),
       /gitee\.com\/PackingProof\/PackingProof-Mobile\/releases\/latest/
@@ -309,12 +359,20 @@ test('Web UI follows browser language and persists an explicit override', { skip
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof package evidence' }).waitFor());
     assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+    assert.equal(await page.title(), 'PackingProof package evidence');
+    await assertHeaderTitleNotTruncated(page);
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await assertHeaderTitleNotTruncated(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
     // 本次新增的筛选与导出文案必须有英文，英文界面不能残留中文
     assert.equal(await page.locator('#keyword').getAttribute('placeholder'), 'Search by order number');
     assert.doesNotMatch(await page.locator('.toolbar').innerText(), /[\u3400-\u9fff]/);
     await page.locator('#filterButton').click();
     await assert.doesNotReject(() => page.locator('#filterPanel').waitFor({ state: 'visible' }));
     assert.doesNotMatch(await page.locator('#filterPanel').innerText(), /[\u3400-\u9fff]/);
+    const filterOptions = await page.locator('#filterPanel select option').allInnerTexts();
+    assert.ok(filterOptions.length > 0);
+    assert.doesNotMatch(filterOptions.join(' '), /[\u3400-\u9fff]/);
     assert.equal(await page.locator('#filterButton').getAttribute('title'), 'Filter');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#filterPanel').isVisible(), false);
@@ -337,6 +395,14 @@ test('Web UI follows browser language and persists an explicit override', { skip
     const article = page.locator('article').filter({ hasText: 'AUTO_WEB_001' });
     await assert.doesNotReject(() => article.waitFor());
     assert.match(await page.locator('#resultsInfo').innerText(), /^Page \d+ of \d+$/);
+
+    await article.hover();
+    await assert.doesNotReject(() => page.locator('#videoTip').waitFor({ state: 'visible' }));
+    const tooltipLabels = await page.locator('#videoTip .video-tip-label').allInnerTexts();
+    assert.ok(tooltipLabels.length > 0);
+    assert.doesNotMatch(tooltipLabels.join(' '), /[\u3400-\u9fff]/);
+    assert.ok(tooltipLabels.some(label => label === 'Tracking number' || label === 'Order number'));
+
     await assert.doesNotReject(() => article.getByRole('button', { name: 'Play', exact: true }).waitFor());
     await assert.doesNotReject(() => article.getByRole('button', { name: 'Download' }).waitFor());
     assert.doesNotMatch(await article.innerText(), /发货|退货|文件存在|文件丢失|播放|下载/);
@@ -346,6 +412,32 @@ test('Web UI follows browser language and persists an explicit override', { skip
     await page.evaluate(() => renderPagination(2, 3));
     await assert.doesNotReject(() => page.getByRole('button', { name: 'Previous' }).waitFor());
     await assert.doesNotReject(() => page.getByRole('button', { name: 'Next' }).waitFor());
+
+    await page.evaluate(() => renderStorageOverview({}));
+    assert.doesNotMatch(await page.locator('.overview').innerText(), /[\u3400-\u9fff]/);
+    await page.evaluate(() => showExportProgress('正在准备导出', 2, 10));
+    const exportProgressText = await page.locator('#exportProgress').innerText();
+    assert.match(exportProgressText, /Preparing export/);
+    assert.match(exportProgressText, /Processed 2 \/ 10/);
+    assert.doesNotMatch(exportProgressText, /[\u3400-\u9fff]/);
+    await page.evaluate(() => hideExportProgress());
+
+    await article.getByRole('button', { name: 'Clip', exact: true }).click();
+    await assert.doesNotReject(() => page.locator('#clipOverlay.active').waitFor());
+    assert.doesNotMatch(await page.locator('#clipOverlay').innerText(), /[\u3400-\u9fff]/);
+    await page.locator('#clipCloseBtn').click();
+
+    await search.fill('AUTO_WEB_NO_MATCH_EN');
+    await search.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#resultsInfo')?.textContent?.trim()
+      === 'No matching recordings');
+    assert.doesNotMatch(
+      await page.locator('#videoList').innerText(),
+      /[\u3400-\u9fff]/);
+    await search.fill('');
+    await search.press('Enter');
+    await page.waitForFunction(() => /^Page \d+ of \d+$/.test(
+      document.querySelector('#resultsInfo')?.textContent?.trim() || ''));
 
     await page.goto(`${baseUrl.replace(/\/$/, '')}/kuaidizs-install-guide`, { waitUntil: 'networkidle' });
     const guideText = await page.locator('.steps').innerText();
@@ -383,6 +475,15 @@ test('Web UI loads the recording list in Japanese', { skip: !baseUrl }, async ()
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await assert.doesNotReject(() => page.getByRole('heading', { name: 'PackingProof 荷物の証跡' }).waitFor());
     assert.equal(await page.locator('html').getAttribute('lang'), 'ja');
+    assert.equal(await page.title(), 'PackingProof 荷物の証跡');
+    await assertHeaderTitleNotTruncated(page);
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await assertHeaderTitleNotTruncated(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.locator('#desktopAppDownloadButton').click();
+    await assert.doesNotReject(() => page.locator('#desktopAppDownloadPopover.open').waitFor());
+    await assertDownloadActionsWithinCards(page);
+    await page.keyboard.press('Escape');
 
     const search = page.getByPlaceholder('注文番号またはファイル名で検索');
     await search.fill('AUTO_WEB_001');
@@ -399,6 +500,11 @@ test('Web UI loads the recording list in Japanese', { skip: !baseUrl }, async ()
 
     const article = page.locator('article').filter({ hasText: 'AUTO_WEB_001' });
     await assert.doesNotReject(() => article.waitFor());
+    await article.hover();
+    await assert.doesNotReject(() => page.locator('#videoTip').waitFor({ state: 'visible' }));
+    assert.doesNotMatch(
+      (await page.locator('#videoTip .video-tip-label').allInnerTexts()).join(' '),
+      /货|删|录/);
     await assert.doesNotReject(() => article.getByRole('button', { name: '再生', exact: true }).waitFor());
     await assert.doesNotReject(() => article.getByRole('button', { name: 'ダウンロード' }).waitFor());
     assert.equal(await page.locator('#filterButton').getAttribute('title'), '絞り込み');

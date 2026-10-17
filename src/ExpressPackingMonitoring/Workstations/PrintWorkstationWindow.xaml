@@ -22,7 +22,7 @@
             <Setter Property="Padding" Value="12,0"/>
         </Style>
         <Style x:Key="SummaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-            <Setter Property="Width" Value="104"/>
+            <Setter Property="MinWidth" Value="104"/>
             <Setter Property="Height" Value="42"/>
             <Setter Property="Padding" Value="12,0"/>
         </Style>
@@ -60,6 +60,7 @@
                     <TextBlock Margin="0,7,0,0"
                                Text="备份主机 · 接收并长期保存手机或其他电脑的录像，支持备份到 NAS／网络共享文件夹"
                                FontSize="14"
+                               TextWrapping="Wrap"
                                Foreground="{DynamicResource TextSecondary}"/>
                 </StackPanel>
                 <Button x:Name="SwitchPurposeButton"
@@ -196,8 +197,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
+                    <WrapPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,24,0">
                             <TextBlock Text="今日备份"
                                        FontSize="15"
                                        VerticalAlignment="Bottom"
@@ -215,6 +216,8 @@
                                            VerticalAlignment="Bottom"
                                            Foreground="{DynamicResource AccentBlueDark}"/>
                             </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
                             <TextBlock Text="累计备份"
                                        FontSize="15"
                                        VerticalAlignment="Bottom"
@@ -233,7 +236,7 @@
                                            Foreground="{DynamicResource AccentBlueDark}"/>
                             </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                    </WrapPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="StatisticsButton"

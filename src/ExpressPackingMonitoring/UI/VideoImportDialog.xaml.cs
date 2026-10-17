@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Services;
+using ExpressPackingMonitoring.Localization;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -45,7 +46,7 @@ public partial class VideoImportDialog : Window
 
         var folderDialog = new OpenFolderDialog
         {
-            Title = $"选择要导入的{mode}视频文件夹",
+            Title = AppLanguage.Format("选择要导入的{0}视频文件夹", AppLanguage.Get(mode)),
             InitialDirectory = Directory.Exists(_initialFolder) ? _initialFolder : _managedRoot
         };
         if (folderDialog.ShowDialog(this) != true)
@@ -76,7 +77,12 @@ public partial class VideoImportDialog : Window
                 ? 0
                 : value.Processed * 100d / value.Total;
             ImportProgressSummary.Text =
-                $"已处理 {value.Processed}/{value.Total} · 成功 {value.Imported} · 跳过 {value.Skipped}";
+                AppLanguage.Format(
+                    "已处理 {0}/{1} · 成功 {2} · 跳过 {3}",
+                    value.Processed,
+                    value.Total,
+                    value.Imported,
+                    value.Skipped);
             ImportCurrentFile.Text = value.CurrentFile;
         });
 
@@ -104,7 +110,7 @@ public partial class VideoImportDialog : Window
 
     private void ShowProgress(string mode)
     {
-        DialogTitleText.Text = $"正在导入{mode}录像";
+        DialogTitleText.Text = AppLanguage.Format("正在导入{0}录像", mode);
         ImportInstructions.Visibility = Visibility.Collapsed;
         ImportProgressPanel.Visibility = Visibility.Visible;
         ImportShippingButton.Visibility = Visibility.Collapsed;

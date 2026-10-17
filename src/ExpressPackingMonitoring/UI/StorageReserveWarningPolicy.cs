@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.Localization;
 using System;
 using System.Collections.Generic;
 
@@ -12,10 +13,16 @@ internal sealed record StorageReserveWarning(
     double RecommendedReserveGB)
 {
     internal string Message => LocationCount == 1
-        ? $"预留空间偏小：{SmallestLocationPath} 只保留 {FormatGB(SmallestReserveGB)}，"
-            + $"建议至少 {FormatGB(RecommendedReserveGB)}；磁盘写满时会影响录像和系统运行"
-        : $"预留空间偏小：{LocationCount} 个位置只保留约 {FormatGB(SmallestReserveGB)}，"
-            + $"建议至少 {FormatGB(RecommendedReserveGB)}；磁盘写满时会影响录像和系统运行";
+        ? AppLanguage.Format(
+            "预留空间偏小：{0} 只保留 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行",
+            SmallestLocationPath,
+            FormatGB(SmallestReserveGB),
+            FormatGB(RecommendedReserveGB))
+        : AppLanguage.Format(
+            "预留空间偏小：{0} 个位置只保留约 {1}，建议至少 {2}；磁盘写满时会影响录像和系统运行",
+            LocationCount,
+            FormatGB(SmallestReserveGB),
+            FormatGB(RecommendedReserveGB));
 
     private static string FormatGB(double gigabytes) => $"{gigabytes:0.#} GB";
 }

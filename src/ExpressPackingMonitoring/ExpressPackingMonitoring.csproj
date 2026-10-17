@@ -216,6 +216,7 @@
     <Compile Include="UI\AudioDeviceSelectionPolicy.cs" />
     <Compile Include="UI\FloatingPreviewPlacement.cs" />
     <Compile Include="UI\PlaybackTooltipBuilder.cs" />
+    <Compile Include="UI\PlaybackReasonText.cs" />
     <Compile Include="UI\RecordingFilterState.cs" />
     <Compile Include="UI\RoundedClip.cs" />
     <Compile Include="UI\SectionCardSpacing.cs" />
@@ -251,6 +252,8 @@
     <Compile Include="UI\SettingsWindow.xaml.cs" />
     <Compile Include="UI\SettingsWindow.CameraChannels.cs" />
     <Compile Include="UI\SettingsWindow.ZoomGuide.cs" />
+    <Compile Include="UI\SettingsWindow.About.cs" />
+    <Compile Include="Localization\LocalizedExtension.cs" />
     <Compile Include="UI\SettingsContext.cs" />
     <Compile Include="UI\StorageCapacityEditorPolicy.cs" />
     <Compile Include="UI\StorageReserveWarningPolicy.cs" />

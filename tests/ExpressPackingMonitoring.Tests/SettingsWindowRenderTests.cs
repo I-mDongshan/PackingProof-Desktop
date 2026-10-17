@@ -3,7 +3,9 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.UI;
+using System.Globalization;
 using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
@@ -78,38 +80,47 @@ public sealed class SettingsWindowRenderTests
     {
         RunOnStaThread(() =>
         {
-            var config = new AppConfig
+            CultureInfo original = CultureInfo.CurrentUICulture;
+            try
             {
-                DeploymentPreset = DeploymentPresets.RecordingWorkstation,
-                StorageLocations =
-                [
-                    new StorageLocation { Path = Path.Combine(Path.GetTempPath(), "快递打包视频"), Priority = 0 },
-                    new StorageLocation
-                    {
-                        Path = @"\\192.168.1.249\打包视频",
-                        Priority = 1,
-                        IsBackupTarget = true
-                    }
-                ]
-            };
-            AppConfig.NormalizeAfterLoad(config);
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+                var config = new AppConfig
+                {
+                    DeploymentPreset = DeploymentPresets.RecordingWorkstation,
+                    StorageLocations =
+                    [
+                        new StorageLocation { Path = Path.Combine(Path.GetTempPath(), "PackingProofVideos"), Priority = 0 },
+                        new StorageLocation
+                        {
+                            Path = @"\\192.168.1.249\打包视频",
+                            Priority = 1,
+                            IsBackupTarget = true
+                        }
+                    ]
+                };
+                AppConfig.NormalizeAfterLoad(config);
 
-            var context = new SettingsContext
+                var context = new SettingsContext
+                {
+                    Capabilities = SettingsCapabilities.ForPreset(config.DeploymentPreset),
+                    ApplyAsync = _ => Task.FromResult(true)
+                };
+
+                var window = new SettingsWindow(context, config, 12d, "12%");
+                window.Measure(new Size(1200, 900));
+                window.Arrange(new Rect(0, 0, 1200, 900));
+                window.UpdateLayout();
+
+                // 预留只能从磁盘右键改：保存位置与备份位置的行样式都要挂上"设置预留空间…"菜单
+                AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("StorageDataGrid")));
+                AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("BackupStorageDataGrid")));
+
+                window.Close();
+            }
+            finally
             {
-                Capabilities = SettingsCapabilities.ForPreset(config.DeploymentPreset),
-                ApplyAsync = _ => Task.FromResult(true)
-            };
-
-            var window = new SettingsWindow(context, config, 12d, "12%");
-            window.Measure(new Size(1200, 900));
-            window.Arrange(new Rect(0, 0, 1200, 900));
-            window.UpdateLayout();
-
-            // 预留只能从磁盘右键改：保存位置与备份位置的行样式都要挂上"设置预留空间…"菜单
-            AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("StorageDataGrid")));
-            AssertStorageReserveMenu(Assert.IsType<DataGrid>(window.FindName("BackupStorageDataGrid")));
-
-            window.Close();
+                CultureInfo.CurrentUICulture = original;
+            }
         });
     }
 
@@ -165,7 +176,7 @@ public sealed class SettingsWindowRenderTests
         Assert.NotNull(setter);
         var menu = Assert.IsType<ContextMenu>(setter!.Value);
         var item = Assert.IsType<MenuItem>(Assert.Single(menu.Items));
-        Assert.Equal("设置预留空间…", item.Header);
+        Assert.Equal(AppLanguage.Get("设置预留空间…"), item.Header);
         // 右键菜单必须走应用统一的菜单外观，否则会退回系统默认样式
         Assert.NotNull(menu.Style);
         Assert.Same(Application.Current?.TryFindResource("AppContextMenuStyle"), menu.Style);

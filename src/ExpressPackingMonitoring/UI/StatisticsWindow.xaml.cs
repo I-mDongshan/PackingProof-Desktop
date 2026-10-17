@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -52,7 +53,7 @@ namespace ExpressPackingMonitoring.UI
         public ObservableCollection<ChartAxisLabel> XAxisLabels { get; } = new();
         public ObservableCollection<string> YAxisLabels { get; } = new();
 
-        private string _summaryPieces = "0 件";
+        private string _summaryPieces = AppLanguage.Format("{0} 件", 0);
         public string SummaryPieces { get => _summaryPieces; set { _summaryPieces = value; OnPropertyChanged(nameof(SummaryPieces)); } }
 
         private string _summarySize = "0 MB";
@@ -207,12 +208,12 @@ namespace ExpressPackingMonitoring.UI
                     ShippingPieces = h.ShippingPieces,
                     ReturnPieces = h.ReturnPieces,
                     ShippingText = ModePieces.IsChecked == true
-                        ? $"{h.ShippingPieces} 件"
+                        ? AppLanguage.Format("{0} 件", h.ShippingPieces)
                         : ModeDuration.IsChecked == true
                             ? FormatCompactDuration(h.ShippingDurationSec)
                             : FormatSize(h.ShippingBytes),
                     ReturnText = ModePieces.IsChecked == true
-                        ? $"{h.ReturnPieces} 件"
+                        ? AppLanguage.Format("{0} 件", h.ReturnPieces)
                         : ModeDuration.IsChecked == true
                             ? FormatCompactDuration(h.ReturnDurationSec)
                             : FormatSize(h.ReturnBytes),
@@ -333,22 +334,38 @@ namespace ExpressPackingMonitoring.UI
         {
             if (groupMode == "day" && DateTime.TryParse(value, out DateTime day))
             {
-                string weekDay = GetChineseDayOfWeek(day);
-                return (day.ToString("MM-dd"), weekDay, $"{day:yyyy年M月d日} {weekDay}");
+                string weekDay = GetDayOfWeekLabel(day);
+                string fullDate = IsEnglishCulture()
+                    ? $"{day.ToString("MMM d, yyyy", CultureInfo.CurrentCulture)} {weekDay}"
+                    : $"{day:yyyy年M月d日} {weekDay}";
+                return (day.ToString("MM-dd"), weekDay, fullDate);
             }
 
             if (groupMode == "week")
             {
                 string[] parts = value.Split("-W", StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length == 2)
-                    return (parts[0], $"第{parts[1]}周", $"{parts[0]}年第{parts[1]}周");
+                {
+                    return (
+                        parts[0],
+                        AppLanguage.Format("第{0}周", parts[1]),
+                        AppLanguage.Format("{0}年第{1}周", parts[0], parts[1]));
+                }
             }
 
             if (groupMode == "month" && DateTime.TryParse($"{value}-01", out DateTime month))
-                return (month.ToString("yyyy"), month.ToString("MM月"), month.ToString("yyyy年M月"));
+            {
+                return IsEnglishCulture()
+                    ? (month.ToString("yyyy"), month.ToString("MMM", CultureInfo.CurrentCulture),
+                        month.ToString("MMM yyyy", CultureInfo.CurrentCulture))
+                    : (month.ToString("yyyy"), month.ToString("M月"), month.ToString("yyyy年M月"));
+            }
 
             if (groupMode == "year" && int.TryParse(value, out int year))
-                return ($"{year}年", "", $"{year}年");
+            {
+                string label = IsEnglishCulture() ? $"{year}" : $"{year}年";
+                return (label, "", label);
+            }
 
             return (value, "", value);
         }
@@ -384,15 +401,26 @@ namespace ExpressPackingMonitoring.UI
 
         private void ResetSummary()
         {
-            SummaryPieces = "0 件"; SummarySize = "0 MB"; 
+            SummaryPieces = AppLanguage.Format("{0} 件", 0); SummarySize = "0 MB";
             SummaryDuration = FormatCompactDuration(0); SummaryAvgTime = FormatCompactDuration(0);
         }
 
-        private static string GetChineseDayOfWeek(DateTime dt) => dt.DayOfWeek switch {
-            DayOfWeek.Sunday => "周日", DayOfWeek.Monday => "周一", DayOfWeek.Tuesday => "周二",
-            DayOfWeek.Wednesday => "周三", DayOfWeek.Thursday => "周四", DayOfWeek.Friday => "周五",
-            DayOfWeek.Saturday => "周六", _ => ""
+        private static string GetDayOfWeekLabel(DateTime dt) => dt.DayOfWeek switch {
+            DayOfWeek.Sunday => AppLanguage.Get("周日"),
+            DayOfWeek.Monday => AppLanguage.Get("周一"),
+            DayOfWeek.Tuesday => AppLanguage.Get("周二"),
+            DayOfWeek.Wednesday => AppLanguage.Get("周三"),
+            DayOfWeek.Thursday => AppLanguage.Get("周四"),
+            DayOfWeek.Friday => AppLanguage.Get("周五"),
+            DayOfWeek.Saturday => AppLanguage.Get("周六"),
+            _ => ""
         };
+
+        private static bool IsEnglishCulture() =>
+            string.Equals(
+                CultureInfo.CurrentCulture.TwoLetterISOLanguageName,
+                "en",
+                StringComparison.OrdinalIgnoreCase);
 
         private string FormatSize(long bytes)
         {

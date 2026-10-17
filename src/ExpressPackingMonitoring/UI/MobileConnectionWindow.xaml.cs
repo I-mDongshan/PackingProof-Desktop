@@ -139,7 +139,10 @@ public partial class MobileConnectionWindow : Window
             text,
             onCopied: () => RunOnUiThread(() => button.Content = copiedText),
             onFailed: error => RunOnUiThread(() =>
-                AppDialog.Error(this, $"复制网址失败：{error.Message}", "手机/电脑连接")));
+                AppDialog.Error(
+                    this,
+                    AppLanguage.Format("复制网址失败：{0}", error.Message),
+                    "手机/电脑连接")));
     }
 
     private void RunOnUiThread(Action action)

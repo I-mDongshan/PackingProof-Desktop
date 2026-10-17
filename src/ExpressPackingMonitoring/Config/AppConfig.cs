@@ -51,12 +51,30 @@ namespace ExpressPackingMonitoring.Config
     {
         public string Value { get; set; } = "";
         public string DisplayName { get; set; } = "";
+
+        /// <summary>
+        /// 下拉显示名按稳定的 Value 现算，不能直接使用配置缓存里的旧语言文本。
+        /// 品牌名保持原样，其余项走当前界面语言。
+        /// </summary>
+        public static string BuildDisplayName(string value) =>
+            value?.Trim().ToLowerInvariant() switch
+            {
+                "auto" => AppLanguage.Get("自动检测（按实测性能）"),
+                "cpu" => AppLanguage.Get("CPU 软编码"),
+                "h264" => AppLanguage.Get("H.264 (兼容性好)"),
+                "h265" => AppLanguage.Get("H.265 / HEVC (体积更小)"),
+                "av1" => AppLanguage.Get("AV1 (极致压缩)"),
+                "nvidia" => "NVIDIA GPU (NVENC)",
+                "amd" => "AMD GPU (AMF)",
+                "intel" => "Intel GPU (QSV)",
+                _ => value ?? ""
+            };
     }
 
     // 存储节点模型
     public class StorageLocation
     {
-        public string Path { get; set; } = "D:\\快递打包视频";
+        public string Path { get; set; } = "D:\\PackingProofVideos";
         public double ReserveGB { get; set; } = 0.0;
         public int Priority { get; set; } = 1; // 数字越小越优先
         /// <summary>用户显式添加的备份目标；网盘挂载盘未挂载时仍据此保留备份角色。</summary>
@@ -989,7 +1007,13 @@ namespace ExpressPackingMonitoring.Config
 
             if (config.StorageLocations.Count == 0)
             {
-                config.StorageLocations.AddRange(CreateDefaultStorageLocations());
+                // 旧版本的默认目录还在就继续用它，避免升级后突然“看不到旧录像”。
+                // 这是沿用，不是迁移：不移动、不改名任何文件。
+                string legacyDefault = Path.Combine(DefaultStorageRoot, LegacyStorageFolderName);
+                if (Directory.Exists(legacyDefault))
+                    config.StorageLocations.Add(new StorageLocation { Path = legacyDefault, Priority = 0 });
+                else
+                    config.StorageLocations.AddRange(CreateDefaultStorageLocations());
                 changed = true;
             }
 
@@ -1771,7 +1795,7 @@ namespace ExpressPackingMonitoring.Config
             CreateDefaultStorageLocations(drives, ReadOnlySystemRoot);
 
         /// <summary>
-        /// 每个可用本地盘一个"快递打包视频"目录。readOnlySystemRoot 非空时该根不参与默认位置
+        /// 每个可用本地盘一个"PackingProofVideos"目录。readOnlySystemRoot 非空时该根不参与默认位置
         /// （macOS 传 "/"：默认值会变成一条永远建不出来的配置）；fallbackRoot 是测试注入用的
         /// 兜底根，正常调用按平台取。
         /// </summary>
@@ -1815,12 +1839,15 @@ namespace ExpressPackingMonitoring.Config
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Movies") + Path.DirectorySeparatorChar;
 
-        /// <summary>保存位置统一用的文件夹名：每块盘都是"&lt;盘根&gt;\快递打包视频"，不分系统盘还是数据盘。</summary>
-        internal const string DefaultStorageFolderName = "快递打包视频";
+        /// <summary>保存位置统一用的文件夹名：每块盘都是"&lt;盘根&gt;\PackingProofVideos"，不分系统盘还是数据盘。</summary>
+        internal const string DefaultStorageFolderName = "PackingProofVideos";
+
+        /// <summary>旧版本的默认目录名，只用于判断要不要继续沿用，不再新建。</summary>
+        internal const string LegacyStorageFolderName = "快递打包视频";
 
         /// <summary>
         /// 没有任何可用本地位置时的默认保存位置。与"添加磁盘"默认值同一套规则，
-        /// 也就是"哪块盘就放哪块盘的快递打包视频"；绝不落到程序安装目录下。
+        /// 也就是"哪块盘就放哪块盘的PackingProofVideos"；绝不落到程序安装目录下。
         /// </summary>
         internal static string DefaultStoragePath =>
             Path.Combine(DefaultStorageRoot, DefaultStorageFolderName);

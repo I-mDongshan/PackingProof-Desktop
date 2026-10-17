@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="选择电脑用途"
         Width="860"
-        SizeToContent="Height"
-        MaxHeight="760"
+        Height="720"
+        MaxHeight="{Binding Source={x:Static SystemParameters.WorkArea}, Path=Height}"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Icon="/app.ico"
@@ -69,29 +69,23 @@
         </Style>
     </Window.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="32,28">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Margin="0,0,0,22">
-                <TextBlock Text="选择这台电脑的用途"
-                           FontSize="28"
-                           FontWeight="Black"
-                           Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="回答两个简单问题，系统会自动组合出合适的用途"
-                           Margin="0,7,0,0"
-                           FontSize="14"
-                           Foreground="{DynamicResource TextSecondary}"/>
-            </StackPanel>
+        <ScrollViewer Grid.Row="0"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="32,28">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="1" Margin="0,0,0,20">
+                <StackPanel Grid.Row="0" Margin="0,0,0,20">
                 <TextBlock Text="1. 这台电脑要用来录像吗？"
                            FontSize="17"
                            FontWeight="Bold"
@@ -115,6 +109,7 @@
                             <TextBlock Text="要，使用这台电脑录像"
                                        FontSize="16"
                                        FontWeight="Bold"
+                                       TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock Text="启用摄像头、麦克风、面单识别、扫码枪、订单联动和语音提醒"
                                        Margin="0,5,0,0"
@@ -136,6 +131,7 @@
                             <TextBlock Text="不要，这台电脑不录像"
                                        FontSize="16"
                                        FontWeight="Bold"
+                                       TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock Text="不初始化本机录像设备，仍可保存其他设备录像或只连接主机查看"
                                        Margin="0,5,0,0"
@@ -146,9 +142,9 @@
                         </StackPanel>
                     </RadioButton>
                 </Grid>
-            </StackPanel>
+                </StackPanel>
 
-            <StackPanel Grid.Row="2" Margin="0,0,0,22">
+                <StackPanel Grid.Row="1" Margin="0,0,0,22">
                 <TextBlock Text="2. 这台电脑要负责长期保存录像吗？"
                            FontSize="17"
                            FontWeight="Bold"
@@ -194,6 +190,7 @@
                             <TextBlock Text="不要，交给其他电脑保存"
                                        FontSize="16"
                                        FontWeight="Bold"
+                                       TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock Text="本机录像时作为“录像从机”，录像先保存在本机，再上传给保存主机；不录像时作为“查看端”，连接主机查看录像"
                                        Margin="0,5,0,0"
@@ -204,14 +201,14 @@
                         </StackPanel>
                     </RadioButton>
                 </Grid>
-            </StackPanel>
+                </StackPanel>
 
-            <Border Grid.Row="3"
-                    Background="{DynamicResource PanelBackground}"
-                    BorderBrush="{DynamicResource BorderDefault}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="20,17">
+                <Border Grid.Row="2"
+                        Background="{DynamicResource PanelBackground}"
+                        BorderBrush="{DynamicResource BorderDefault}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="20,17">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="44"/>
@@ -268,12 +265,17 @@
                         </ItemsControl>
                     </StackPanel>
                 </Grid>
-            </Border>
+                </Border>
+            </Grid>
+        </ScrollViewer>
 
-            <StackPanel Grid.Row="4"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Margin="0,20,0,0">
+        <Border Grid.Row="1"
+                Background="{DynamicResource WindowBackground}"
+                BorderBrush="{DynamicResource BorderDefault}"
+                BorderThickness="0,1,0,0"
+                Padding="32,14">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
                 <Button Content="取消"
                         MinWidth="92"
                         Padding="18,9"
@@ -289,6 +291,6 @@
                         Style="{StaticResource PrimaryButtonStyle}"
                         Click="ConfirmPurpose_Click"/>
             </StackPanel>
-        </Grid>
-    </ScrollViewer>
+        </Border>
+    </Grid>
 </Window>

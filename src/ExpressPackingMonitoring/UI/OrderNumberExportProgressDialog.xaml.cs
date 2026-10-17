@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Services;
 using System.ComponentModel;
@@ -48,7 +49,9 @@ public partial class OrderNumberExportProgressDialog : Window
         _localDeviceName = localDeviceName;
         _elapsedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _elapsedTimer.Tick += (_, _) =>
-            ElapsedTimeText.Text = $"已用时 {(int)_elapsed.Elapsed.TotalSeconds} 秒";
+            ElapsedTimeText.Text = AppLanguage.Format(
+                "已用时 {0} 秒",
+                (int)_elapsed.Elapsed.TotalSeconds);
     }
 
     internal OrderNumberExportOutcome Outcome { get; private set; }

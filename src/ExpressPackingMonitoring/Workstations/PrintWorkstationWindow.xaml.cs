@@ -87,7 +87,7 @@ public partial class PrintWorkstationWindow : Window
         bool enableCloseBehaviorPrompt = true)
     {
         InitializeComponent();
-        Title = $"{Title} {AppVersion.Current}";
+        Title = $"{AppLanguage.Translate(Title)} {AppVersion.Current}";
         MaxHeight = CalculateWindowMaxHeight(SystemParameters.WorkArea.Height);
         _config = config;
         _openPlaybackOnStartup = openPlaybackOnStartup;
@@ -539,7 +539,7 @@ public partial class PrintWorkstationWindow : Window
         {
             result.Add(new MobileBackupStatusItem
             {
-                DisplayText = "暂无手机/电脑设备",
+                DisplayText = AppLanguage.Get("暂无手机/电脑设备"),
                 IsOnline = false
             });
         }
@@ -550,7 +550,7 @@ public partial class PrintWorkstationWindow : Window
     {
         MobileBackupDeviceStatuses.Add(new MobileBackupStatusItem
         {
-            DisplayText = "暂无手机/电脑设备",
+            DisplayText = AppLanguage.Get("暂无手机/电脑设备"),
             IsOnline = false
         });
     }

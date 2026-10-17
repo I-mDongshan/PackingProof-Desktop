@@ -1,3 +1,4 @@
+using System.Globalization;
 using ExpressPackingMonitoring.UI;
 using Xunit;
 
@@ -91,6 +92,20 @@ public sealed class StatisticsWindowTests
         Assert.Contains("Text=\"平均单件用时\"", xaml);
     }
 
+    /// <summary>
+    /// 图表悬浮卡片位于 ToolTip 的独立可视树里，静态字段必须显式取资源，
+    /// 不能依赖弹出后再遍历本地化。
+    /// </summary>
+    [Fact]
+    public void ChartTooltipLabelsUseLocalizedExtension()
+    {
+        string xaml = File.ReadAllText(FindRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "StatisticsWindow.xaml"));
+
+        foreach (string key in new[] { "发货", "退货", "总计时长", "占用空间", "平均单件用时" })
+            Assert.Contains($"Text=\"{{loc:Localized {key}}}\"", xaml, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(0, "0秒")]
     [InlineData(double.NaN, "0秒")]
@@ -141,7 +156,7 @@ public sealed class StatisticsWindowTests
     [Theory]
     [InlineData("2026-07-31", "day", "07-31", "周五", "2026年7月31日 周五")]
     [InlineData("2026-W30", "week", "2026", "第30周", "2026年第30周")]
-    [InlineData("2026-07", "month", "2026", "07月", "2026年7月")]
+    [InlineData("2026-07", "month", "2026", "7月", "2026年7月")]
     [InlineData("2026", "year", "2026年", "", "2026年")]
     public void FormatChartDate_UsesReadableLabelsForEveryAggregation(
         string value,
@@ -150,11 +165,56 @@ public sealed class StatisticsWindowTests
         string expectedSubLabel,
         string expectedFullLabel)
     {
-        (string label, string subLabel, string fullLabel) = StatisticsWindow.FormatChartDate(value, groupMode);
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo culture = CultureInfo.GetCultureInfo("zh-Hans");
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+            (string label, string subLabel, string fullLabel) = StatisticsWindow.FormatChartDate(value, groupMode);
 
-        Assert.Equal(expectedLabel, label);
-        Assert.Equal(expectedSubLabel, subLabel);
-        Assert.Equal(expectedFullLabel, fullLabel);
+            Assert.Equal(expectedLabel, label);
+            Assert.Equal(expectedSubLabel, subLabel);
+            Assert.Equal(expectedFullLabel, fullLabel);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
+    }
+
+    [Theory]
+    [InlineData("2026-07-31", "day", "07-31", "Fri", "Jul 31, 2026 Fri")]
+    [InlineData("2026-W30", "week", "2026", "W30", "Week 30, 2026")]
+    [InlineData("2026-07", "month", "2026", "Jul", "Jul 2026")]
+    [InlineData("2026", "year", "2026", "", "2026")]
+    public void FormatChartDate_UsesEnglishLabels(
+        string value,
+        string groupMode,
+        string expectedLabel,
+        string expectedSubLabel,
+        string expectedFullLabel)
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo culture = CultureInfo.GetCultureInfo("en-US");
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+            (string label, string subLabel, string fullLabel) = StatisticsWindow.FormatChartDate(value, groupMode);
+
+            Assert.Equal(expectedLabel, label);
+            Assert.Equal(expectedSubLabel, subLabel);
+            Assert.Equal(expectedFullLabel, fullLabel);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     private static int CountOccurrences(string value, string expected)
