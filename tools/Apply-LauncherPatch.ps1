@@ -47,6 +47,107 @@ function Test-IsNullOrWhiteSpace {
     return [string]::IsNullOrEmpty($Value) -or $Value.Trim().Length -eq 0
 }
 
+function Get-NormalizedFullPath {
+    param([string]$Path)
+
+    if (Test-IsNullOrWhiteSpace $Path) {
+        return ""
+    }
+    return [System.IO.Path]::GetFullPath($Path).TrimEnd([char[]]"\/")
+}
+
+function Test-IsPathUnderDirectory {
+    param(
+        [string]$Path,
+        [string]$Directory
+    )
+
+    $normalizedPath = Get-NormalizedFullPath -Path $Path
+    $normalizedDirectory = Get-NormalizedFullPath -Path $Directory
+    if ((Test-IsNullOrWhiteSpace $normalizedPath) -or
+        (Test-IsNullOrWhiteSpace $normalizedDirectory)) {
+        return $false
+    }
+
+    return [string]::Equals(
+        $normalizedPath,
+        $normalizedDirectory,
+        [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalizedPath.StartsWith(
+            $normalizedDirectory + [System.IO.Path]::DirectorySeparatorChar,
+            [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-IsWindowsAppsInstallPath {
+    param([string]$Path)
+
+    foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if (Test-IsNullOrWhiteSpace $programFiles) {
+            continue
+        }
+        $windowsApps = Join-Path $programFiles "WindowsApps"
+        if (Test-IsPathUnderDirectory -Path $Path -Directory $windowsApps) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-IsPackagedInstallRoot {
+    param([string]$Path)
+
+    if (Test-IsWindowsAppsInstallPath -Path $Path) {
+        return $true
+    }
+    $normalized = Get-NormalizedFullPath -Path $Path
+    if (Test-IsNullOrWhiteSpace $normalized) {
+        return $false
+    }
+    return (Test-Path -LiteralPath (Join-Path $normalized "AppxManifest.xml") -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $normalized "PackingProof.PackageEdition.json") -PathType Leaf)
+}
+
+function Test-IsPackagedLauncherConfigRoot {
+    param([string]$Path)
+
+    if (Test-IsPackagedInstallRoot -Path $Path) {
+        return $true
+    }
+    $normalized = Get-NormalizedFullPath -Path $Path
+    if (Test-IsNullOrWhiteSpace $normalized) {
+        return $false
+    }
+    if ([string]::Equals(
+            (Split-Path -Leaf $normalized),
+            "app",
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        return Test-IsPackagedInstallRoot -Path (Split-Path -Parent $normalized)
+    }
+    return $false
+}
+
+function Test-IsPackagedUserDataPath {
+    param([string]$Path)
+
+    $localAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if (Test-IsNullOrWhiteSpace $localAppData) {
+        $localAppData = $env:LOCALAPPDATA
+    }
+    if (Test-IsNullOrWhiteSpace $localAppData) {
+        return $false
+    }
+
+    $packagesRoot = Join-Path $localAppData "Packages"
+    if (-not (Test-IsPathUnderDirectory -Path $Path -Directory $packagesRoot)) {
+        return $false
+    }
+    $relativePath = (Get-NormalizedFullPath -Path $Path).Substring(
+        (Get-NormalizedFullPath -Path $packagesRoot).Length).TrimStart([char[]]"\/")
+    $segments = @($relativePath -split "[\\/]")
+    return $segments.Count -ge 2 -and
+        [string]::Equals($segments[1], "LocalState", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function ConvertFrom-Json35 {
     param([string]$Json)
     if (Get-Command ConvertFrom-Json -ErrorAction SilentlyContinue) {
@@ -160,6 +261,9 @@ function Resolve-LauncherRootCandidate {
     if ([string]::Equals((Split-Path -Leaf $root), "app", [System.StringComparison]::OrdinalIgnoreCase)) {
         $root = Split-Path -Parent $root
     }
+    if (Test-IsPackagedInstallRoot -Path $root) {
+        throw "检测到 Microsoft Store 版安装目录。商店版没有可手工替换的根启动器，请打开 Microsoft Store 的「库」页面检查更新。"
+    }
     $launcherPath = Join-Path $root "ExpressPackingMonitoring.exe"
     $appDirectory = Join-Path $root "app"
     if (-not (Test-Path -LiteralPath $launcherPath -PathType Leaf) -or
@@ -213,10 +317,14 @@ $manifestPath = Join-Path $PatchRoot "launcher_patch_manifest.json"
 $sourceLauncherPath = Join-Path $PatchRoot "ExpressPackingMonitoring.exe"
 $temporaryPath = ""
 $adjacentBackupPath = ""
+$configRoot = ""
 $exitCode = 0
 
 try {
     Write-UpdateHost "正在检查启动器更新包..." -ForegroundColor Cyan
+    if (Test-IsPackagedUserDataPath -Path $ConfigPath) {
+        throw "检测到 Microsoft Store 版的数据目录。商店版没有可手工替换的根启动器，请打开 Microsoft Store 的「库」页面检查更新。"
+    }
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf) -or
         -not (Test-Path -LiteralPath $sourceLauncherPath -PathType Leaf)) {
         throw "LauncherPatch 缺少启动器或校验清单"
@@ -241,9 +349,16 @@ try {
         try {
             $config = ConvertFrom-Json35 -Json ([System.IO.File]::ReadAllText($ConfigPath, [System.Text.Encoding]::UTF8))
             $configRoot = [string](Get-JsonProperty $config "AppRootDirectory")
+            if (Test-IsPackagedLauncherConfigRoot -Path $configRoot) {
+                throw "检测到 Microsoft Store 版安装目录。商店版没有可手工替换的根启动器，请打开 Microsoft Store 的「库」页面检查更新。"
+            }
             $launcherRoot = Resolve-LauncherRootCandidate -CandidatePath $configRoot
         }
         catch {
+            if ((-not (Test-IsNullOrWhiteSpace $configRoot)) -and
+                (Test-IsPackagedLauncherConfigRoot -Path $configRoot)) {
+                throw
+            }
             Write-UpdateLog -LogPath $logPath -Message "Unable to resolve launcher root from config: $($_.Exception.Message)"
         }
     }

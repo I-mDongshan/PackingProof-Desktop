@@ -1,0 +1,90 @@
+using System.Text;
+using Xunit;
+
+namespace ExpressPackingMonitoring.Tests;
+
+/// <summary>
+/// Setup 版与 Microsoft Store 版可以并存，但更新入口必须完全分开：
+/// 商店包不能夹带 Setup 的手工更新脚本，手动补丁也不能写进 WindowsApps。
+/// 这里守住打包与安装两侧的边界，避免只修了应用内更新而漏掉双击脚本。
+/// </summary>
+public sealed class StoreEditionPackagingGuardTests
+{
+    [Fact]
+    public void StorePackage_ContainsEditionMarkerAndRejectsSetupUpdateScripts()
+    {
+        string script = ReadRepositoryFile("tools", "Publish-StorePackage.ps1");
+
+        Assert.Contains("PackingProof.PackageEdition.json", script, StringComparison.Ordinal);
+        Assert.Contains("edition = \"store\"", script, StringComparison.Ordinal);
+        Assert.Contains("商店包不能包含 Setup 版更新脚本", script, StringComparison.Ordinal);
+        Assert.Contains("\"apply_app_patch.ps1\"", script, StringComparison.Ordinal);
+        Assert.Contains("\"双击更新主程序.cmd\"", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SetupInstaller_WarnsAboutStoreCoexistenceAndBlocksWindowsApps()
+    {
+        string installer = ReadRepositoryFile("tools", "Installer", "ExpressPackingMonitoring.iss");
+
+        Assert.Contains("function IsStorePackageInstalled", installer, StringComparison.Ordinal);
+        Assert.Contains("StoreEditionNoticeShown", installer, StringComparison.Ordinal);
+        Assert.Contains("StoreEditionDetected", installer, StringComparison.Ordinal);
+        Assert.Contains("WindowsAppsInstallBlocked", installer, StringComparison.Ordinal);
+        Assert.Contains("chinesesimplified.StoreEditionDetected", installer, StringComparison.Ordinal);
+        Assert.Contains("english.StoreEditionDetected", installer, StringComparison.Ordinal);
+        Assert.Contains("japanese.StoreEditionDetected", installer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ManualPatchScripts_RejectPackagedInstallAndDataPaths()
+    {
+        string appPatch = ReadRepositoryFile("tools", "Apply-AppPatch.ps1");
+        string launcherPatch = ReadRepositoryFile("tools", "Apply-LauncherPatch.ps1");
+        string appNotice = ReadRepositoryFile("tools", "Publish-CleanPackage.ps1");
+        string launcherNotice = ReadRepositoryFile("tools", "Publish-LauncherBaseline.ps1");
+
+        foreach (string script in new[] { appPatch, launcherPatch })
+        {
+            Assert.Contains("Test-IsPackagedInstallRoot", script, StringComparison.Ordinal);
+            Assert.Contains("Test-IsPackagedUserDataPath", script, StringComparison.Ordinal);
+            Assert.Contains("WindowsApps", script, StringComparison.Ordinal);
+            Assert.Contains("AppxManifest.xml", script, StringComparison.Ordinal);
+            Assert.Contains("PackingProof.PackageEdition.json", script, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("本补丁只适用于 Setup 版", appNotice, StringComparison.Ordinal);
+        Assert.Contains("Microsoft Store 版", appNotice, StringComparison.Ordinal);
+        Assert.Contains("本补丁只适用于 Setup 版", launcherNotice, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StoreDocumentation_ExplainsTheTwoEditionsStaySeparate()
+    {
+        string document = ReadRepositoryFile("docs", "store", "README.md");
+
+        Assert.Contains("不会互相覆盖", document, StringComparison.Ordinal);
+        Assert.Contains("独立数据目录", document, StringComparison.Ordinal);
+        Assert.Contains("AppPatch", document, StringComparison.Ordinal);
+        Assert.Contains("WindowsApps", document, StringComparison.Ordinal);
+    }
+
+    private static string ReadRepositoryFile(params string[] relativeParts)
+    {
+        string path = Path.Combine(new[] { FindRepositoryRoot() }.Concat(relativeParts).ToArray());
+        return File.ReadAllText(path, Encoding.UTF8);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "ExpressPackingMonitoring.sln")))
+                return directory.FullName;
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("ExpressPackingMonitoring repository root was not found.");
+    }
+}

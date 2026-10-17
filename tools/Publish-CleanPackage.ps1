@@ -1096,6 +1096,9 @@ function New-AppPatchPackage {
         "正常情况下无需手动下载，启动器会自动校验并安装此 AppPatch。"
         "如需手动更新，请完整解压本 ZIP，再双击《$appPatchInstallerCmdName》。"
         ""
+        "本补丁只适用于 Setup 版（exe 安装版）。"
+        "Microsoft Store 版请使用 Microsoft Store 的「库」页面更新，不要运行本脚本。"
+        ""
         "脚本会校验补丁文件、识别原安装位置并在失败时恢复原文件。"
         "不要直接在压缩软件中运行，也不要单独移动 CMD、$appPatchInstallerScriptName、patch_manifest.json 或 files 文件夹。"
     ) -join [Environment]::NewLine

@@ -106,6 +106,12 @@ english.UninstallCancel=Cancel
 english.UninstallCleanupFailed=Some selected content could not be safely removed, so the remaining data was kept%nDetails: %1
 chinesesimplified.DirRequiresAdmin=所选文件夹不支持安装。请不要选择 Program Files、Windows、ProgramData 或磁盘根目录这类系统文件夹，换一个普通文件夹（例如 D:\PackingProof 或“文档”文件夹）即可。安装位置必须允许当前用户直接写入，否则以后无法自动更新。
 english.DirRequiresAdmin=The selected folder is not supported for installation. Please avoid system folders such as Program Files, Windows, ProgramData, or a drive root, and choose a normal user-writable folder (for example D:\PackingProof or your Documents folder). The install location must remain writable by the current user, otherwise automatic updates will fail.
+chinesesimplified.WindowsAppsInstallBlocked=不能把 Setup 版安装到 WindowsApps 或 Microsoft Store 的包目录。请选择普通用户可写的独立文件夹，例如 D:\PackingProof
+english.WindowsAppsInstallBlocked=The Setup edition cannot be installed into WindowsApps or a Microsoft Store package folder. Choose a separate folder writable by the current user, for example D:\PackingProof.
+japanese.WindowsAppsInstallBlocked=Setup 版を WindowsApps または Microsoft Store のパッケージ フォルダーへインストールすることはできません。現在のユーザーが書き込める独立したフォルダー（例: D:\PackingProof）を選択してください。
+chinesesimplified.StoreEditionDetected=检测到本机已安装 Microsoft Store 版。%n%nSetup 版会安装到独立目录，并使用独立的数据目录，不会覆盖商店版的程序、设置或录像。%n%n请只保留一个版本的开机自启；商店版更新请使用 Microsoft Store
+english.StoreEditionDetected=A Microsoft Store edition is already installed.%n%nThe Setup edition installs to a separate folder and uses separate settings and recordings; it will not overwrite the Store edition.%n%nKeep only one edition enabled at startup. Update the Store edition from Microsoft Store.
+japanese.StoreEditionDetected=Microsoft Store 版が既にインストールされています。%n%nSetup 版は別のフォルダーにインストールされ、設定と録画も別々に保存されます。Store 版のプログラム、設定、録画は上書きされません。%n%n起動時の自動開始はどちらか一方だけにしてください。Store 版は Microsoft Store から更新してください。
 chinesesimplified.UpgradeDirPrompt=检测到本机已安装旧版本。%n%n是否先删除旧版本的程序文件和启动器，再重新安装？%n你的设置、数据库和录像都会保留（它们保存在系统用户目录中），不会受影响。%n%n选择“是”会先卸载旧版本，再继续安装；选择“否”则直接覆盖安装，旧文件夹中可能残留不再使用的文件。
 english.UpgradeDirPrompt=An existing installation was detected.%n%nDo you want to remove the old version's program files and launcher before reinstalling?%nYour settings, database, and recordings will be kept (they are stored in your user profile folder) and will not be affected.%n%nChoose Yes to uninstall the old version before continuing, or No to install directly over the old version (stale files may remain in the old folder).
 chinesesimplified.AppRunningBeforeRemove=快递打包监控正在运行。请先关闭正在运行的快递打包监控，然后再继续安装。
@@ -151,6 +157,7 @@ var
   CleanupLogPath: String;
   RemoveOldVersion: Boolean;
   UpgradeDirPromptShown: Boolean;
+  StoreEditionNoticeShown: Boolean;
 
 function Quote(const Value: String): String;
 begin
@@ -256,6 +263,44 @@ begin
     FileExists(AddBackslash(Dir) + 'ExpressPackingMonitoring.exe');
 end;
 
+function IsWindowsAppsFolder(const Dir: String): Boolean;
+var
+  WindowsAppsDir: String;
+begin
+  WindowsAppsDir := AddBackslash(ExpandConstant('{pf}')) + 'WindowsApps';
+  Result := StartsWithFolder(Uppercase(Dir), Uppercase(WindowsAppsDir));
+end;
+
+function IsStorePackageInstalled: Boolean;
+var
+  Names: TArrayOfString;
+  Index: Integer;
+begin
+  Result := False;
+  if RegGetSubkeyNames(HKCU,
+    'Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages',
+    Names) then
+  begin
+    for Index := 0 to GetArrayLength(Names) - 1 do
+    begin
+      if Pos('PACKINGPROOF', Uppercase(Names[Index])) > 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+procedure ShowStoreEditionNoticeIfNeeded;
+begin
+  if StoreEditionNoticeShown then
+    Exit;
+  StoreEditionNoticeShown := True;
+  if IsStorePackageInstalled then
+    MsgBox(CustomMessage('StoreEditionDetected'), mbInformation, MB_OK);
+end;
+
 procedure RemoveRuntimeLeftovers(const Dir: String);
 var
   LeftoverDir: String;
@@ -338,6 +383,12 @@ begin
     Exit;
 
   SelectedDir := WizardDirValue;
+  if IsWindowsAppsFolder(SelectedDir) then
+  begin
+    MsgBox(CustomMessage('WindowsAppsInstallBlocked'), mbInformation, MB_OK);
+    Result := False;
+    Exit;
+  end;
   if IsProtectedInstallRoot(SelectedDir) or (not IsDirectoryWritable(SelectedDir)) then
   begin
     MsgBox(CustomMessage('DirRequiresAdmin'), mbInformation, MB_OK);
@@ -347,6 +398,7 @@ begin
 
   if (not WizardSilent) then
   begin
+    ShowStoreEditionNoticeIfNeeded;
     PreviousDir := GetPreviousInstallDir;
     if (PreviousDir <> '') or DirHasInstalledApp(SelectedDir) then
     begin
@@ -370,6 +422,12 @@ begin
       end;
     end;
   end;
+end;
+
+function InitializeSetup: Boolean;
+begin
+  StoreEditionNoticeShown := False;
+  Result := True;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

@@ -73,7 +73,12 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 ## 5. 商店版与 Setup 版的差异
 
 - 商店版不运行根启动器和 AppPatch 自更新，更新由 Microsoft Store 负责。
-- 商店版数据在包自己的 LocalState 中，和 Setup 版的 `%LOCALAPPDATA%\ExpressPackingMonitoring` 分开。
+- 商店版数据在包自己的 LocalState 中，和 Setup 版的 `%LOCALAPPDATA%\ExpressPackingMonitoring` 使用独立数据目录，互不覆盖。
+- 两个版本可以并存，但始终安装在不同目录，不会互相覆盖程序文件。先装 Setup 再装商店版、先装商店版再装 Setup 都按这个规则处理；Setup 安装器检测到商店版时会明确提示。
+- 两个版本的数据不会自动迁移或同步：商店版看不到 Setup 版的设置和录像，反之亦然。切换版本前请先确认数据所在版本，不要把一边的配置/数据库手工覆盖到另一边。
+- 系统里只保留一个版本的开机自启。商店版在 Windows 设置 → 应用 → 启动 中管理，Setup 版在软件设置里管理；两个都开时会争用同一个单实例锁，先启动的那个会接管激活。
+- AppPatch 和 LauncherPatch 只适用于 Setup 版。商店版位于 `WindowsApps`，没有可写的根启动器；手动补丁脚本检测到商店版安装目录、商店版 `LocalState` 配置或商店包标记时会直接拒绝，不会尝试备份、替换或回滚包内文件。商店版请打开 Microsoft Store 的“库”页面更新。
+- 卸载其中一个版本不会删除另一个版本的程序或数据。勾选“删除录像”只处理当前版本自己数据库里登记的录像；如果两个版本使用同一个外部存储目录，请先确认共享文件再操作。
 - 开机自启不在注册表 `Run` 中写值，用户在 Windows 设置 → 应用 → 启动 中开启。
 - 支持 x64，最低 Windows 10 2004（10.0.19041）。
 

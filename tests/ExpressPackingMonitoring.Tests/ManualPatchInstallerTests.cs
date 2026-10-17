@@ -25,6 +25,57 @@ public sealed class ManualPatchInstallerTests
         Assert.Contains("增量更新完成", result.StandardOutput);
     }
 
+    [Theory]
+    [InlineData("AppxManifest.xml")]
+    [InlineData("PackingProof.PackageEdition.json")]
+    public async Task Installer_RejectsStoreEditionTargetBeforeChangingFiles(string markerFileName)
+    {
+        using var fixture = new ManualPatchFixture();
+        fixture.CreatePatch("new-content", useValidHash: true);
+        fixture.MarkAsStoreEdition(markerFileName);
+
+        ProcessResult result = await fixture.RunInstallerAsync();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Microsoft Store", result.StandardOutput + result.StandardError);
+        Assert.Equal("old-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+        Assert.DoesNotContain("正在恢复原文件", result.StandardOutput);
+    }
+
+    [Fact]
+    public async Task Installer_RejectsStoreEditionConfigPath()
+    {
+        using var fixture = new ManualPatchFixture();
+        fixture.CreatePatch("new-content", useValidHash: true);
+        string storePackageRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Packages",
+            "PackingProof.ManualPatchGuard_" + Guid.NewGuid().ToString("N"));
+        string storeConfigPath = Path.Combine(
+            storePackageRoot,
+            "LocalState",
+            "ExpressPackingMonitoring",
+            "config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(storeConfigPath)!);
+        try
+        {
+            File.WriteAllText(
+                storeConfigPath,
+                JsonSerializer.Serialize(new { AppRootDirectory = fixture.AppRootPath }),
+                Encoding.UTF8);
+
+            ProcessResult result = await fixture.RunInstallerAsync(configPath: storeConfigPath);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("数据目录", result.StandardOutput + result.StandardError);
+            Assert.Equal("old-content", File.ReadAllText(fixture.TargetFilePath, Encoding.UTF8));
+        }
+        finally
+        {
+            try { Directory.Delete(storePackageRoot, recursive: true); } catch { }
+        }
+    }
+
     [Fact]
     public async Task Installer_ReplacesReadOnlyInstalledFile()
     {
@@ -271,6 +322,8 @@ public sealed class ManualPatchInstallerTests
 
         public string TargetFilePath { get; private set; }
 
+        public string AppRootPath => _appRoot;
+
         /// <summary>假装的用户数据目录（配置、日志与手动更新的备份都在它下面）。</summary>
         public string UserDataRoot => Path.GetDirectoryName(_configPath)!;
 
@@ -295,6 +348,14 @@ public sealed class ManualPatchInstallerTests
             File.WriteAllText(
                 _configPath,
                 JsonSerializer.Serialize(new { AppRootDirectory = _appRoot }),
+                Encoding.UTF8);
+        }
+
+        public void MarkAsStoreEdition(string markerFileName)
+        {
+            File.WriteAllText(
+                Path.Combine(_appRoot, markerFileName),
+                markerFileName == "AppxManifest.xml" ? "<Package />" : "{\"edition\":\"store\"}",
                 Encoding.UTF8);
         }
 
@@ -518,6 +579,7 @@ public sealed class ManualPatchInstallerTests
 
         public async Task<ProcessResult> RunInstallerAsync(
             string appRootPath = "",
+            string? configPath = null,
             string? standardInput = null,
             bool verifyVersion = false)
         {
@@ -537,7 +599,7 @@ public sealed class ManualPatchInstallerTests
             };
             startInfo.Environment["EPM_TEST_PATCH_SCRIPT"] = _scriptPath;
             startInfo.Environment["EPM_TEST_PATCH_ROOT"] = _patchRoot;
-            startInfo.Environment["EPM_TEST_CONFIG_PATH"] = _configPath;
+            startInfo.Environment["EPM_TEST_CONFIG_PATH"] = configPath ?? _configPath;
             startInfo.Environment["EPM_TEST_APP_ROOT_PATH"] = appRootPath;
             startInfo.Environment["EPM_TEST_MUTEX_NAME"] = _mutexName;
             string versionSwitch = verifyVersion ? "" : " -SkipVersionCheck";

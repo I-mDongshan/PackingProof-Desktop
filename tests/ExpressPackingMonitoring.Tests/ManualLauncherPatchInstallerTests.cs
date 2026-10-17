@@ -40,6 +40,58 @@ public sealed class ManualLauncherPatchInstallerTests
     }
 
     [Fact]
+    public async Task Installer_RejectsStoreEditionTarget()
+    {
+        using var fixture = new Fixture();
+        fixture.CreatePatch("new-launcher", validHash: true);
+        fixture.MarkAsStoreEdition();
+
+        ProcessResult result = await fixture.RunAsync();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Microsoft Store", result.StandardOutput + result.StandardError);
+        Assert.Equal("old-launcher", File.ReadAllText(fixture.LauncherPath, Encoding.UTF8));
+        Assert.Equal("app-unchanged", File.ReadAllText(fixture.AppMarkerPath, Encoding.UTF8));
+    }
+
+    [Fact]
+    public async Task Installer_RejectsStoreEditionConfigPath()
+    {
+        using var fixture = new Fixture();
+        fixture.CreatePatch("new-launcher", validHash: true);
+        string storePackageRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Packages",
+            "PackingProof.LauncherPatchGuard_" + Guid.NewGuid().ToString("N"));
+        string storeConfigPath = Path.Combine(
+            storePackageRoot,
+            "LocalState",
+            "ExpressPackingMonitoring",
+            "config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(storeConfigPath)!);
+        try
+        {
+            File.WriteAllText(
+                storeConfigPath,
+                JsonSerializer.Serialize(new
+                {
+                    AppRootDirectory = Path.GetDirectoryName(fixture.LauncherPath)
+                }),
+                Encoding.UTF8);
+
+            ProcessResult result = await fixture.RunAsync(configPath: storeConfigPath);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("数据目录", result.StandardOutput + result.StandardError);
+            Assert.Equal("old-launcher", File.ReadAllText(fixture.LauncherPath, Encoding.UTF8));
+        }
+        finally
+        {
+            try { Directory.Delete(storePackageRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
     public async Task Installer_DoesNotDeleteUnrelatedBackupFilesWhenPruningLauncherBackups()
     {
         using var fixture = new Fixture();
@@ -98,6 +150,14 @@ public sealed class ManualLauncherPatchInstallerTests
 
         public string BackupDirectory { get; }
 
+        public void MarkAsStoreEdition()
+        {
+            File.WriteAllText(
+                Path.Combine(Path.GetDirectoryName(LauncherPath)!, "PackingProof.PackageEdition.json"),
+                "{\"edition\":\"store\"}",
+                Encoding.UTF8);
+        }
+
         public void CreatePatch(string content, bool validHash)
         {
             Directory.CreateDirectory(_patchRoot);
@@ -120,7 +180,7 @@ public sealed class ManualLauncherPatchInstallerTests
                 Encoding.UTF8);
         }
 
-        public async Task<ProcessResult> RunAsync()
+        public async Task<ProcessResult> RunAsync(string? configPath = null)
         {
             string powershellPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.System),
@@ -137,7 +197,7 @@ public sealed class ManualLauncherPatchInstallerTests
             };
             startInfo.Environment["EPM_TEST_LAUNCHER_SCRIPT"] = _scriptPath;
             startInfo.Environment["EPM_TEST_LAUNCHER_PATCH_ROOT"] = _patchRoot;
-            startInfo.Environment["EPM_TEST_LAUNCHER_CONFIG"] = _configPath;
+            startInfo.Environment["EPM_TEST_LAUNCHER_CONFIG"] = configPath ?? _configPath;
             foreach (string argument in new[]
             {
                 "-NoProfile",

@@ -1718,4 +1718,6 @@
   <data name="已归档（本地副本已清理）" xml:space="preserve"><value>アーカイブ済み（ローカルコピーは削除済み）</value></data>
   <data name="本地录像已清理，未备份到 NAS" xml:space="preserve"><value>ローカル録画は削除済みで、NAS にバックアップされていません</value></data>
   <data name="NAS 副本已循环清理" xml:space="preserve"><value>NAS コピーはローテーション済み</value></data>
+  <data name="检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移" xml:space="preserve"><value>exe 版のデータが見つかりました。Store 版と exe 版は別々のデータ フォルダーを使用し、更新やアンインストールで互いを上書きしません。exe 版の設定と録画は自動移行されません</value></data>
+  <data name="检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新" xml:space="preserve"><value>Microsoft Store 版のデータが見つかりました。Setup 版と Store 版は別々のデータ フォルダーを使用し、更新やアンインストールで互いを上書きしません。Store 版は Microsoft Store から更新してください</value></data>
 </root>

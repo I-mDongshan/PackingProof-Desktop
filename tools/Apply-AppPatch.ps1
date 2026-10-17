@@ -49,6 +49,90 @@ function Test-IsNullOrWhiteSpace {
     return [string]::IsNullOrEmpty($Value) -or $Value.Trim().Length -eq 0
 }
 
+function Get-NormalizedFullPath {
+    param([string]$Path)
+
+    if (Test-IsNullOrWhiteSpace $Path) {
+        return ""
+    }
+    return [System.IO.Path]::GetFullPath($Path).TrimEnd([char[]]"\/")
+}
+
+function Test-IsPathUnderDirectory {
+    param(
+        [string]$Path,
+        [string]$Directory
+    )
+
+    $normalizedPath = Get-NormalizedFullPath -Path $Path
+    $normalizedDirectory = Get-NormalizedFullPath -Path $Directory
+    if ((Test-IsNullOrWhiteSpace $normalizedPath) -or
+        (Test-IsNullOrWhiteSpace $normalizedDirectory)) {
+        return $false
+    }
+
+    return [string]::Equals(
+        $normalizedPath,
+        $normalizedDirectory,
+        [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalizedPath.StartsWith(
+            $normalizedDirectory + [System.IO.Path]::DirectorySeparatorChar,
+            [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-IsWindowsAppsInstallPath {
+    param([string]$Path)
+
+    foreach ($programFiles in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if (Test-IsNullOrWhiteSpace $programFiles) {
+            continue
+        }
+        $windowsApps = Join-Path $programFiles "WindowsApps"
+        if (Test-IsPathUnderDirectory -Path $Path -Directory $windowsApps) {
+            return $true
+        }
+    }
+    return $false
+}
+
+# 商店版安装根有两个稳定特征：位于 WindowsApps，或带着 MSIX 清单/商店包标记。
+# 这里只用于拒绝手工补丁，不尝试识别任意第三方包。
+function Test-IsPackagedInstallRoot {
+    param([string]$Path)
+
+    if (Test-IsWindowsAppsInstallPath -Path $Path) {
+        return $true
+    }
+    $normalized = Get-NormalizedFullPath -Path $Path
+    if (Test-IsNullOrWhiteSpace $normalized) {
+        return $false
+    }
+    return (Test-Path -LiteralPath (Join-Path $normalized "AppxManifest.xml") -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $normalized "PackingProof.PackageEdition.json") -PathType Leaf)
+}
+
+function Test-IsPackagedUserDataPath {
+    param([string]$Path)
+
+    $localAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if (Test-IsNullOrWhiteSpace $localAppData) {
+        $localAppData = $env:LOCALAPPDATA
+    }
+    if (Test-IsNullOrWhiteSpace $localAppData) {
+        return $false
+    }
+
+    $packagesRoot = Join-Path $localAppData "Packages"
+    if (-not (Test-IsPathUnderDirectory -Path $Path -Directory $packagesRoot)) {
+        return $false
+    }
+    $relativePath = (Get-NormalizedFullPath -Path $Path).Substring(
+        (Get-NormalizedFullPath -Path $packagesRoot).Length).TrimStart([char[]]"\/")
+    $segments = @($relativePath -split "[\\/]")
+    return $segments.Count -ge 2 -and
+        [string]::Equals($segments[1], "LocalState", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function ConvertFrom-Json35 {
     param([string]$Json)
     if (Get-Command ConvertFrom-Json -ErrorAction SilentlyContinue) {
@@ -411,6 +495,9 @@ try {
     }
 
     Write-UpdateHost "正在检查增量更新包..." -ForegroundColor Cyan
+    if (Test-IsPackagedUserDataPath -Path $ConfigPath) {
+        throw "检测到 Microsoft Store 版的数据目录。商店版由 Microsoft Store 统一更新，不能使用外部 AppPatch；请打开 Microsoft Store 的「库」页面检查更新。"
+    }
     $configuredAppRoot = ""
     try {
         if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
@@ -435,6 +522,10 @@ try {
     }
     else {
         $appRoot = Request-AppRootDirectory
+    }
+
+    if (Test-IsPackagedInstallRoot -Path $appRoot) {
+        throw "检测到 Microsoft Store 版安装目录。商店版不能使用外部 AppPatch；请打开 Microsoft Store 的「库」页面检查更新。Setup 版请选择 exe 安装目录。"
     }
 
     $targetExePath = Join-Path $appRoot "ExpressPackingMonitoring.exe"

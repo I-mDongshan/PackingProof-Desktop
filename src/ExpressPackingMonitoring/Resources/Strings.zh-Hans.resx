@@ -1720,4 +1720,6 @@
   <data name="已归档（本地副本已清理）" xml:space="preserve"><value>已归档（本地副本已清理）</value></data>
   <data name="本地录像已清理，未备份到 NAS" xml:space="preserve"><value>本地录像已清理，未备份到 NAS</value></data>
   <data name="NAS 副本已循环清理" xml:space="preserve"><value>NAS 副本已循环清理</value></data>
+  <data name="检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移" xml:space="preserve"><value>检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移</value></data>
+  <data name="检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新" xml:space="preserve"><value>检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新</value></data>
 </root>

@@ -3953,6 +3953,12 @@
                                                        FontSize="12"
                                                        Foreground="{DynamicResource TextSecondary}"
                                                        TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Capabilities.OtherEditionNotice}"
+                                                       Visibility="{Binding Capabilities.HasOtherEditionData, Converter={StaticResource BoolToVisibility}}"
+                                                       Margin="0,6,0,0"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextSecondary}"
+                                                       TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Grid>
 

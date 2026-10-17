@@ -201,11 +201,39 @@ if (-not (Test-Path -LiteralPath (Join-Path $payloadDir "coreclr.dll") -PathType
     throw "payload 不是自包含发布：缺少 coreclr.dll"
 }
 
+# 商店包必须是完整应用，不能夹带 Setup 版的手工更新入口。
+# 商店版更新统一由 Microsoft Store 负责；这些脚本一旦混入包内，
+# 用户会误以为可以绕过商店更新，甚至把补丁往 WindowsApps 里写。
+$forbiddenEntryNames = @(
+    "apply_app_patch.ps1",
+    "双击更新主程序.cmd",
+    "apply_launcher_patch.ps1",
+    "双击更新启动器.cmd"
+)
+$forbiddenEntry = Get-ChildItem -LiteralPath $payloadDir -Recurse -File |
+    Where-Object { $forbiddenEntryNames -contains $_.Name } |
+    Select-Object -First 1
+if ($null -ne $forbiddenEntry) {
+    throw "商店包不能包含 Setup 版更新脚本：$($forbiddenEntry.FullName)"
+}
+
 Get-ChildItem -LiteralPath $payloadDir -Recurse -File -Include *.pdb, *.xml |
     ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
 
 $assetsDir = Join-Path $payloadDir "Assets"
 & (Join-Path $PSScriptRoot "New-StoreAssets.ps1") -IconPath $iconPath -OutputDir $assetsDir
+
+$editionMarkerPath = Join-Path $payloadDir "PackingProof.PackageEdition.json"
+$editionMarker = [ordered]@{
+    edition = "store"
+    app_version = $Version
+    package_version = $packageVersion
+    package_identity = $IdentityName
+} | ConvertTo-Json
+[System.IO.File]::WriteAllText(
+    $editionMarkerPath,
+    $editionMarker,
+    [System.Text.UTF8Encoding]::new($false))
 
 $manifest = [System.IO.File]::ReadAllText($manifestTemplate, [System.Text.Encoding]::UTF8)
 $manifest = $manifest.Replace("{{IDENTITY_NAME}}", [System.Security.SecurityElement]::Escape($IdentityName))

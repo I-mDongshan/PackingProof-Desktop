@@ -201,6 +201,8 @@ PackingProof は公式の[拡張マーケット](https://gitee.com/PackingProof/
 
 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) または [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) からインストーラーをダウンロードしてインストールします。Gitee では完全な Setup が 100MB 未満のとき `PackingProof_Setup_vX.Y.Z.exe` を直接提供し、上限を超える場合は no-runtime インストーラーに切り替わります。中国国内回線では[百度網盤の予備ダウンロード](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（抽出コード 6666）も使えます。
 
+> **Store 版と Setup 版**：両方を同時にインストールできますが、プログラムとデータのフォルダーは別々です。設定と録画は自動移行・上書きされません。Store 版は Microsoft Store から更新してください。Setup 版はランチャーで更新し、手動の AppPatch/LauncherPatch は Setup 版にのみ使用できます。
+
 インストーラーに管理者権限は不要で、現在のユーザー ディレクトリにインストールし、スタート メニューのショートカットを作成します。どのファイルをダウンロードするかは下の「ダウンロード パッケージの選び方」を参照してください。
 
 ### 3. 初回設定を行う

@@ -55,8 +55,16 @@ public sealed class SettingsCapabilities
 
     /// <summary>当前是不是 Microsoft Store 的 MSIX 包；商店版由包管理器负责更新和启动项。</summary>
     public bool IsStorePackage { get; } = PackagingIdentity.IsPackaged;
+    public bool IsSetupPackage => !IsStorePackage;
     public bool CanManageAutoStart => !IsStorePackage;
     public bool CanManageAppUpdates => !IsStorePackage;
+    public bool HasOtherEditionData { get; } =
+        EditionCoexistenceDetector.HasOtherEditionData(PackagingIdentity.IsPackaged);
+    public string OtherEditionNotice => !HasOtherEditionData
+        ? ""
+        : IsStorePackage
+            ? AppLanguage.Get("检测到 exe 版数据。商店版与 exe 版使用独立数据目录，更新和卸载互不覆盖；exe 版的设置和录像不会自动迁移")
+            : AppLanguage.Get("检测到 Microsoft Store 版数据。Setup 版与商店版使用独立数据目录，更新和卸载互不覆盖；商店版请从 Microsoft Store 更新");
 
     public bool SupportsSpeechSettings => CanRecordPcVideo;
     public bool SupportsScannerSettings => CanUseScanner;

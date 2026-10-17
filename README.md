@@ -200,6 +200,8 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 
 从 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) 或 [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) 下载安装包即可；Gitee 在完整 Setup 严格小于 100MB 时直接提供 `PackingProof_Setup_vX.Y.Z.exe`，达到限制时改用 no-runtime 安装包。国内网络也可以走[百度网盘备用下载](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（提取码 6666）。
 
+> **商店版与 Setup 版**：两个版本可以并存，但安装目录和数据目录彼此独立，设置与录像不会自动迁移或互相覆盖。商店版由 Microsoft Store 更新；Setup 版继续使用启动器更新，手动 AppPatch/LauncherPatch 只适用于 Setup 版。
+
 安装器不需要管理员权限，会装到当前用户目录并创建开始菜单快捷方式。要下载哪个文件，见下面的「下载包怎么选择」。
 
 ### 3. 完成首次配置

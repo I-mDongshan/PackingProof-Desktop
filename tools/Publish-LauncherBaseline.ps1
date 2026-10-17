@@ -151,6 +151,9 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Apply-LauncherPatch.ps1") -Dest
     "正常情况下无需手动下载，主程序会自动校验并更新启动器。",
     "如需手动更新，请完整解压本 ZIP，再双击《双击更新启动器.cmd》。",
     "",
+    "本补丁只适用于 Setup 版（exe 安装版）。",
+    "Microsoft Store 版没有根启动器，请直接使用 Microsoft Store 更新。",
+    "",
     "此脚本只替换软件根目录启动器，不会修改主程序、录像、配置或数据库。",
     "不要直接在压缩软件中运行，也不要单独移动包内文件。"
 ) | Set-Content -LiteralPath (Join-Path $workDir "启动器更新说明.txt") -Encoding UTF8

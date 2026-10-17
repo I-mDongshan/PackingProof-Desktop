@@ -181,6 +181,8 @@ Camera recognition and a keyboard-mode scanner can be used together without chan
 
 Download the installer from [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) or [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) and install it. Gitee provides `PackingProof_Setup_vX.Y.Z.exe` directly when the full Setup is strictly under 100 MB, and switches to the no-runtime installer above that limit. On networks where GitHub is slow, the [Baidu Netdisk backup](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666) (access code 6666) works too.
 
+> **Store edition and Setup edition**: both may coexist, but their program and data folders are separate; settings and recordings are not migrated or overwritten automatically. Update the Store edition from Microsoft Store. The Setup edition keeps using the launcher, and manual AppPatch/LauncherPatch packages apply only to the Setup edition.
+
 The installer does not require administrator rights. It installs for the current user and creates a Start menu shortcut. See “Choosing a Download” below for which file you need.
 
 ### 3. Complete First-Time Setup

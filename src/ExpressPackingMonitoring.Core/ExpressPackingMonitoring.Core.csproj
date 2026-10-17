@@ -59,6 +59,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Config\CameraChannelConfig.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Config\DeploymentPreset.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Config\EarlyStartupConfig.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Config\EditionCoexistenceDetector.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Config\PackagingIdentity.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Config\PreRecordBufferPolicy.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Config\StorageCapacityPolicy.cs" />
