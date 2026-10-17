@@ -72,7 +72,7 @@ PackingProof 不执行导入的脚本，也不会把脚本加载为桌面端插�
 
 **历史扩展的过渡**
 
-已经有自己目录的扩展（例如 QQ 机器人一直用 `%LOCALAPPDATA%\ExpressPackingMonitoring\QQBot\`）可以继续用原目录，但必须满足两条：目录位于 `%LOCALAPPDATA%` 下、**绝不**写进扩展包目录。新接入的 external-adapter 必须使用 `PACKINGPROOF_EXTENSION_DATA_DIR`
+已经有自己目录的扩展可以继续用原目录，但必须满足两条：目录位于 `%LOCALAPPDATA%` 下、**绝不**写进扩展包目录。新接入的 external-adapter 必须使用 `PACKINGPROOF_EXTENSION_DATA_DIR`。官方 QQ 机器人已迁到规范目录：首次启动会把旧的 `QQBot\settings.json` 与 `QQBot\secrets.dat` 复制到 `extension-data\packingproof.qqbot\`，旧文件保留（旧版本/回滚仍可读）
 
 ## 两种鉴权方式
 
