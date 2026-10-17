@@ -53,7 +53,6 @@
     <ProjectReference Include="..\ExpressPackingMonitoring.WinTts\ExpressPackingMonitoring.WinTts.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\ExpressPackingMonitoring.UpdateCore\ExpressPackingMonitoring.UpdateCore.csproj" />
     <ProjectReference Include="..\ExpressPackingMonitoring.Core\ExpressPackingMonitoring.Core.csproj" />
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <PackageReference Include="AForge.Video" Version="2.2.5" />
     <PackageReference Include="EdgeTTS.Framework" Version="1.0.5" />
     <PackageReference Include="NAudio" Version="2.2.1" />
@@ -378,6 +377,11 @@
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(Filename)').StartsWith('System.Windows.Forms.Design'))" />
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Design'" />
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Drawing.Design'" />
+      <!-- 托盘已改用 Shell_NotifyIcon；自包含运行时不应再带 WinForms。 -->
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Windows.Forms'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'System.Windows.Forms.Primitives'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'Microsoft.VisualBasic.Forms'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'NAudio.WinForms'" />
 
       <ResolvedFileToPublish Include="@(LibVlcX64Dll)">
         <RelativePath>libvlc\win-x64\%(Filename)%(Extension)</RelativePath>

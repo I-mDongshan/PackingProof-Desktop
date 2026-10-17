@@ -171,6 +171,26 @@ public sealed class GlobalKeyboardTrayListeningTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TrayService_UsesNativeShellNotifyIconWithoutWinForms()
+    {
+        string project = ReadRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "ExpressPackingMonitoring.csproj");
+        string trayService = ReadRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "Services",
+            "TrayIconService.cs");
+
+        Assert.DoesNotContain("Microsoft.WindowsDesktop.App.WindowsForms", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Windows.Forms", trayService, StringComparison.Ordinal);
+        Assert.Contains("Shell_NotifyIcon", trayService, StringComparison.Ordinal);
+        Assert.Contains("NIF_INFO", trayService, StringComparison.Ordinal);
+        Assert.Contains("WM_TRAYICON", trayService, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(params string[] relativeParts)
     {
         string path = Path.Combine(FindRepositoryRoot(), Path.Combine(relativeParts));
