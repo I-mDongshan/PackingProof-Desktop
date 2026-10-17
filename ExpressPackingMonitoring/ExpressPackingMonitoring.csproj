@@ -316,15 +316,57 @@
   </ItemGroup>
 
   <Target Name="IncludeLibVlcFilesForPublish" AfterTargets="ComputeFilesToPublish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PropertyGroup>
+      <VlcPluginRoot>$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\</VlcPluginRoot>
+    </PropertyGroup>
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').StartsWith('libvlc\'))" />
 
       <LibVlcX64Dll Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\libvlc.dll" />
       <LibVlcX64Dll Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\libvlccore.dll" />
-      <!-- 按目录收录播放相关插件，只排除与本地录像回放无关的目录
-           （access 使用下方白名单；access_output/mux/services_discovery/
-           stream_out/visualization/lua 与播放无关）。 -->
-      <LibVlcX64Plugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\**\*" Exclude="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access_output\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\mux\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\services_discovery\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\stream_out\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\visualization\**\*;$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\lua\**\*" />
+      <!-- LibVLC 自带 250 多个插件，占包内约 32 MB，而回放只用到本地 mp4/mkv：
+           H.264/HEVC/AV1 解码、AAC/MP3 等常见音轨、Direct3D 输出和 Windows 音频输出。
+           这里改成显式白名单，去掉网络流、字幕渲染、VP8/VP9、VR、可视化等无关插件。
+           新增回放格式时必须同步补充对应插件并跑多格式回放回归。 -->
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)codec\libavcodec_plugin.dll;$(VlcPluginRoot)codec\libdav1d_plugin.dll;$(VlcPluginRoot)codec\libd3d11va_plugin.dll;$(VlcPluginRoot)codec\libdxva2_plugin.dll;$(VlcPluginRoot)codec\libmft_plugin.dll;$(VlcPluginRoot)codec\librawvideo_plugin.dll;$(VlcPluginRoot)codec\liblpcm_plugin.dll;$(VlcPluginRoot)codec\libg711_plugin.dll;$(VlcPluginRoot)codec\libadpcm_plugin.dll;$(VlcPluginRoot)codec\libvorbis_plugin.dll;$(VlcPluginRoot)codec\libopus_plugin.dll;$(VlcPluginRoot)codec\libflac_plugin.dll;$(VlcPluginRoot)codec\libmpg123_plugin.dll;$(VlcPluginRoot)codec\libtheora_plugin.dll">
+        <PluginTargetDir>codec</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)demux\libmkv_plugin.dll;$(VlcPluginRoot)demux\libmp4_plugin.dll;$(VlcPluginRoot)demux\libh26x_plugin.dll;$(VlcPluginRoot)demux\libavi_plugin.dll;$(VlcPluginRoot)demux\libplaylist_plugin.dll;$(VlcPluginRoot)demux\libsubtitle_plugin.dll">
+        <PluginTargetDir>demux</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)packetizer\libpacketizer_h264_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_hevc_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpeg4audio_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_av1_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpeg4video_plugin.dll;$(VlcPluginRoot)packetizer\libpacketizer_mpegvideo_plugin.dll">
+        <PluginTargetDir>packetizer</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)video_output\libdirect3d11_plugin.dll;$(VlcPluginRoot)video_output\libdirect3d9_plugin.dll;$(VlcPluginRoot)video_output\libwingdi_plugin.dll;$(VlcPluginRoot)video_output\libdirectdraw_plugin.dll;$(VlcPluginRoot)video_output\libvdummy_plugin.dll">
+        <PluginTargetDir>video_output</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)video_chroma\*.dll">
+        <PluginTargetDir>video_chroma</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_output\libmmdevice_plugin.dll;$(VlcPluginRoot)audio_output\libdirectsound_plugin.dll;$(VlcPluginRoot)audio_output\libwaveout_plugin.dll;$(VlcPluginRoot)audio_output\libwasapi_plugin.dll;$(VlcPluginRoot)audio_output\libadummy_plugin.dll">
+        <PluginTargetDir>audio_output</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_filter\libaudio_format_plugin.dll;$(VlcPluginRoot)audio_filter\libscaletempo_plugin.dll;$(VlcPluginRoot)audio_filter\libsimple_channel_mixer_plugin.dll;$(VlcPluginRoot)audio_filter\libtrivial_channel_mixer_plugin.dll;$(VlcPluginRoot)audio_filter\libugly_resampler_plugin.dll;$(VlcPluginRoot)audio_filter\libspeex_resampler_plugin.dll">
+        <PluginTargetDir>audio_filter</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)audio_mixer\*.dll">
+        <PluginTargetDir>audio_mixer</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)meta_engine\libtaglib_plugin.dll">
+        <PluginTargetDir>meta_engine</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)stream_filter\libprefetch_plugin.dll;$(VlcPluginRoot)stream_filter\libcache_read_plugin.dll;$(VlcPluginRoot)stream_filter\libinflate_plugin.dll">
+        <PluginTargetDir>stream_filter</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)d3d11\*.dll">
+        <PluginTargetDir>d3d11</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)d3d9\*.dll">
+        <PluginTargetDir>d3d9</PluginTargetDir>
+      </LibVlcX64Plugin>
+      <LibVlcX64Plugin Include="$(VlcPluginRoot)logger\*.dll">
+        <PluginTargetDir>logger</PluginTargetDir>
+      </LibVlcX64Plugin>
       <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libfilesystem_plugin.dll" />
       <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libidummy_plugin.dll" />
       <LibVlcX64AccessPlugin Include="$(NuGetPackageRoot)videolan.libvlc.windows\3.0.21\build\x64\plugins\access\libattachment_plugin.dll" />
@@ -343,7 +385,7 @@
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </ResolvedFileToPublish>
       <ResolvedFileToPublish Include="@(LibVlcX64Plugin)">
-        <RelativePath>libvlc\win-x64\plugins\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <RelativePath>libvlc\win-x64\plugins\%(LibVlcX64Plugin.PluginTargetDir)\%(LibVlcX64Plugin.Filename)%(LibVlcX64Plugin.Extension)</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </ResolvedFileToPublish>

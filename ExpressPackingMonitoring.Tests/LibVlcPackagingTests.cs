@@ -3,10 +3,14 @@ using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
 
+/// <summary>
+/// LibVLC 插件按白名单发布：回放只支持本地 mp4/mkv，
+/// 必须保留解码、解封装、视频输出和音频输出这几组，同时不能再把整套插件带进包。
+/// </summary>
 public sealed class LibVlcPackagingTests
 {
     [Fact]
-    public void Publish_KeepsOnlyLocalFileAccessPlugins()
+    public void Publish_KeepsLocalFileAccessPlugins()
     {
         string project = ReadProject();
         string[] keptAccessPlugins =
@@ -18,64 +22,68 @@ public sealed class LibVlcPackagingTests
             "libaccess_concat_plugin.dll"
         ];
 
-        Assert.Contains("plugins\\access\\**\\*", project);
         foreach (string plugin in keptAccessPlugins)
             Assert.Contains($"plugins\\access\\{plugin}", project);
         Assert.Contains("libvlc\\win-x64\\plugins\\access\\%(Filename)%(Extension)", project);
     }
 
-    [Theory]
-    [InlineData("plugins\\access_output\\**\\*")]
-    [InlineData("plugins\\mux\\**\\*")]
-    [InlineData("plugins\\services_discovery\\**\\*")]
-    [InlineData("plugins\\stream_out\\**\\*")]
-    [InlineData("plugins\\visualization\\**\\*")]
-    [InlineData("plugins\\lua\\**\\*")]
-    public void Publish_ExcludesUnusedStreamingPluginGroups(string excludedPattern)
+    [Fact]
+    public void Publish_KeepsCorePlaybackPlugins()
     {
         string project = ReadProject();
+        string[] requiredPlugins =
+        [
+            "codec\\libavcodec_plugin.dll",
+            "codec\\libdav1d_plugin.dll",
+            "codec\\libd3d11va_plugin.dll",
+            "codec\\libdxva2_plugin.dll",
+            "codec\\libmft_plugin.dll",
+            "demux\\libmkv_plugin.dll",
+            "demux\\libmp4_plugin.dll",
+            "demux\\libh26x_plugin.dll",
+            "packetizer\\libpacketizer_h264_plugin.dll",
+            "packetizer\\libpacketizer_hevc_plugin.dll",
+            "packetizer\\libpacketizer_av1_plugin.dll",
+            "video_output\\libdirect3d11_plugin.dll",
+            "video_output\\libdirect3d9_plugin.dll",
+            "audio_output\\libwasapi_plugin.dll",
+            "audio_output\\libmmdevice_plugin.dll"
+        ];
 
-        Assert.Contains(excludedPattern, project);
-        Assert.DoesNotContain("<LibVlcX64Lua Include=", project);
+        Assert.Contains("libvlc.dll", project);
+        Assert.Contains("libvlccore.dll", project);
+        foreach (string plugin in requiredPlugins)
+            Assert.Contains(plugin, project);
+        Assert.Contains("video_chroma\\*.dll", project);
     }
 
     [Fact]
-    public void Publish_RetainsCorePlaybackFamilies()
+    public void Publish_DoesNotCopyWholePluginTree()
     {
         string project = ReadProject();
 
-        Assert.Contains("plugins\\**\\*", project);
-        Assert.Contains("libvlc.dll", project);
-        Assert.Contains("libvlccore.dll", project);
-        Assert.DoesNotContain("codec\\libavcodec_plugin.dll", project);
-        Assert.DoesNotContain("codec\\libd3d11va_plugin.dll", project);
-        Assert.DoesNotContain("codec\\libdxva2_plugin.dll", project);
-        Assert.DoesNotContain("demux\\libmkv_plugin.dll", project);
-        Assert.DoesNotContain("demux\\libmp4_plugin.dll", project);
-        Assert.DoesNotContain("video_output\\libdirect3d11_plugin.dll", project);
-        Assert.DoesNotContain("audio_output\\libwasapi_plugin.dll", project);
-        Assert.DoesNotContain("LibVlcX64Hrtf", project);
-        Assert.DoesNotContain("plugins\\video_filter\\**\\*", project);
-        Assert.DoesNotContain("plugins\\text_renderer\\**\\*", project);
-        Assert.DoesNotContain("plugins\\codec\\libaom_plugin.dll", project);
-        Assert.DoesNotContain("plugins\\codec\\libvpx_plugin.dll", project);
-        Assert.DoesNotContain("plugins\\codec\\liblibass_plugin.dll", project);
-        Assert.DoesNotContain("plugins\\demux\\libadaptive_plugin.dll", project);
-        Assert.DoesNotContain("StartsWith('misc\\')", project);
+        Assert.DoesNotContain("plugins\\**\\*", project);
     }
 
     [Theory]
-    [InlineData("plugins\\access_output\\**\\*")]
-    [InlineData("plugins\\mux\\**\\*")]
-    [InlineData("plugins\\services_discovery\\**\\*")]
-    [InlineData("plugins\\stream_out\\**\\*")]
-    [InlineData("plugins\\visualization\\**\\*")]
-    [InlineData("plugins\\lua\\**\\*")]
+    [InlineData("codec\\libvpx_plugin.dll")]
+    [InlineData("codec\\libaom_plugin.dll")]
+    [InlineData("codec\\liblibass_plugin.dll")]
+    [InlineData("demux\\libadaptive_plugin.dll")]
+    [InlineData("text_renderer\\**\\*")]
+    [InlineData("video_filter\\**\\*")]
+    [InlineData("spu\\**\\*")]
+    [InlineData("access_output\\**\\*")]
+    [InlineData("mux\\**\\*")]
+    [InlineData("services_discovery\\**\\*")]
+    [InlineData("stream_out\\**\\*")]
+    [InlineData("visualization\\**\\*")]
+    [InlineData("lua\\**\\*")]
     public void Publish_ExcludesUnusedPlaybackPlugins(string excludedPattern)
     {
         string project = ReadProject();
 
-        Assert.Contains(excludedPattern, project);
+        Assert.DoesNotContain(excludedPattern, project);
     }
 
     private static string ReadProject() => File.ReadAllText(
