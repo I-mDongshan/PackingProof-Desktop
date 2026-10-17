@@ -12,6 +12,21 @@ Set-StrictMode -Version Latest
 
 $script:SharedRuntimeLayoutSchemaVersion = 1
 $script:SharedRuntimeLayoutFileName = 'layout.json'
+# 主程序托盘已改用 Shell_NotifyIcon；随包扩展要么自带运行时（QQ 机器人单文件），
+# 要么是 Node 脚本，没有任何组件依赖宿主共享运行时里的 WinForms。
+$script:SharedRuntimeExcludedFileNames = @(
+    'System.Windows.Forms.dll',
+    'System.Windows.Forms.Primitives.dll',
+    'System.Windows.Forms.Design.dll',
+    'System.Windows.Forms.resources.dll',
+    'System.Windows.Forms.Design.Editors.dll',
+    'System.Windows.Forms.Design.resources.dll',
+    'System.Windows.Forms.Primitives.resources.dll',
+    'Microsoft.VisualBasic.Forms.dll',
+    'Microsoft.VisualBasic.Forms.resources.dll',
+    'System.Design.dll',
+    'System.Drawing.Design.dll'
+)
 # 主程序用硬链接落成布局时写下的标记（ExpressPackingMonitoring.UpdateCore\RuntimeLayoutSeeder.cs 里的同名常量）。
 # 它不是布局载荷、不在清单里，但仍然算合法内容：安装目录里那份布局正是这样被落成的。
 $script:SharedRuntimeLayoutSeedMarkerFileName = '.seeded-by-app'
@@ -178,7 +193,13 @@ function New-SharedRuntimeLayout {
     foreach ($framework in $source.Frameworks) {
         $target = Join-Path $destination ("shared\" + $framework.Name + "\" + $framework.Version)
         [System.IO.Directory]::CreateDirectory($target) | Out-Null
-        Copy-Item -Path (Join-Path $framework.SourceDirectory '*') -Destination $target -Recurse -Force
+        foreach ($sourceFile in Get-ChildItem -LiteralPath $framework.SourceDirectory -Recurse -File) {
+            if ($script:SharedRuntimeExcludedFileNames -contains $sourceFile.Name) { continue }
+            $relativePath = Get-RelativePosixPath -BasePath $framework.SourceDirectory -FullPath $sourceFile.FullName
+            $destinationFile = Join-Path $target ($relativePath -replace '/', '\')
+            [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($destinationFile)) | Out-Null
+            Copy-Item -LiteralPath $sourceFile.FullName -Destination $destinationFile -Force
+        }
         $frameworkEntries.Add([pscustomobject]@{
                 name            = $framework.Name
                 version         = $framework.Version
