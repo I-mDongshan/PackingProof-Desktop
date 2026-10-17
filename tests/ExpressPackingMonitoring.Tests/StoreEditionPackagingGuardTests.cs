@@ -20,6 +20,8 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("商店包不能包含 Setup 版更新脚本", script, StringComparison.Ordinal);
         Assert.Contains("\"apply_app_patch.ps1\"", script, StringComparison.Ordinal);
         Assert.Contains("\"双击更新主程序.cmd\"", script, StringComparison.Ordinal);
+        Assert.Contains("[string]$AppPayloadDir", script, StringComparison.Ordinal);
+        Assert.Contains("Copy-Item -Path (Join-Path $resolvedAppPayloadDir \"*\")", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -67,6 +69,28 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("独立数据目录", document, StringComparison.Ordinal);
         Assert.Contains("AppPatch", document, StringComparison.Ordinal);
         Assert.Contains("WindowsApps", document, StringComparison.Ordinal);
+        Assert.Contains("正式发布不再单独", document, StringComparison.Ordinal);
+        Assert.Contains("submission API", document, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleasePipeline_BuildsAndValidatesStoreFromSetupPayload()
+    {
+        string publishScript = ReadRepositoryFile("tools", "Publish-CleanPackage.ps1");
+        string releaseScript = ReadRepositoryFile("tools", "Publish-Releases.ps1");
+        string prereqs = ReadRepositoryFile("tools", "Check-ReleasePrereqs.ps1");
+
+        Assert.Contains("-AppPayloadDir", publishScript, StringComparison.Ordinal);
+        Assert.Contains("-RequireStoreIdentity", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Publish-StorePackage.ps1", publishScript, StringComparison.Ordinal);
+        Assert.Contains("SkipStorePackage", publishScript, StringComparison.Ordinal);
+        Assert.Contains("store_package_$releaseTag.json", publishScript, StringComparison.Ordinal);
+        Assert.Contains("正式发布必须包含 Microsoft Store 包", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Microsoft Store MSIX (submit via Partner Center", publishScript, StringComparison.Ordinal);
+        Assert.Contains("store-package.local.json", prereqs, StringComparison.Ordinal);
+        Assert.Contains("makeappx.exe", prereqs, StringComparison.Ordinal);
+        Assert.Contains("makepri.exe", prereqs, StringComparison.Ordinal);
+        Assert.Contains("signtool.exe", prereqs, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(params string[] relativeParts)

@@ -23,6 +23,8 @@ param(
     [switch]$ConfirmManualCoreChecks,
     [switch]$ReuseExistingLauncherBaseline,
     [switch]$DisablePatch,
+    [switch]$SkipStorePackage,
+    [string]$StoreIdentityConfigPath = "",
     # 只在“老装机升级到共享运行时布局”的那一版打开：增量包里额外带上整份 runtime\。
     [switch]$IncludeRuntimeInPatch
 )
@@ -1577,6 +1579,95 @@ if ($IncludeRuntimeInPatch -and -not $patchSupported) {
     Write-Warning "已指定 IncludeRuntimeInPatch，但本次没有生成增量包：$patchReason"
 }
 
+$storePackagePath = ""
+$storePackageHash = ""
+$storePackageSize = 0
+$storePackageVersion = ""
+$storePackageIdentity = ""
+if ($SkipStorePackage) {
+    Write-Warning "已跳过 Microsoft Store MSIX；该选项只用于本地验证，正式发布必须同时产出商店包。"
+}
+else {
+    $storePackageScript = Join-Path $PSScriptRoot "Publish-StorePackage.ps1"
+    if (-not (Test-Path -LiteralPath $storePackageScript -PathType Leaf)) {
+        throw "找不到 Store 打包脚本：$storePackageScript"
+    }
+    $storeOutputRoot = Join-Path $repoRoot "package\store"
+    $storeBuildArgs = @(
+        "-Version", $normalizedVersion,
+        "-AppPayloadDir", $appPublishDir,
+        "-RequireStoreIdentity",
+        "-Sign",
+        "-SuppressCertificateDetails",
+        "-OutputRoot", $storeOutputRoot
+    )
+    if (-not [string]::IsNullOrWhiteSpace($StoreIdentityConfigPath)) {
+        $storeBuildArgs += @("-ConfigPath", $StoreIdentityConfigPath)
+    }
+    Write-Host "Building Microsoft Store MSIX from the release app payload..."
+    & pwsh -NoProfile -File $storePackageScript @storeBuildArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Microsoft Store MSIX build failed with exit code $LASTEXITCODE"
+    }
+
+    $storeProductDir = Join-Path $storeOutputRoot ("PackingProof_Store_v" + $normalizedVersion)
+    $storePackagePath = Join-Path $storeProductDir ("PackingProof_Store_v" + $normalizedVersion + ".msix")
+    if (-not (Test-Path -LiteralPath $storePackagePath -PathType Leaf)) {
+        throw "Store MSIX validation failed: missing package $storePackagePath"
+    }
+
+    $storePackageHash = (Get-FileHash -LiteralPath $storePackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $storePackageSize = (Get-Item -LiteralPath $storePackagePath).Length
+    $storeMarkerPath = Join-Path $storeProductDir "payload\PackingProof.PackageEdition.json"
+    if (-not (Test-Path -LiteralPath $storeMarkerPath -PathType Leaf)) {
+        throw "Store MSIX validation failed: missing package edition marker $storeMarkerPath"
+    }
+    $storeMarker = Get-Content -LiteralPath $storeMarkerPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $storePackageVersion = [string]$storeMarker.package_version
+    $storePackageIdentity = [string]$storeMarker.package_identity
+    if ([string]::IsNullOrWhiteSpace($storePackageVersion) -or
+        [string]::IsNullOrWhiteSpace($storePackageIdentity)) {
+        throw "Store MSIX validation failed: package edition marker is incomplete"
+    }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $storeArchive = [System.IO.Compression.ZipFile]::OpenRead($storePackagePath)
+    try {
+        $storeEntries = @($storeArchive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        if ($storeEntries -notcontains "PackingProof.PackageEdition.json") {
+            throw "Store MSIX validation failed: package edition marker is not embedded"
+        }
+        foreach ($forbiddenEntry in @(
+            "apply_app_patch.ps1",
+            "双击更新主程序.cmd",
+            "apply_launcher_patch.ps1",
+            "双击更新启动器.cmd"
+        )) {
+            if ($storeEntries -contains $forbiddenEntry) {
+                throw "Store MSIX validation failed: Setup update script is embedded: $forbiddenEntry"
+            }
+        }
+    }
+    finally {
+        $storeArchive.Dispose()
+    }
+
+    $storeManifest = [ordered]@{
+        app_release_version = $normalizedVersion
+        package_version = $storePackageVersion
+        identity_name = $storePackageIdentity
+        package_file = Split-Path -Leaf $storePackagePath
+        relative_path = $storePackagePath.Substring($repoRoot.TrimEnd('\').Length + 1)
+        sha256 = $storePackageHash
+        size = $storePackageSize
+        signed = $true
+    }
+    $storeManifestPath = Join-Path $packageRoot "store_package_$releaseTag.json"
+    $storeManifest |
+        ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath $storeManifestPath -Encoding UTF8
+}
+
 $updateManifest = [ordered]@{}
 $updateManifest["latest_version"] = $normalizedVersion
 $updateManifest["title"] = ConvertFrom-Utf8Base64 "6K+35aGr5YaZ5pu05paw5qCH6aKY"
@@ -1749,6 +1840,20 @@ $releaseInfoLines += "Setup Authenticode status: $setupSignatureStatus"
 if (-not [string]::Equals($setupSignatureStatus, "Valid", [System.StringComparison]::OrdinalIgnoreCase)) {
     $releaseInfoLines += "WARNING: Setup is unsigned; Windows SmartScreen may show an unknown publisher warning."
 }
+if (-not [string]::IsNullOrWhiteSpace($storePackagePath)) {
+    $releaseInfoLines += ""
+    $releaseInfoLines += "Microsoft Store MSIX (submit via Partner Center; do not upload to Git Release):"
+    $releaseInfoLines += $storePackagePath
+    $releaseInfoLines += "Store package identity: $storePackageIdentity"
+    $releaseInfoLines += "Store package version: $storePackageVersion"
+    $releaseInfoLines += "Store package SHA256:"
+    $releaseInfoLines += $storePackageHash
+    $releaseInfoLines += "Store package size: $storePackageSize bytes"
+}
+else {
+    $releaseInfoLines += ""
+    $releaseInfoLines += "Microsoft Store MSIX: skipped for local verification only"
+}
 if ($IncludeFullZip) {
     $releaseInfoLines += ""
     $releaseInfoLines += "Optional local full ZIP SHA256:"
@@ -1834,11 +1939,21 @@ Write-Host "Update manifest created: $updateJsonPath"
 Write-Host "Release info created: $releaseInfoPath"
 Write-Host "Commit checklist created: $($commitChecklist.Path)"
 Write-Host "Release notes: $releaseNotesPath"
+if (-not [string]::IsNullOrWhiteSpace($storePackagePath)) {
+    Write-Host "Microsoft Store MSIX created: $storePackagePath"
+    Write-Host "Store package SHA256: $storePackageHash"
+}
+else {
+    Write-Host "Microsoft Store MSIX skipped (local verification only)"
+}
 Write-Host ""
 Write-Host "发布前必须完成："
 Write-Host "  1. 按 docs\development\RELEASE_NOTES_TEMPLATE.md 填写 $releaseNotesFileName"
 Write-Host "  2. 逐条核对 $(Split-Path -Leaf $commitChecklist.Path)：$($commitChecklist.Range) 共 $($commitChecklist.Count) 个提交，用户可见变化都要写进发布笔记"
 Write-Host "  3. 填写 $(Split-Path -Leaf $updateJsonPath) 的 title 与 notes（面向启动器显示的简洁摘要）"
 Write-Host "  4. 运行 pwsh -NoProfile -File tools\Publish-Releases.ps1 -ValidateOnly 自检后再正式发布"
+if (-not [string]::IsNullOrWhiteSpace($storePackagePath)) {
+    Write-Host "  5. 将 Microsoft Store MSIX 上传到 Partner Center，并与 GitHub/Gitee Release 同一版本一起提交"
+}
 Write-Host "Root items:"
 Get-ChildItem -LiteralPath $outputFullPath | Sort-Object PSIsContainer, Name | Select-Object Name, Mode, Length | Format-Table -AutoSize

@@ -1,4 +1,4 @@
-# 重发同一个已发布版本（热修已发出去的包）：重建 → 替换两边资产 → 按尺寸补齐 Gitee 安装入口。
+# 重发同一个已发布版本（热修已发出去的包）：重建 → 替换两边资产 → 补齐 Gitee 安装入口与 Store MSIX。
 #
 #   pwsh -NoProfile -File tools\Republish-SameVersion.ps1 -Version 0.0.74 -Title "<一句话内容>" `
 #       -ConfirmCommitCoverage -Confirmed
@@ -13,6 +13,7 @@
 # - 上传交给 Publish-Releases.ps1：-UpdateNotes -ReplaceAssets，GitHub 用 --clobber，
 #   Gitee 先删同名附件再上传（Gitee 不支持覆盖上传）
 # - 完整 Setup 严格小于 100MB 时直接上传它；达到 100MB 时才重做 no-runtime 安装包
+# - 重建会同时生成 Store MSIX；重发后必须把新 MSIX 重新提交 Partner Center
 
 param(
     [string]$Version = "",
@@ -114,7 +115,8 @@ $planSteps = @(
     }
     else {
         "Gitee 安装包：重建后完整 Setup 小于 100MB 时直接上传；否则重做 no-runtime（tools\Publish-NoRuntimePackage.ps1 -Tag $releaseTag -UploadGitee）"
-    })
+    }),
+    "Microsoft Store：同一次重建出的 MSIX 重新提交 Partner Center（store_package_$releaseTag.json 会随产物生成）"
 )
 
 Write-Host "重发同一版本：$releaseTag"
@@ -171,4 +173,5 @@ else {
     "，Gitee no-runtime 安装包已重做"
 }
 Write-Host "$releaseTag 重发完成：GitHub 与 Gitee 资产已替换$noRuntimeSummary"
-Write-Host "还差一步（人工）：在 Mac 桌面会话里跑 tools/Publish-MacRelease.sh $normalizedVersion both，再确认两边 DMG 是否为本次构建"
+Write-Host "还差两步（人工）：在 Mac 桌面会话里跑 tools/Publish-MacRelease.sh $normalizedVersion both，再确认两边 DMG 是否为本次构建"
+Write-Host "  Microsoft Store MSIX 也要用本次重建结果重新提交 Partner Center，不能沿用旧包"

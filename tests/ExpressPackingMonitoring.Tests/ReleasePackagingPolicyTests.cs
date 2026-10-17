@@ -476,6 +476,9 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("\"update_v$normalizedVersion.json\"", versionCommon, StringComparison.Ordinal);
         Assert.Contains("\"PackingProof_AppPatch_$releaseTag.zip\"", versionCommon, StringComparison.Ordinal);
         Assert.Contains("\"PackingProof_LauncherPatch_$releaseTag.zip\"", versionCommon, StringComparison.Ordinal);
+        Assert.Contains("\"store_package_$releaseTag.json\"", versionCommon, StringComparison.Ordinal);
+        Assert.Contains("\"PackingProof_Store_v$normalizedVersion.msix\"", versionCommon, StringComparison.Ordinal);
+        Assert.Contains("StorePackageRoot = Join-Path $RepoRoot \"package\\store\\PackingProof_Store_v$normalizedVersion\"", versionCommon, StringComparison.Ordinal);
 
         // 发布脚本按归一化结果挑文件，不再自己用 tag 或 TrimStart 拼名字。
         Assert.Contains(
@@ -499,6 +502,11 @@ public sealed class ReleasePackagingPolicyTests
             "$launcherPatchPath = Join-Path $packageRoot $artifactNames.LauncherPatchFileName",
             publisher,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "$storePackagePath = Join-Path $artifactNames.StorePackageRoot $artifactNames.StorePackageFileName",
+            publisher,
+            StringComparison.Ordinal);
+        Assert.Contains("store_package_$releaseTag.json", publishScript, StringComparison.Ordinal);
         Assert.DoesNotContain("$tag.TrimStart('v')", publisher, StringComparison.Ordinal);
         Assert.DoesNotContain("\"package\\PackingProof+$tag\"", publisher, StringComparison.Ordinal);
 

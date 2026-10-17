@@ -24,6 +24,8 @@ Copy-Item tools\store-package.example.json tools\store-package.local.json
 
 ## 3. 构建商店包
 
+下面的命令只用于单独调试商店包；正式发布由 `tools\Publish-CleanPackage.ps1` 统一调用，见 3.1。
+
 ```powershell
 pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireStoreIdentity -Sign
 ```
@@ -37,6 +39,16 @@ pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireSto
 如果 Partner Center 的上传校验允许未签名包，也可以去掉 `-Sign`。
 
 应用版本 `0.0.85` 会映射为商店包版本 `1.0.85.0`。商店包版本第 1 段不能为 0，后续版本要保持递增。
+
+## 3.1 正式发布时一起出包
+
+正式发布不再单独手工调用本节的打包命令。`tools\Publish-CleanPackage.ps1` 默认会在同一次发布中同时构建 Setup 和 Store MSIX，并让 Store MSIX 复用 Setup 已经生成的 `app\` 负载，避免两份包的主程序二进制漂移。`tools\Publish-Releases.ps1` 会校验 `store_package_v<X.Y.Z>.json` 与 MSIX 的版本、大小、SHA256 和包内标记，缺少 Store 包时正式发布会直接失败。
+
+只有本地调试才允许给 `Publish-CleanPackage.ps1` 传 `-SkipStorePackage`；正式发布必须同时完成 Git Release 和 Partner Center 提交，Store 包不上传 GitHub/Gitee Release。
+
+如果在 GitHub Actions 里构建发布包，需要在仓库 Secrets 配置 `STORE_IDENTITY_NAME` 和 `STORE_PUBLISHER`（可选 `STORE_PUBLISHER_DISPLAY_NAME`、`STORE_DISPLAY_NAME`）。未配置时 CI 会明确提示并只构建 Setup，不能把这种 CI 产物当作正式发布包；正式发布仍必须在配置了 Store 身份的环境同时生成 MSIX。
+
+如果后续要通过脚本自动提交 Partner Center，应使用 Microsoft Store submission API，而不是依赖浏览器点击。该方式需要先在 Partner Center/Entra 配置应用凭据和 API 权限，凭据只放本机环境或凭据存储；脚本可以自动创建/更新 submission、上传 MSIX 和轮询状态，但最终“提交认证”仍应作为显式确认动作。
 
 ## 4. 本机验证（可选，但建议做）
 

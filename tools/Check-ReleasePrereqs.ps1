@@ -21,6 +21,21 @@ function Write-Ok    { param([string]$Message) Write-Host "  [OK]   $Message" }
 function Write-Fail  { param([string]$Message) Write-Host "  [缺失] $Message"; $blockers.Add($Message) }
 function Write-Warn  { param([string]$Message) Write-Host "  [提示] $Message"; $warnings.Add($Message) }
 
+function Resolve-WindowsSdkTool {
+    param([string]$Name)
+
+    $roots = @(
+        (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"),
+        (Join-Path $env:ProgramFiles "Windows Kits\10\bin")
+    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) }
+    $candidates = foreach ($root in $roots) {
+        Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Join-Path $_.FullName "x64\$Name" }
+    }
+    return $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+        Sort-Object -Descending | Select-Object -First 1
+}
+
 function Read-DotEnvValue {
     param([string]$Key)
 
@@ -221,6 +236,41 @@ if ($isccCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
 }
 else {
     Write-Fail "找不到 Inno Setup，执行 winget install --id JRSoftware.InnoSetup -e -s winget"
+}
+
+Write-Host ""
+Write-Host "== Microsoft Store 发布 =="
+$storeConfigPath = Join-Path $PSScriptRoot "store-package.local.json"
+if (-not (Test-Path -LiteralPath $storeConfigPath -PathType Leaf)) {
+    Write-Fail "找不到 $storeConfigPath；正式发布必须配置 Partner Center 的 Identity Name 与 Publisher（见 tools\store-package.example.json）"
+}
+else {
+    try {
+        $storeConfig = Get-Content -LiteralPath $storeConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $storeIdentity = ([string]$storeConfig.identityName).Trim()
+        $storePublisher = ([string]$storeConfig.publisher).Trim()
+        if ([string]::IsNullOrWhiteSpace($storeIdentity) -or
+            [string]::IsNullOrWhiteSpace($storePublisher) -or
+            [string]::Equals($storePublisher, "CN=PackingProof", [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Fail "Store 身份仍是占位配置；请在 $storeConfigPath 填入 Partner Center 的真实 Identity Name 与 Publisher"
+        }
+        else {
+            Write-Ok "Store 身份配置可用（$storeIdentity）"
+        }
+    }
+    catch {
+        Write-Fail "Store 身份配置不是合法 JSON：$storeConfigPath"
+    }
+}
+
+foreach ($sdkToolName in @("makeappx.exe", "makepri.exe", "signtool.exe")) {
+    $sdkToolPath = Resolve-WindowsSdkTool -Name $sdkToolName
+    if ([string]::IsNullOrWhiteSpace($sdkToolPath)) {
+        Write-Fail "找不到 Windows SDK 工具 $sdkToolName；请安装 Windows 11 SDK（MakeAppx/MakePri/SignTool）"
+    }
+    else {
+        Write-Ok "$sdkToolName 可用"
+    }
 }
 
 Write-Host ""

@@ -136,6 +136,34 @@ jobs:
           pwsh -NoProfile -File "Tools\Publish-LauncherBaseline.ps1" -Version $baseline.version
           "LAUNCHER_VERSION=$($baseline.version)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: 准备 Microsoft Store 身份
+        env:
+          STORE_IDENTITY_NAME: ${{ secrets.STORE_IDENTITY_NAME }}
+          STORE_PUBLISHER: ${{ secrets.STORE_PUBLISHER }}
+          STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.STORE_PUBLISHER_DISPLAY_NAME }}
+          STORE_DISPLAY_NAME: ${{ secrets.STORE_DISPLAY_NAME }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:STORE_IDENTITY_NAME) -or
+              [string]::IsNullOrWhiteSpace($env:STORE_PUBLISHER)) {
+            "STORE_PACKAGE_READY=0" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Write-Warning "未配置 STORE_IDENTITY_NAME / STORE_PUBLISHER Secrets，本次 CI 只构建 Setup；正式发布必须在本机用真实 Store 身份同时构建 MSIX。"
+            exit 0
+          }
+          $config = [ordered]@{
+            identityName = $env:STORE_IDENTITY_NAME
+            publisher = $env:STORE_PUBLISHER
+            publisherDisplayName = if ([string]::IsNullOrWhiteSpace($env:STORE_PUBLISHER_DISPLAY_NAME)) { "PackingProof" } else { $env:STORE_PUBLISHER_DISPLAY_NAME }
+            displayName = if ([string]::IsNullOrWhiteSpace($env:STORE_DISPLAY_NAME)) { "PackingProof" } else { $env:STORE_DISPLAY_NAME }
+            description = "PackingProof"
+          } | ConvertTo-Json
+          [System.IO.File]::WriteAllText(
+            (Join-Path $PWD "Tools\store-package.local.json"),
+            $config,
+            [System.Text.UTF8Encoding]::new($false))
+          "STORE_PACKAGE_READY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: 生成发布包（Setup、更新清单）
         env:
           VERSION: ${{ env.PACKAGE_VERSION }}
@@ -156,6 +184,9 @@ jobs:
           if ("${{ inputs.skip_tts_cache }}" -eq "true") {
             $arguments += "-SkipTtsCacheGeneration"
           }
+          if ($env:STORE_PACKAGE_READY -ne "1") {
+            $arguments += "-SkipStorePackage"
+          }
           & pwsh @arguments
           if ($LASTEXITCODE -ne 0) {
             throw "Publish-CleanPackage.ps1 失败，退出码 $LASTEXITCODE"
@@ -175,6 +206,15 @@ jobs:
           name: release_info_v${{ env.PACKAGE_VERSION }}.txt
           path: package/PackingProof+v${{ env.PACKAGE_VERSION }}*/release_info_v${{ env.PACKAGE_VERSION }}.txt
           if-no-files-found: warn
+          retention-days: ${{ github.event_name == 'push' && '14' || '90' }}
+
+      - name: 上传 Microsoft Store MSIX
+        if: ${{ env.STORE_PACKAGE_READY == '1' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: PackingProof_Store_v${{ env.PACKAGE_VERSION }}
+          path: package/store/PackingProof_Store_v${{ env.PACKAGE_VERSION }}*/PackingProof_Store_v${{ env.PACKAGE_VERSION }}*.msix
+          if-no-files-found: error
           retention-days: ${{ github.event_name == 'push' && '14' || '90' }}
 
       - name: 输出工件清单与哈希

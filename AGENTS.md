@@ -97,6 +97,7 @@ pwsh -NoProfile -File tools\Test-Release-Automated.ps1
 - 录像、Web 播放、TTS、打包或 FFmpeg 变更还要验证受影响的实际流程；油猴解析使用 `Test/HTML/` 样本。
 - 测试环境缺少依赖或生成文件时，优先使用原始仓库或局域网编译环境。任何未完成的验证及原因都必须明确报告。
 - 不得把失败或不稳定测试直接归为“无关”；先调查原因。构建和测试成功也不能替代关键路径、性能、资源生命周期和竞态审计。
+- 正式发布必须同时构建并校验 Setup 与 Microsoft Store MSIX；Store MSIX 提交 Partner Center，不得当成可选旁路产物，也不能上传到 GitHub/Gitee Release。
 
 ## Git 与提交
 

@@ -2,6 +2,7 @@
 #
 # 商店提交不需要 CA 代码签名证书，Microsoft 会在认证通过后重新签名；
 # -Sign 仅用于本机安装验证（会生成自签名证书）。
+# 正式发布由 Publish-CleanPackage.ps1 调用，并用 -AppPayloadDir 复用同一次 Setup 的 app 负载。
 param(
     [string]$Version = "",
     [string]$PackageVersion = "",
@@ -12,10 +13,12 @@ param(
     [string]$Description = "",
     [string]$ConfigPath = "",
     [string]$OutputRoot = "",
+    [string]$AppPayloadDir = "",
     [switch]$SkipBuild,
     [switch]$RequireStoreIdentity,
     [switch]$Sign,
     [switch]$TrustCertificate,
+    [switch]$SuppressCertificateDetails,
     [string]$CertificatePath = "",
     [string]$CertificatePassword = "",
     [string]$CertificateSubject = ""
@@ -153,7 +156,23 @@ if (-not $productDir.StartsWith($expectedPrefix, [System.StringComparison]::Ordi
 $payloadDir = Join-Path $productDir "payload"
 $msixPath = Join-Path $productDir ("PackingProof_Store_v" + $Version + ".msix")
 
-if ($SkipBuild) {
+$useExistingPayload = -not [string]::IsNullOrWhiteSpace($AppPayloadDir)
+if ($useExistingPayload) {
+    if (-not (Test-Path -LiteralPath $AppPayloadDir -PathType Container)) {
+        throw "找不到已构建的应用负载：$AppPayloadDir"
+    }
+    $resolvedAppPayloadDir = (Resolve-Path -LiteralPath $AppPayloadDir).Path
+    if (-not (Test-Path -LiteralPath (Join-Path $resolvedAppPayloadDir "ExpressPackingMonitoring.exe") -PathType Leaf) -or
+        -not (Test-Path -LiteralPath (Join-Path $resolvedAppPayloadDir "coreclr.dll") -PathType Leaf)) {
+        throw "已构建的应用负载不是自包含发布：$resolvedAppPayloadDir"
+    }
+    if (Test-Path -LiteralPath $productDir) {
+        Remove-Item -LiteralPath $productDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $payloadDir -Force | Out-Null
+    Copy-Item -Path (Join-Path $resolvedAppPayloadDir "*") -Destination $payloadDir -Recurse -Force
+}
+elseif ($SkipBuild) {
     if (-not (Test-Path -LiteralPath $payloadDir -PathType Container)) {
         throw "指定了 -SkipBuild，但找不到已有 payload：$payloadDir"
     }
@@ -343,7 +362,9 @@ if ($certificateThumbprint) {
     Write-Host "  测试证书指纹：$certificateThumbprint"
     Write-Host "  测试证书：$certificateCerPath"
     Write-Host "  测试 PFX：$certificatePfxPath"
-    Write-Host "  测试 PFX 密码：$testCertificatePassword"
+    if (-not $SuppressCertificateDetails) {
+        Write-Host "  测试 PFX 密码：$testCertificatePassword"
+    }
     if (-not $TrustCertificate) {
         Write-Host "  本机安装前需要把该证书导入 当前用户\受信任人，或重新运行并加 -TrustCertificate"
     }

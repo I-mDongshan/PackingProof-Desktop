@@ -18,6 +18,8 @@
 #   Gitee 会先删掉同名附件再上传，不会留重复文件
 # - GitHub 用 gh、Gitee 用 gitee CLI；Gitee 令牌固定取 .env 的 GITEE_TOKEN
 #   注入环境变量后交给 CLI，脚本不打印也不落盘凭据
+# - 正式发布还必须校验同一版本的 Microsoft Store MSIX；它提交 Partner Center，
+#   不上传 GitHub/Gitee Release
 
 param(
     [Parameter(Position = 0)]
@@ -211,6 +213,40 @@ foreach ($required in @($setupPath, $updateJsonPath)) {
 }
 $setupSize = (Get-Item -LiteralPath $setupPath).Length
 $giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize
+$storeManifestPath = Join-Path $packageRoot $artifactNames.StoreManifestFileName
+$storePackagePath = Join-Path $artifactNames.StorePackageRoot $artifactNames.StorePackageFileName
+$storePackageRequired = -not $UpdateNotes
+$storePackageIncluded = $false
+if (-not (Test-Path -LiteralPath $storeManifestPath -PathType Leaf)) {
+    if ($storePackageRequired) {
+        throw "正式发布必须包含 Microsoft Store 包：缺少 $($artifactNames.StoreManifestFileName)。请用 tools\Publish-CleanPackage.ps1 重新出包，正式发布不能跳过 Store MSIX。"
+    }
+}
+else {
+    $storeManifest = Get-Content -LiteralPath $storeManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not (Test-Path -LiteralPath $storePackagePath -PathType Leaf)) {
+        throw "Store 包清单存在但 MSIX 不存在：$storePackagePath"
+    }
+    $storePackageHash = (Get-FileHash -LiteralPath $storePackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $storePackageSize = (Get-Item -LiteralPath $storePackagePath).Length
+    if ([string]$storeManifest.package_file -ne (Split-Path -Leaf $storePackagePath)) {
+        throw "Store 包清单文件名与 MSIX 不一致：$($storeManifest.package_file)"
+    }
+    if ([string]$storeManifest.app_release_version -ne $version) {
+        throw "Store 包清单版本与发布版本不一致：$($storeManifest.app_release_version) / $version"
+    }
+    if ([string]$storeManifest.sha256 -ne $storePackageHash -or
+        [long]$storeManifest.size -ne $storePackageSize) {
+        throw "Store MSIX 的大小或 SHA256 与清单不一致，拒绝发布"
+    }
+    $storePackageIncluded = $true
+    if ($storePackageRequired) {
+        $notesTextForStore = Get-Content -LiteralPath $notesFullPath -Raw -Encoding UTF8
+        if (-not $notesTextForStore.Contains("PackingProof_Store_", [System.StringComparison]::Ordinal)) {
+            throw "发布笔记缺少 Microsoft Store MSIX 资产说明；请在《下载与更新说明》中写明 PackingProof_Store_vX.Y.Z.msix 提交到 Partner Center"
+        }
+    }
+}
 
 # 更新清单声明本版随包提供 LauncherPatch（launcher_package.version == 本版版本）时，
 # 产物目录里必须真的有一份 LauncherPatch：以前这里是 Test-Path 静默跳过，于是出现过
@@ -336,6 +372,10 @@ Write-Host "  GitHub 资产："
 $githubAssets | ForEach-Object { Write-Host "    $(Split-Path -Leaf $_)" }
 Write-Host "  Gitee 资产："
 $giteeAssets | ForEach-Object { Write-Host "    $(Split-Path -Leaf $_)" }
+if ($storePackageIncluded) {
+    Write-Host "  Microsoft Store（Partner Center，不上传 GitHub/Gitee Release）："
+    Write-Host "    $storePackagePath"
+}
 
 Write-Host ""
 Write-Host "==> GitHub Release"
@@ -496,4 +536,10 @@ else {
         Write-Host "还差一步（Gitee 专属，漏了 Gitee 就没有双击安装入口）："
         Write-Host "  pwsh -NoProfile -File tools\Publish-NoRuntimePackage.ps1 -Tag $tag -UploadGitee"
     }
+}
+if ($storePackageIncluded) {
+    Write-Host ""
+    Write-Host "Microsoft Store 包已通过发布校验，等待提交 Partner Center："
+    Write-Host "  $storePackagePath"
+    Write-Host "GitHub/Gitee 资产与商店包属于同一次发布；不要把 MSIX 传到 GitHub/Gitee Release。"
 }
