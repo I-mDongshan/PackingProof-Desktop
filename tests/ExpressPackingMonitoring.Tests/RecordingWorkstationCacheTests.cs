@@ -314,8 +314,8 @@ public sealed class RecordingWorkstationCacheTests
         Assert.Contains("软件支持 NAS 备份", cacheTab, StringComparison.Ordinal);
         Assert.Contains("本机录像缓存", cacheTab, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RecordingCacheDataGrid\"", cacheTab, StringComparison.Ordinal);
-        Assert.Contains("Header=\"存储路径\"", cacheTab, StringComparison.Ordinal);
-        Assert.Contains("Header=\"录像空间上限\"", cacheTab, StringComparison.Ordinal);
+        Assert.Contains("Header=\"{loc:Localized 存储路径}\"", cacheTab, StringComparison.Ordinal);
+        Assert.Contains("Header=\"{loc:Localized 录像空间上限}\"", cacheTab, StringComparison.Ordinal);
         Assert.Contains("DataContext.Config.RecordingCacheMaxGB", cacheTab, StringComparison.Ordinal);
         Assert.Contains("Content=\"更改磁盘\"", cacheTab, StringComparison.Ordinal);
         Assert.Contains("IsEnabled=\"{Binding Capabilities.CanConfigureStorage}\"", cacheTab, StringComparison.Ordinal);
@@ -596,7 +596,7 @@ public sealed class RecordingWorkstationCacheTests
         bool isWritable = true) =>
         new(
             root,
-            Path.Combine(root, "快递打包视频"),
+            Path.Combine(root, "PackingProofVideos"),
             isReady,
             driveType,
             isWritable,

@@ -12,7 +12,7 @@ public sealed class BackupStorageLocationPolicyTests
         Assert.Equal(
             BackupStorageDecision.Accept,
             BackupStorageLocationPolicy.Evaluate(
-                @"\\nas\share\快递打包视频",
+                @"\\nas\share\PackingProofVideos",
                 _ => StorageVolumeInfo.StorageLocationKind.Network));
     }
 
@@ -22,7 +22,7 @@ public sealed class BackupStorageLocationPolicyTests
         Assert.Equal(
             BackupStorageDecision.ConfirmVirtualDisk,
             BackupStorageLocationPolicy.Evaluate(
-                @"Z:\快递打包视频",
+                @"Z:\PackingProofVideos",
                 _ => StorageVolumeInfo.StorageLocationKind.VirtualDisk));
     }
 
@@ -32,7 +32,7 @@ public sealed class BackupStorageLocationPolicyTests
         Assert.Equal(
             BackupStorageDecision.ConfirmUnknown,
             BackupStorageLocationPolicy.Evaluate(
-                @"Z:\快递打包视频",
+                @"Z:\PackingProofVideos",
                 _ => StorageVolumeInfo.StorageLocationKind.Unknown));
     }
 
@@ -42,7 +42,7 @@ public sealed class BackupStorageLocationPolicyTests
         Assert.Equal(
             BackupStorageDecision.RejectPhysicalLocal,
             BackupStorageLocationPolicy.Evaluate(
-                @"D:\快递打包视频",
+                @"D:\PackingProofVideos",
                 _ => StorageVolumeInfo.StorageLocationKind.Local));
     }
 }

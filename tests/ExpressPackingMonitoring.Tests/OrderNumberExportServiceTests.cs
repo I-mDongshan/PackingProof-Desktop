@@ -272,9 +272,9 @@ public sealed class OrderNumberExportServiceTests
     }
 
     [Theory]
-    [InlineData(null, null, "全部")]
-    [InlineData("2026-08-01", null, "20260801起")]
-    [InlineData(null, "2026-08-31", "截至20260831")]
+    [InlineData(null, null, "all")]
+    [InlineData("2026-08-01", null, "20260801-now")]
+    [InlineData(null, "2026-08-31", "up-to-20260831")]
     [InlineData("2026-08-01", "2026-08-31", "20260801-20260831")]
     public void BuildOrderExportRangeName_UsesSelectedDateBounds(
         string? startText,

@@ -237,6 +237,7 @@ internal sealed class MobileBackupService
                     request.SourceDeviceKind,
                     alwaysUseSessionSuffix: true);
                 Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
+                StorageFolderAliases.EnsureAliasesForUploadPath(finalPath);
                 if (!File.Exists(finalPath))
                     CopyFileAtomically(existingFile.FilePath, finalPath);
                 else if (!FileMatchesSha256(finalPath, fileSha256))
@@ -272,6 +273,7 @@ internal sealed class MobileBackupService
                 state.UpdatedAtUtc = DateTime.UtcNow;
                 SaveState(state);
                 Directory.CreateDirectory(Path.GetDirectoryName(finalPath)!);
+                StorageFolderAliases.EnsureAliasesForUploadPath(finalPath);
                 if (File.Exists(finalPath))
                 {
                     if (!string.Equals(ComputeFileSha256(finalPath), fileSha256, StringComparison.Ordinal))
@@ -345,7 +347,7 @@ internal sealed class MobileBackupService
             return "";
 
         string trackingNumber = session.TrackingNumber?.Trim().ToUpperInvariant() ?? "";
-        if (string.IsNullOrWhiteSpace(trackingNumber)) trackingNumber = "未识别面单";
+        if (string.IsNullOrWhiteSpace(trackingNumber)) trackingNumber = ArchivePathBuilder.UnknownOrderId;
         DateTime startedAt = session.StartedAt.ToLocalTime().DateTime;
         return ArchivePathBuilder.BuildExternalUploadArchivePath(
             archiveTarget,
@@ -563,7 +565,7 @@ internal sealed class MobileBackupService
         bool alwaysUseSessionSuffix = false)
     {
         string trackingNumber = session.TrackingNumber?.Trim().ToUpperInvariant() ?? "";
-        if (string.IsNullOrWhiteSpace(trackingNumber)) trackingNumber = "未识别面单";
+        if (string.IsNullOrWhiteSpace(trackingNumber)) trackingNumber = ArchivePathBuilder.UnknownOrderId;
         DateTime startedAt = session.StartedAt.ToLocalTime().DateTime;
         string root;
         try
@@ -580,11 +582,11 @@ internal sealed class MobileBackupService
         string dateDirectory = Path.Combine(
             Path.GetFullPath(root),
             string.Equals(sourceDeviceKind, "pc", StringComparison.OrdinalIgnoreCase)
-                ? "电脑上传"
-                : "手机备份",
+                ? ArchivePathBuilder.PcUploadDirectory
+                : ArchivePathBuilder.PhoneBackupDirectory,
             ArchivePathBuilder.GetDeviceDirectoryName(sourceDeviceId),
             startedAt.ToString("yyyy-MM-dd"));
-        string mode = VideoDatabase.NormalizeRecordingMode(session.Mode);
+        string mode = ArchivePathBuilder.GetFileNameMode(session.Mode);
         string baseName = SanitizeFileName($"{trackingNumber}_{startedAt:yyyyMMdd_HHmmss}_{mode}");
         string preferredPath = Path.Combine(dateDirectory, $"{baseName}.mp4");
         if (!alwaysUseSessionSuffix && !File.Exists(preferredPath))
@@ -621,7 +623,7 @@ internal sealed class MobileBackupService
         foreach (char invalid in Path.GetInvalidFileNameChars())
             value = value.Replace(invalid, '_');
         value = value.Trim().TrimEnd('.', ' ');
-        return string.IsNullOrWhiteSpace(value) ? "未识别面单" : value;
+        return string.IsNullOrWhiteSpace(value) ? ArchivePathBuilder.UnknownOrderId : value;
     }
 
     private MobileBackupUploadState? LoadState(string uploadId)

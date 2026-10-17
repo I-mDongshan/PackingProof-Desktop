@@ -243,7 +243,7 @@ namespace ExpressPackingMonitoring.UI
                 DefaultExt = ".xlsx",
                 AddExtension = true,
                 OverwritePrompt = true,
-                FileName = $"单号_{BuildOrderExportRangeName(start, end)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+                FileName = $"Orders_{BuildOrderExportRangeName(start, end)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
             };
             if (saveDialog.ShowDialog(this) != true)
                 return;
@@ -553,10 +553,10 @@ namespace ExpressPackingMonitoring.UI
         internal static string BuildOrderExportRangeName(DateTime? start, DateTime? end)
         {
             if (!start.HasValue && !end.HasValue)
-                return "全部";
+                return "all";
             if (start.HasValue && end.HasValue)
                 return $"{start:yyyyMMdd}-{end:yyyyMMdd}";
-            return start.HasValue ? $"{start:yyyyMMdd}起" : $"截至{end:yyyyMMdd}";
+            return start.HasValue ? $"{start:yyyyMMdd}-now" : $"up-to-{end:yyyyMMdd}";
         }
 
         private void BtnImportVideos_Click(object sender, RoutedEventArgs e)

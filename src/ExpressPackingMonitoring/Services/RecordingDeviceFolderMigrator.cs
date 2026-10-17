@@ -31,8 +31,8 @@ internal readonly record struct DeviceFolderMigrationSummary(
 /// </summary>
 internal sealed class RecordingDeviceFolderMigrator
 {
-    /// <summary>上传布局的两个分类目录。</summary>
-    private static readonly string[] CategoryDirectories = ["手机备份", "电脑上传"];
+    /// <summary>上传布局的分类目录：新录像用英文名，旧库的中文目录仍要参与迁移。</summary>
+    private static readonly string[] CategoryDirectories = ["手机备份", "电脑上传", "PhoneBackup", "PCUpload"];
 
     private readonly VideoDatabase _database;
     private readonly Func<IReadOnlyList<string>> _rootResolver;

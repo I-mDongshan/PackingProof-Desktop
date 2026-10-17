@@ -186,9 +186,10 @@ public sealed class StoragePlanTests : IDisposable
         // 绝不允许落到程序安装目录下，否则升级、卸载都可能把录像清掉
         string path = AppConfig.DefaultStoragePath;
 
-        Assert.Equal(Path.Combine(AppConfig.DefaultStorageRoot, "快递打包视频"), path);
+        Assert.Equal(Path.Combine(AppConfig.DefaultStorageRoot, AppConfig.DefaultStorageFolderName), path);
         Assert.True(Path.IsPathRooted(path));
-        Assert.DoesNotContain("Videos", path, StringComparison.OrdinalIgnoreCase);
+        // 只拦程序目录下的 Videos，不误伤 PackingProofVideos 这个默认目录名
+        Assert.False(path.EndsWith($"{Path.DirectorySeparatorChar}Videos", StringComparison.OrdinalIgnoreCase), path);
         Assert.False(
             path.StartsWith(AppDomain.CurrentDomain.BaseDirectory, StringComparison.OrdinalIgnoreCase),
             path);
@@ -354,7 +355,7 @@ public sealed class StoragePlanTests : IDisposable
         Assert.DoesNotContain("Binding EffectiveReserveGB", settings, StringComparison.Ordinal);
         // 预留只从磁盘右键改，并且说明这是整块磁盘的预留
         Assert.Contains("StorageLocationRowStyle", settings, StringComparison.Ordinal);
-        Assert.Contains("Header=\"设置预留空间…\"", settings, StringComparison.Ordinal);
+        Assert.Contains("Header=\"{loc:Localized 设置预留空间…}\"", settings, StringComparison.Ordinal);
         Assert.Contains("预留空间是留给整块磁盘的安全空间", dialog, StringComparison.Ordinal);
         Assert.Contains("不是本软件最多占用多少", dialog, StringComparison.Ordinal);
     }
@@ -407,7 +408,7 @@ public sealed class StoragePlanTests : IDisposable
             "return",
             "abcdef123456");
         Assert.Equal(
-            @"\\nas\share\快递打包视频\电脑上传\device-abc123456\2026-08-11\SF123_20260811_103000_退货.mp4",
+            @"\\nas\share\快递打包视频\PCUpload\device-abc123456\2026-08-11\SF123_20260811_103000_Return.mp4",
             pcPath);
 
         string mobilePath = ArchivePathBuilder.BuildExternalUploadArchivePath(
@@ -420,7 +421,7 @@ public sealed class StoragePlanTests : IDisposable
             "发货",
             "abcdef");
         Assert.Equal(
-            @"\\nas\share\快递打包视频\手机备份\phone-xyz\2026-08-11\未识别面单_20260811_103000_发货.mp4",
+            @"\\nas\share\快递打包视频\PhoneBackup\phone-xyz\2026-08-11\UNKNOWN_20260811_103000_Ship.mp4",
             mobilePath);
     }
 

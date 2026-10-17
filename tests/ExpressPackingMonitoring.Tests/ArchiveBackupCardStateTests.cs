@@ -128,7 +128,7 @@ public sealed class ArchiveBackupCardStateTests
                 Summary(pending: 1, failed: 500, lost: 2),
                 @"\\nas\share",
                 targetUnavailable: true,
-                unavailableRoot: @"\\CloudDrive-Z-123456789\CloudDrive\百度网盘\快递打包视频");
+                unavailableRoot: @"\\CloudDrive-Z-123456789\CloudDrive\百度网盘\PackingProofVideos");
 
         Assert.Equal("备份位置不可用", unavailable.ShortStatusText);
         Assert.Contains(
@@ -195,7 +195,7 @@ public sealed class ArchiveBackupCardStateTests
         Assert.Equal(
             @"\\192.168.1.100",
             ArchiveBackupCardModel.CompactArchiveTarget(
-                @"\\192.168.1.100\NASSim\快递打包视频"));
+                @"\\192.168.1.100\NASSim\PackingProofVideos"));
         Assert.Equal(
             @"\\nas",
             ArchiveBackupCardModel.CompactArchiveTarget(@"\\nas\share"));

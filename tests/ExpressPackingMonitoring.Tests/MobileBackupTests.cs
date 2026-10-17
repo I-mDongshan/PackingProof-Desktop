@@ -739,10 +739,10 @@ public sealed class MobileBackupTests
                 Path.Combine(
                     directory,
                     "recordings",
-                    "手机备份",
+                    "PhoneBackup",
                     "phone-1",
                     localStart.ToString("yyyy-MM-dd"),
-                    $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_退货.mp4"),
+                    $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_Return.mp4"),
                 record.FilePath);
         }
         finally
@@ -781,7 +781,7 @@ public sealed class MobileBackupTests
             Assert.Equal("电脑工位上传", record.StopReason);
             Assert.Equal("发货", record.Mode);
             Assert.Contains(
-                $"{Path.DirectorySeparatorChar}电脑上传{Path.DirectorySeparatorChar}",
+                $"{Path.DirectorySeparatorChar}PCUpload{Path.DirectorySeparatorChar}",
                 record.FilePath);
 
         }
@@ -881,12 +881,12 @@ public sealed class MobileBackupTests
             string dateDirectory = Path.Combine(
                 directory,
                 "recordings",
-                "手机备份",
+                "PhoneBackup",
                 "phone-1",
                 localStart.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(dateDirectory);
             File.WriteAllText(
-                Path.Combine(dateDirectory, $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_发货.mp4"),
+                Path.Combine(dateDirectory, $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_Ship.mp4"),
                 "existing video");
             using var database = new VideoDatabase(Path.Combine(directory, "videos.db"));
             var service = CreateService(database, directory);
@@ -901,7 +901,7 @@ public sealed class MobileBackupTests
                 SHA256.HashData(Encoding.UTF8.GetBytes("phone-1\ncollision-session")))[..16]
                 .ToLowerInvariant();
             Assert.Equal(
-                $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_发货_{sessionFingerprint}.mp4",
+                $"TRACK-001_{localStart:yyyyMMdd_HHmmss}_Ship_{sessionFingerprint}.mp4",
                 Path.GetFileName(database.GetVideoById(completed.RecordId).FilePath));
         }
         finally

@@ -72,11 +72,13 @@ namespace ExpressPackingMonitoring.Services
         {
             string range = request.StartDate.HasValue && request.EndDate.HasValue
                 ? $"{request.StartDate.Value:yyyyMMdd}-{request.EndDate.Value:yyyyMMdd}"
-                : request.StartDate.HasValue ? $"{request.StartDate.Value:yyyyMMdd}起"
-                : request.EndDate.HasValue ? $"截至{request.EndDate.Value:yyyyMMdd}"
-                : "全部";
+                : request.StartDate.HasValue ? $"{request.StartDate.Value:yyyyMMdd}-now"
+                : request.EndDate.HasValue ? $"up-to-{request.EndDate.Value:yyyyMMdd}"
+                : "all";
 
-            string modeText = RecordingModeFilter.ToDisplayText(request.Mode);
+            string modeText = RecordingModeFilter.Normalize(request.Mode).Length > 0
+                ? ArchivePathBuilder.GetFileNameMode(request.Mode)
+                : "";
             string modePart = modeText.Length > 0 ? $"_{modeText}" : "";
 
             // 带上设备，导出多台设备时文件名能区分开。
@@ -87,7 +89,7 @@ namespace ExpressPackingMonitoring.Services
                 deviceText = deviceText.Replace(invalid, '_');
             string devicePart = deviceText.Length > 0 ? $"_{deviceText}" : "";
 
-            return $"单号_{range}{modePart}{devicePart}_{now:yyyyMMdd_HHmmss}.xlsx";
+            return $"Orders_{range}{modePart}{devicePart}_{now:yyyyMMdd_HHmmss}.xlsx";
         }
 
         /// <summary>

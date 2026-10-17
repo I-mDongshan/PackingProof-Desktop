@@ -324,7 +324,7 @@ public sealed class DefaultConfigurationTests
         List<StorageLocation> locations = AppConfig.CreateDefaultStorageLocations(drives);
 
         Assert.Equal(
-            [@"E:\快递打包视频", @"D:\快递打包视频", @"C:\快递打包视频"],
+            [@"E:\PackingProofVideos", @"D:\PackingProofVideos", @"C:\PackingProofVideos"],
             locations.Select(location => location.Path));
         Assert.Equal([0, 1, 2], locations.Select(location => location.Priority));
     }
@@ -340,7 +340,7 @@ public sealed class DefaultConfigurationTests
 
         StorageLocation location = Assert.Single(AppConfig.CreateDefaultStorageLocations(drives));
 
-        Assert.Equal(@"C:\快递打包视频", location.Path);
+        Assert.Equal(@"C:\PackingProofVideos", location.Path);
         Assert.Equal(0, location.Priority);
     }
 
@@ -375,14 +375,14 @@ public sealed class DefaultConfigurationTests
         StorageLocation location = Assert.Single(
             AppConfig.CreateDefaultStorageLocations(drives, readOnlySystemRoot: @"C:\"));
 
-        Assert.Equal(@"D:\快递打包视频", location.Path);
+        Assert.Equal(@"D:\PackingProofVideos", location.Path);
         Assert.Equal(0, location.Priority);
     }
 
     [Fact]
     public void CreateDefaultStorageLocations_WithoutCandidatesUsesPlatformFallback()
     {
-        // 可用本地盘都被排除时用兜底根，而不是那条永远建不出来的 /快递打包视频
+        // 可用本地盘都被排除时用兜底根，而不是那条永远建不出来的 /PackingProofVideos
         string fallbackRoot = Path.Combine(Path.GetTempPath(), "mac-default") + Path.DirectorySeparatorChar;
         StorageLocation location = Assert.Single(
             AppConfig.CreateDefaultStorageLocations(
@@ -390,7 +390,7 @@ public sealed class DefaultConfigurationTests
                 readOnlySystemRoot: "/",
                 fallbackRoot: fallbackRoot));
 
-        Assert.Equal(Path.Combine(fallbackRoot, "快递打包视频"), location.Path);
+        Assert.Equal(Path.Combine(fallbackRoot, "PackingProofVideos"), location.Path);
         Assert.Equal(0, location.Priority);
     }
 
@@ -399,14 +399,14 @@ public sealed class DefaultConfigurationTests
     {
         var locations = new List<StorageLocation>
         {
-            new() { Path = "/快递打包视频", Priority = 0 },
-            new() { Path = "/Volumes/外接盘/快递打包视频", Priority = 1 }
+            new() { Path = "/PackingProofVideos", Priority = 0 },
+            new() { Path = "/Volumes/外接盘/PackingProofVideos", Priority = 1 }
         };
 
         Assert.True(AppConfig.RemoveUnusableStorageLocations(locations, readOnlySystemRoot: "/"));
 
         StorageLocation remaining = Assert.Single(locations);
-        Assert.Equal("/Volumes/外接盘/快递打包视频", remaining.Path);
+        Assert.Equal("/Volumes/外接盘/PackingProofVideos", remaining.Path);
         Assert.Equal(1, remaining.Priority);
     }
 
@@ -415,7 +415,7 @@ public sealed class DefaultConfigurationTests
     {
         var locations = new List<StorageLocation>
         {
-            new() { Path = @"D:\快递打包视频", Priority = 0 }
+            new() { Path = @"D:\PackingProofVideos", Priority = 0 }
         };
 
         Assert.False(AppConfig.RemoveUnusableStorageLocations(locations, readOnlySystemRoot: null));
@@ -429,7 +429,7 @@ public sealed class DefaultConfigurationTests
         {
             StorageLocations =
             [
-                new StorageLocation { Path = @"D:\快递打包视频", ReserveGB = 129, Priority = 0 },
+                new StorageLocation { Path = @"D:\PackingProofVideos", ReserveGB = 129, Priority = 0 },
                 new StorageLocation
                 {
                     Path = @"\\192.168.1.249\打包视频",

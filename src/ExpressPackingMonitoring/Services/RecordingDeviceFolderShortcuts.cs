@@ -31,7 +31,7 @@ internal sealed class RecordingDeviceFolderShortcuts
     /// <summary>早先的设备对照表：改用快捷方式后顺手清掉，免得留一份过期信息误导用户。</summary>
     internal const string LegacyIndexFileName = "设备对照表.txt";
 
-    private static readonly string[] CategoryDirectories = ["手机备份", "电脑上传"];
+    private static readonly string[] CategoryDirectories = ["手机备份", "电脑上传", "PhoneBackup", "PCUpload"];
 
     private readonly ShortcutWriter _shortcutWriter;
     private readonly Func<string, string?> _shortcutTargetReader;

@@ -379,7 +379,7 @@ final class HostShell: NSObject, NSApplicationDelegate {
     /// 磁盘根 + 固定子目录名，与菜单栏"添加磁盘…"完全同一条路径
     private func addStorageDisk(root: String) {
         guard !root.isEmpty else { return }
-        let path = (root as NSString).appendingPathComponent("快递打包视频")
+        let path = (root as NSString).appendingPathComponent("PackingProofVideos")
         applySettings(addStoragePath: path, afterApply: { [weak self] in
             // 保存主机启动时只读一次录像根目录，新增磁盘后自动重启，不再问一遍
             self?.restartHost()

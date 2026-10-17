@@ -667,8 +667,10 @@ namespace ExpressPackingMonitoring.ViewModels
                     ShowToast($"无法创建日期目录: {ex.Message}", ToastSeverity.Error);
                     return;
                 }
+                // 新建英文根目录后补一个当前语言名字的快捷方式/替身；旧目录已存在时自动跳过
+                StorageFolderAliases.EnsureAlias(baseFolder);
 
-                string fileName = $"{CurrentOrderId}_{DateTime.Now:yyyyMMdd_HHmmss}_{CurrentMode}.mkv";
+                string fileName = $"{CurrentOrderId}_{DateTime.Now:yyyyMMdd_HHmmss}_{ArchivePathBuilder.GetFileNameMode(CurrentMode)}.mkv";
                 string filePath = Path.Combine(dateFolder, fileName);
                 string archivePath = string.IsNullOrWhiteSpace(_currentArchivePath)
                     ? ""

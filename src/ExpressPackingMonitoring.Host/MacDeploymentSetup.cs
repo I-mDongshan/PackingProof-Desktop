@@ -62,7 +62,7 @@ internal static class MacDeploymentSetup
         string suggested = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Movies",
-            "快递打包视频");
+            "PackingProofVideos");
         string? folder = MacDialog.ChooseFolder("选择录像保存位置（可以选外接硬盘）", suggested);
         if (string.IsNullOrWhiteSpace(folder))
         {
@@ -95,8 +95,8 @@ internal static class MacDeploymentSetup
     private static bool IsUsableConfiguredLocation(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
-        // 只认"根目录下面确实存在"的位置：桌面端默认值（D:\快递打包视频）在 Mac 上
-        // 会被归一化成 /快递打包视频 这种不存在的路径，靠字符串判断拦不住，必须看实际目录
+        // 只认"根目录下面确实存在"的位置：桌面端默认值（D:\PackingProofVideos）在 Mac 上
+        // 会被归一化成 /PackingProofVideos 这种不存在的路径，靠字符串判断拦不住，必须看实际目录
         try
         {
             return Path.IsPathRooted(path) && Directory.Exists(path);

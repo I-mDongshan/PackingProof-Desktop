@@ -9,6 +9,16 @@ namespace ExpressPackingMonitoring.Services;
 /// </summary>
 internal static class ArchivePathBuilder
 {
+    /// <summary>文件名里统一用的英文占位与分类目录名，避免路径带空格或汉字。</summary>
+    internal const string UnknownOrderId = "UNKNOWN";
+    internal const string PcUploadDirectory = "PCUpload";
+    internal const string PhoneBackupDirectory = "PhoneBackup";
+
+    internal static string GetFileNameMode(string mode) =>
+        string.Equals(VideoDatabase.NormalizeRecordingMode(mode), "退货", StringComparison.Ordinal)
+            ? "Return"
+            : "Ship";
+
     /// <summary>本机录像布局：&lt;归档目标&gt;\yyyy-MM-dd\&lt;文件名&gt;。</summary>
     public static string BuildLocalRecordingArchivePath(
         string archiveTarget,
@@ -41,15 +51,15 @@ internal static class ArchivePathBuilder
             return "";
 
         string normalizedTracking = trackingNumber?.Trim().ToUpperInvariant() ?? "";
-        string orderId = string.IsNullOrEmpty(normalizedTracking) ? "未识别面单" : normalizedTracking;
+        string orderId = string.IsNullOrEmpty(normalizedTracking) ? UnknownOrderId : normalizedTracking;
         string dateDirectory = Path.Combine(
             Path.GetFullPath(root),
             string.Equals(sourceDeviceKind, "pc", StringComparison.OrdinalIgnoreCase)
-                ? "电脑上传"
-                : "手机备份",
+                ? PcUploadDirectory
+                : PhoneBackupDirectory,
             GetDeviceDirectoryName(sourceDeviceId),
             startedAt.ToString("yyyy-MM-dd"));
-        string normalizedMode = VideoDatabase.NormalizeRecordingMode(mode);
+        string normalizedMode = GetFileNameMode(mode);
         string baseName = SanitizeFileName($"{orderId}_{startedAt:yyyyMMdd_HHmmss}_{normalizedMode}");
         return Path.Combine(dateDirectory, $"{baseName}.mp4");
     }
@@ -59,7 +69,7 @@ internal static class ArchivePathBuilder
         foreach (char invalid in Path.GetInvalidFileNameChars())
             value = value.Replace(invalid, '_');
         value = value.Trim().TrimEnd('.', ' ');
-        return string.IsNullOrWhiteSpace(value) ? "未识别面单" : value;
+        return string.IsNullOrWhiteSpace(value) ? UnknownOrderId : value;
     }
 
     /// <summary>

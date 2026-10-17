@@ -240,9 +240,9 @@ internal static class RecordingWorkstationCachePolicy
             string videosPath = Environment.GetFolderPath(
                 Environment.SpecialFolder.MyVideos);
             if (!string.IsNullOrWhiteSpace(videosPath))
-                return Path.Combine(videosPath, "快递打包视频");
+                return Path.Combine(videosPath, AppConfig.DefaultStorageFolderName);
         }
-        return Path.Combine(rootPath, "快递打包视频");
+        return Path.Combine(rootPath, AppConfig.DefaultStorageFolderName);
     }
 
     private static bool ProbeDirectoryWritable(string path)

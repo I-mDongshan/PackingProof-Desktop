@@ -64,7 +64,7 @@ public sealed class OrderNumberExportEndpointTests
         string name = OrderNumberExportEndpoint.BuildFileName(
             request, new DateTime(2026, 9, 13, 10, 30, 0));
 
-        Assert.Equal("单号_20260901-20260913_退货_20260913_103000.xlsx", name);
+        Assert.Equal("Orders_20260901-20260913_Return_20260913_103000.xlsx", name);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class OrderNumberExportEndpointTests
         string name = OrderNumberExportEndpoint.BuildFileName(
             request, new DateTime(2026, 9, 13, 10, 30, 0));
 
-        Assert.StartsWith("单号_全部_", name);
+        Assert.StartsWith("Orders_all_", name);
         Assert.EndsWith(".xlsx", name);
     }
 
@@ -84,9 +84,9 @@ public sealed class OrderNumberExportEndpointTests
     {
         var now = new DateTime(2026, 9, 13);
 
-        Assert.Contains("20260901起", OrderNumberExportEndpoint.BuildFileName(
+        Assert.Contains("20260901-now", OrderNumberExportEndpoint.BuildFileName(
             new OrderNumberExportEndpoint.Request(new DateTime(2026, 9, 1), null, ""), now));
-        Assert.Contains("截至20260913", OrderNumberExportEndpoint.BuildFileName(
+        Assert.Contains("up-to-20260913", OrderNumberExportEndpoint.BuildFileName(
             new OrderNumberExportEndpoint.Request(null, new DateTime(2026, 9, 13), ""), now));
     }
 
