@@ -247,6 +247,9 @@ namespace ExpressPackingMonitoring
         /// </summary>
         private static void SeedSharedRuntimeLayout()
         {
+            if (PackagingIdentity.IsPackaged)
+                return;
+
             try
             {
                 string appDirectory = System.IO.Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);

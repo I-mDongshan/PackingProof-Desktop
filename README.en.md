@@ -39,6 +39,7 @@
 **Desktop capabilities**
 
 - Scan-triggered recording: a shipping-label barcode starts the recording, footage is filed by tracking number, with continuous-scan and one-segment-per-order modes
+- Event pre-record buffer: keeps the moments before the scan so the recording starts before the trigger
 - Spoken order notes: buyer message, seller memo and product info read aloud, with configurable content and voice
 - Printed-refund interception: monitors refunded orders and plays a loud alert to prevent wrong shipments
 - Multi-station: phones and other PCs upload footage to this host and appear under their assigned device names

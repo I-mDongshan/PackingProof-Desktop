@@ -3696,10 +3696,14 @@
                                             <TextBlock Text="开机自启动" Style="{StaticResource FieldLabelStyle}"/>
                                             <TextBlock Text="电脑开机后自动启动本程序"
                                                     Style="{StaticResource FieldHintStyle}"/>
+                                            <TextBlock Text="商店版请在 Windows 设置 → 应用 → 启动 中管理"
+                                                    Style="{StaticResource FieldHintStyle}"
+                                                    Visibility="{Binding Capabilities.IsStorePackage, Converter={StaticResource BoolToVisibility}}"/>
                                         </StackPanel>
                                         <CheckBox x:Name="AutoStartCheckBox"
                                                 Grid.Column="2"
                                                 IsChecked="{Binding Config.AutoStartOnBoot}"
+                                                IsEnabled="{Binding Capabilities.CanManageAutoStart}"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Left"
                                                 Style="{StaticResource ToggleSwitchStyle}"/>
@@ -3715,9 +3719,13 @@
                                             <TextBlock Text="自动检查更新" Style="{StaticResource FieldLabelStyle}"/>
                                             <TextBlock Text="根目录启动器后台下载增量包，下次启动时自动安装"
                                                     Style="{StaticResource FieldHintStyle}"/>
+                                            <TextBlock Text="商店版由 Microsoft Store 自动更新，不接收预览版"
+                                                    Style="{StaticResource FieldHintStyle}"
+                                                    Visibility="{Binding Capabilities.IsStorePackage, Converter={StaticResource BoolToVisibility}}"/>
                                         </StackPanel>
                                         <CheckBox Grid.Column="2"
                                                 IsChecked="{Binding Config.EnableAutoCheckUpdate}"
+                                                IsEnabled="{Binding Capabilities.CanManageAppUpdates}"
                                                 VerticalAlignment="Center"
                                                 HorizontalAlignment="Left"
                                                 Style="{StaticResource ToggleSwitchStyle}"/>
@@ -3736,6 +3744,7 @@
                                         </StackPanel>
                                         <CheckBox Grid.Column="2"
                                                   IsChecked="{Binding Config.AllowPrereleaseUpdates}"
+                                                  IsEnabled="{Binding Capabilities.CanManageAppUpdates}"
                                                   VerticalAlignment="Center"
                                                   HorizontalAlignment="Left"
                                                   Style="{StaticResource ToggleSwitchStyle}"/>

@@ -244,8 +244,9 @@ namespace ExpressPackingMonitoring.UI
                 RefreshRecordingCacheStorageSummary();
             }
 
-            // 从注册表读取实际的开机自启动状态
-            Config.AutoStartOnBoot = AutoStartService.IsEnabled();
+            // Setup 版从注册表读取实际的开机自启动状态；商店版由 MSIX startupTask 管理。
+            if (!Capabilities.IsStorePackage)
+                Config.AutoStartOnBoot = AutoStartService.IsEnabled();
 
             // 窗口加载后异步枚举设备，避免阻塞UI线程
             this.Loaded += SettingsWindow_Loaded;
@@ -1831,7 +1832,8 @@ namespace ExpressPackingMonitoring.UI
             if (!ValidateOrderIdRegexBeforeSave())
                 return false;
 
-            AutoStartService.Apply(Config.AutoStartOnBoot);
+            if (!Capabilities.IsStorePackage)
+                AutoStartService.Apply(Config.AutoStartOnBoot);
             var appliedConfig = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(Config)) ?? new AppConfig();
             bool applied = await Context.ApplyAsync(appliedConfig);
             if (applied)
@@ -2609,6 +2611,15 @@ namespace ExpressPackingMonitoring.UI
 
         private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
         {
+            if (Capabilities.IsStorePackage)
+            {
+                AppDialog.Information(
+                    this,
+                    "商店版更新由 Microsoft Store 统一管理，请打开 Microsoft Store 的“库”页面检查更新",
+                    "检查更新");
+                return;
+            }
+
             CheckUpdateButton.IsEnabled = false;
             CheckUpdateButton.Content = "正在检查...";
 

@@ -57,6 +57,7 @@ Image/PixPin_*.jpg
 .tmp/
 Videos/*
 package/*
+Tools/store-package.local.json
 TODO.md
 node_modules/
 TestResults/

@@ -52,6 +52,11 @@ public sealed class SettingsCapabilities
     public bool CanViewStorageSettings =>
         CanConfigureStorage || CanConfigureRecordingCache;
 
+    /// <summary>当前是不是 Microsoft Store 的 MSIX 包；商店版由包管理器负责更新和启动项。</summary>
+    public bool IsStorePackage { get; } = PackagingIdentity.IsPackaged;
+    public bool CanManageAutoStart => !IsStorePackage;
+    public bool CanManageAppUpdates => !IsStorePackage;
+
     public bool SupportsSpeechSettings => CanRecordPcVideo;
     public bool SupportsScannerSettings => CanUseScanner;
     public bool SupportsOrderVoiceSettings => IsRecordingDevice;

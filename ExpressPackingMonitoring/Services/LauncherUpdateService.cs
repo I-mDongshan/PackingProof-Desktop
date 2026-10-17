@@ -101,6 +101,12 @@ internal sealed class LauncherUpdateService
     /// <returns>启动器文件这次有没有被换掉（见 <see cref="LauncherUpdateOutcome"/>）。</returns>
     public async Task<LauncherUpdateOutcome> CheckAndApplyAsync(bool enabled, CancellationToken cancellationToken, bool force = false)
     {
+        if (PackagingIdentity.IsPackaged)
+        {
+            RuntimeLog.Info("LauncherUpdate", "Skip packaged app; Microsoft Store owns updates");
+            return LauncherUpdateOutcome.Unchanged;
+        }
+
         if (!enabled)
         {
             RuntimeLog.Info("LauncherUpdate", "Automatic update is disabled");
@@ -374,6 +380,9 @@ internal sealed class LauncherUpdateService
     internal static bool TryResolveInstalledLauncher(string appBaseDirectory, out string launcherPath)
     {
         launcherPath = "";
+        if (PackagingIdentity.IsPackaged)
+            return false;
+
         try
         {
             var appDirectory = new DirectoryInfo(

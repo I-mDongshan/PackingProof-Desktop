@@ -1,3 +1,4 @@
+using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Logging;
 using System.Runtime.InteropServices;
 
@@ -9,6 +10,10 @@ internal static class TaskbarIdentityService
 
     internal static void TryApply()
     {
+        // 包身份下由 MSIX 决定 AUMID，自己覆盖会让任务栏和启动项对不上。
+        if (PackagingIdentity.IsPackaged)
+            return;
+
         try
         {
             int result = SetCurrentProcessExplicitAppUserModelID(AppUserModelId);

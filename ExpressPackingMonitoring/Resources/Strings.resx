@@ -142,6 +142,7 @@
   <data name="单字符间隔上限" xml:space="preserve"><value>Maximum character interval</value></data>
   <data name="底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示" xml:space="preserve"><value>The underlying layer is still saved as CQP. The smaller the CQP value, the clearer and larger the file; here it is displayed in a more intuitive direction.</value></data>
   <data name="电脑开机后自动启动本程序" xml:space="preserve"><value>This program will automatically start after the computer is turned on.</value></data>
+  <data name="商店版请在 Windows 设置 → 应用 → 启动 中管理" xml:space="preserve"><value>In the Store edition, manage this in Windows Settings &gt; Apps &gt; Startup</value></data>
   <data name="调试日志" xml:space="preserve"><value>Debug logging</value></data>
   <data name="调整播报快慢" xml:space="preserve"><value>Adjust the broadcast speed</value></data>
   <data name="订单备注播报" xml:space="preserve"><value>Order-note announcements</value></data>
@@ -336,6 +337,7 @@
   <data name="重置编码器检测" xml:space="preserve"><value>Reset encoder detection</value></data>
   <data name="自动检查更新" xml:space="preserve"><value>Automatically check for updates</value></data>
   <data name="接收预览版更新" xml:space="preserve"><value>Receive preview builds</value></data>
+  <data name="商店版由 Microsoft Store 自动更新，不接收预览版" xml:space="preserve"><value>The Store edition updates through Microsoft Store and does not receive preview builds</value></data>
   <data name="没经过测试的功能也会推送" xml:space="preserve"><value>Untested features are delivered too</value></data>
   <data name="自动提交停顿" xml:space="preserve"><value>Auto-submit pause</value></data>
   <data name="最大时长" xml:space="preserve"><value>Maximum duration</value></data>

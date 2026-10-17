@@ -142,6 +142,7 @@
   <data name="单字符间隔上限" xml:space="preserve"><value>1 文字あたりの間隔の上限</value></data>
   <data name="底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示" xml:space="preserve"><value>内部では引き続き CQP で保存します。CQP 値が小さいほど高画質でファイルが大きくなります。ここでは分かりやすい向きで表示します</value></data>
   <data name="电脑开机后自动启动本程序" xml:space="preserve"><value>パソコンの起動後に本プログラムを自動で開始します</value></data>
+  <data name="商店版请在 Windows 设置 → 应用 → 启动 中管理" xml:space="preserve"><value>ストア版では Windows の設定 → アプリ → スタートアップ で管理してください</value></data>
   <data name="调试日志" xml:space="preserve"><value>デバッグログ</value></data>
   <data name="调整播报快慢" xml:space="preserve"><value>読み上げ速度を調整</value></data>
   <data name="订单备注播报" xml:space="preserve"><value>注文メモの読み上げ</value></data>
@@ -336,6 +337,7 @@
   <data name="重置编码器检测" xml:space="preserve"><value>エンコーダー測定をリセット</value></data>
   <data name="自动检查更新" xml:space="preserve"><value>更新を自動確認</value></data>
   <data name="接收预览版更新" xml:space="preserve"><value>プレビュー版の更新を受け取る</value></data>
+  <data name="商店版由 Microsoft Store 自动更新，不接收预览版" xml:space="preserve"><value>ストア版は Microsoft Store から自動更新され、プレビュー版は受け取りません</value></data>
   <data name="没经过测试的功能也会推送" xml:space="preserve"><value>テストされていない機能も配信されます</value></data>
   <data name="自动提交停顿" xml:space="preserve"><value>自動送信の区切り時間</value></data>
   <data name="最大时长" xml:space="preserve"><value>最大時間</value></data>

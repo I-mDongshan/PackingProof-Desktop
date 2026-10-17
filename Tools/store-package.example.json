@@ -1,0 +1,7 @@
+{
+  "identityName": "REPLACE_WITH_PARTNER_CENTER_IDENTITY_NAME",
+  "publisher": "CN=REPLACE_WITH_PARTNER_CENTER_PUBLISHER_ID",
+  "publisherDisplayName": "PackingProof",
+  "displayName": "PackingProof 快递打包监控",
+  "description": "扫码自动录像，按快递单号保存，支持订单播报、退款拦截、局域网回放与多工位备份"
+}

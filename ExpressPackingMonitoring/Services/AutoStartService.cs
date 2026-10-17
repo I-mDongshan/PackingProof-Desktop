@@ -1,3 +1,4 @@
+using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Logging;
 using Microsoft.Win32;
 using System.IO;
@@ -11,6 +12,9 @@ internal static class AutoStartService
 
     public static void Apply(bool enable)
     {
+        if (PackagingIdentity.IsPackaged)
+            return;
+
         try
         {
             using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath, writable: true);
@@ -38,6 +42,9 @@ internal static class AutoStartService
 
     public static bool IsEnabled()
     {
+        if (PackagingIdentity.IsPackaged)
+            return false;
+
         try
         {
             using RegistryKey? key = Registry.CurrentUser.OpenSubKey(RegistryPath, writable: false);
@@ -60,6 +67,9 @@ internal static class AutoStartService
         string baseDirectory,
         Func<string, bool> fileExists)
     {
+        if (PackagingIdentity.IsPackaged)
+            return false;
+
         try
         {
             var runtimeDirectory = new DirectoryInfo(

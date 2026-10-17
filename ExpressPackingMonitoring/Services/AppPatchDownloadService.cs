@@ -92,6 +92,13 @@ internal sealed class AppPatchDownloadService
         IProgress<AppPatchDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (PackagingIdentity.IsPackaged)
+        {
+            return new AppPatchPreparationResult(
+                AppPatchPreparationStatus.FullPackageRequired,
+                "商店版由 Microsoft Store 统一更新，不能安装外部增量包");
+        }
+
         if (!LauncherUpdateService.TryResolveInstalledLauncher(
                 _appBaseDirectory,
                 out _))

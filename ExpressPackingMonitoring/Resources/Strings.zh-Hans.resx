@@ -137,6 +137,7 @@
   <data name="单字符间隔上限" xml:space="preserve"><value>单字符间隔上限</value></data>
   <data name="底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示" xml:space="preserve"><value>底层仍保存为 CQP。CQP 数值越小越清晰、文件越大；这里用更直观的方向显示</value></data>
   <data name="电脑开机后自动启动本程序" xml:space="preserve"><value>电脑开机后自动启动本程序</value></data>
+  <data name="商店版请在 Windows 设置 → 应用 → 启动 中管理" xml:space="preserve"><value>商店版请在 Windows 设置 → 应用 → 启动 中管理</value></data>
   <data name="调试日志" xml:space="preserve"><value>调试日志</value></data>
   <data name="调整播报快慢" xml:space="preserve"><value>调整播报快慢</value></data>
   <data name="订单备注播报" xml:space="preserve"><value>订单备注播报</value></data>
@@ -330,6 +331,7 @@
   <data name="重置编码器检测" xml:space="preserve"><value>重置编码器检测</value></data>
   <data name="自动检查更新" xml:space="preserve"><value>自动检查更新</value></data>
   <data name="接收预览版更新" xml:space="preserve"><value>接收预览版更新</value></data>
+  <data name="商店版由 Microsoft Store 自动更新，不接收预览版" xml:space="preserve"><value>商店版由 Microsoft Store 自动更新，不接收预览版</value></data>
   <data name="没经过测试的功能也会推送" xml:space="preserve"><value>没经过测试的功能也会推送</value></data>
   <data name="自动提交停顿" xml:space="preserve"><value>自动提交停顿</value></data>
   <data name="最大时长" xml:space="preserve"><value>最大时长</value></data>

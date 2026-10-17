@@ -22,8 +22,13 @@ namespace ExpressPackingMonitoring.Config
                 return Path.GetFullPath(overridePath);
 
             string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return string.IsNullOrWhiteSpace(localAppData)
-                ? AppDomain.CurrentDomain.BaseDirectory
+            if (string.IsNullOrWhiteSpace(localAppData))
+                return AppDomain.CurrentDomain.BaseDirectory;
+
+            // 商店版把配置、日志和录像库放进包自己的 LocalState：
+            // 卸载时由 Windows 一并回收，也不会和 Setup 版的 %LOCALAPPDATA% 数据互相覆盖。
+            return PackagingIdentity.TryGetPackageFamilyName(out string packageFamilyName)
+                ? Path.Combine(localAppData, "Packages", packageFamilyName, "LocalState")
                 : localAppData;
         }
 
