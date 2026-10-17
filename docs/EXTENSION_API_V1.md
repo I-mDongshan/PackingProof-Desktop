@@ -37,6 +37,8 @@ PackingProof 不执行导入的脚本，也不会把脚本加载为桌面端插�
 
 扩展市场还支持 `external-adapter` PPEXT。PackingProof 只验证签名市场索引、SHA-256、`packingproof-extension` 格式标识和包结构，再安全解包到用户数据目录；不会自动执行其中的程序。外部适配器是普通 Windows 程序，不受 PackingProof 沙箱限制，市场详情和安装确认页会明确提示其源码状态与系统访问风险。
 
+外部适配器**共用桌面端的 .NET 运行时**：启动时 PackingProof 把共享运行时布局通过 `DOTNET_ROOT` 交给它（布局由主程序在安装根目录落成，见发布文档），所以框架依赖的 .NET 扩展不需要自带运行时，也不必要求用户另装 .NET；自带运行时或原生程序照常运行。扩展作者只需要把 `TargetFramework` 对应的框架版本写进 manifest 的 `minPackingProofVersion` 门槛（桌面端与扩展必须同一大版本），市场会在详情页和安装确认里说明"运行方式：需要手动启动、.NET 扩展复用桌面端运行时"
+
 外部适配器可在包内 manifest 声明可选的 `launcher.path`（仅限 `payload/` 下的 `.exe`、`.cmd` 或 `.bat`）。市场安装后用户可点击“启动”直接运行；未声明时按钮保持灰色不可用，仍可打开目录手动运行。启动失败只提示用户，不会影响 Desktop 主程序
 
 ## 外部适配器的数据目录（v1 约定）
