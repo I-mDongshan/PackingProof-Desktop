@@ -304,13 +304,23 @@ function Test-LauncherBaselineSourceUnchanged {
     foreach ($logicalPath in $logicalFiles) {
         $tagPath = $logicalPath.Replace('\', '/')
         $headPath = (Resolve-LauncherFingerprintPath $logicalPath).Replace('\', '/')
-        $tagBlob = & git -C $RepositoryRoot rev-parse --verify --quiet "${tagCommit}:$tagPath" 2>$null |
-            Select-Object -First 1
+        # 旧基线标签可能仍在逻辑目录（例如 ExpressPackingMonitoring.Launcher\Program.cs），
+        # 新基线标签已经在当前物理目录（src\...）。两种标签都要能比较，否则目录调整后
+        # 新建的 launcher-vX.Y.Z 会永远被误判为“源码已变化”。
+        $tagBlob = ""
+        foreach ($candidateTagPath in @($tagPath, $headPath) | Select-Object -Unique) {
+            $candidateBlob = & git -C $RepositoryRoot rev-parse --verify --quiet "${tagCommit}:$candidateTagPath" 2>$null |
+                Select-Object -First 1
+            if (-not [string]::IsNullOrWhiteSpace($candidateBlob)) {
+                $tagBlob = $candidateBlob.Trim()
+                break
+            }
+        }
         $headBlob = & git -C $RepositoryRoot rev-parse --verify --quiet "HEAD:$headPath" 2>$null |
             Select-Object -First 1
         if ([string]::IsNullOrWhiteSpace($tagBlob) -or
             [string]::IsNullOrWhiteSpace($headBlob) -or
-            -not [string]::Equals($tagBlob.Trim(), $headBlob.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+            -not [string]::Equals($tagBlob, $headBlob.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
             return $false
         }
     }
