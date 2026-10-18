@@ -444,7 +444,11 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("SmartScreen", publishScript);
         Assert.Contains("GitHub 默认上传", publishScript);
         Assert.Contains("Gitee 命令行上传", publishScript);
-        Assert.Contains("Setup 使用 Full download page", publishScript);
+        Assert.Contains("$giteeAssetIndex", publishScript);
+        Assert.Contains("完整 Setup 严格小于 100MB，已直接上传 Gitee", publishScript);
+        Assert.Contains(
+            "完整 Setup 达到 100MB，Gitee 使用 no-runtime 安装向导或 Full download page",
+            publishScript);
         Assert.Contains("[switch]$IncludeFullZip", publishScript);
         Assert.Contains("if ($IncludeFullZip)", publishScript);
         // 完整 7z 与完整 ZIP 都不再上传 Release，默认也不生成，只能显式开启。
