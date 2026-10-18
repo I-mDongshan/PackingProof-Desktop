@@ -1837,21 +1837,32 @@ else {
 }
 $releaseInfoLines += ""
 $releaseInfoLines += "Gitee 命令行上传："
+$giteeAssetIndex = 1
+if ($giteeSetupIncluded) {
+    $releaseInfoLines += "$giteeAssetIndex. Windows 安装向导（推荐）：" + $setupFileName
+    $giteeAssetIndex++
+}
 if ($patchSupported) {
-    $releaseInfoLines += "1. AppPatch（自动/手动主程序更新）：" + $patchReleaseInfo
+    $releaseInfoLines += "$giteeAssetIndex. AppPatch（自动/手动主程序更新）：" + $patchReleaseInfo
+    $giteeAssetIndex++
     if ($launcherPublishedWithRelease) {
-        $releaseInfoLines += "2. LauncherPatch（本版本建立新启动器基线）：" + $launcherPackageName
-        $releaseInfoLines += "3. " + (ConvertFrom-Utf8Base64 "5pu05paw5o+P6L+w5paH5Lu277ya") + $updateJsonName
+        $releaseInfoLines += "$giteeAssetIndex. LauncherPatch（本版本建立新启动器基线）：" + $launcherPackageName
+        $giteeAssetIndex++
     }
     else {
-        $releaseInfoLines += "2. " + (ConvertFrom-Utf8Base64 "5pu05paw5o+P6L+w5paH5Lu277ya") + $updateJsonName
         $releaseInfoLines += "启动器沿用 $($launcherBaseline.tag)，本版本不要重复上传 LauncherPatch"
     }
+    $releaseInfoLines += "$giteeAssetIndex. " + (ConvertFrom-Utf8Base64 "5pu05paw5o+P6L+w5paH5Lu277ya") + $updateJsonName
 }
 else {
-    $releaseInfoLines += "1. " + (ConvertFrom-Utf8Base64 "5pu05paw5o+P6L+w5paH5Lu277ya") + $updateJsonName
+    $releaseInfoLines += "$giteeAssetIndex. " + (ConvertFrom-Utf8Base64 "5pu05paw5o+P6L+w5paH5Lu277ya") + $updateJsonName
 }
-$releaseInfoLines += "Setup 使用 Full download page，不上传到 Gitee"
+if ($giteeSetupIncluded) {
+    $releaseInfoLines += "完整 Setup 严格小于 100MB，已直接上传 Gitee"
+}
+else {
+    $releaseInfoLines += "完整 Setup 达到 100MB，Gitee 使用 no-runtime 安装向导或 Full download page"
+}
 $releaseInfoLines += "完整 7z 与完整 ZIP 默认不生成、不上传；仅在本地确有需要时传入 -IncludeSevenZip 或 -IncludeFullZip"
 $releaseInfoLines += "Local verification only (do not upload by default): " + $launcherManifestName
 $releaseInfoLines += ""
