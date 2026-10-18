@@ -445,6 +445,13 @@ var
 begin
   Result := '';
   NeedsRestart := False;
+  // 直接覆盖安装也必须先拦住运行中的程序；CloseApplications 只能兜底，
+  // 不能替代明确的“请先关闭”提示，否则录像中可能被自动关闭。
+  if IsPackingProofRunning then
+  begin
+    Result := CustomMessage('AppRunningBeforeRemove');
+    Exit;
+  end;
   if not RemoveOldVersion then
     Exit;
 

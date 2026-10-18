@@ -380,7 +380,23 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("function IsPackingProofRunning: Boolean", innoScript);
         Assert.Contains("Local\\ExpressPackingMonitoring.Portable.Mutex", innoScript);
         Assert.Contains("Local\\ExpressPackingMonitoring.Mutex", innoScript);
-        Assert.Equal(3, innoScript.Split("if IsPackingProofRunning then", StringSplitOptions.None).Length - 1);
+        Assert.Equal(4, innoScript.Split("if IsPackingProofRunning then", StringSplitOptions.None).Length - 1);
+        int prepareToInstall = innoScript.IndexOf(
+            "function PrepareToInstall(var NeedsRestart: Boolean): String",
+            StringComparison.Ordinal);
+        int unconditionalRunningCheck = innoScript.IndexOf(
+            "if IsPackingProofRunning then",
+            prepareToInstall,
+            StringComparison.Ordinal);
+        int removeOldVersionExit = innoScript.IndexOf(
+            "if not RemoveOldVersion then",
+            prepareToInstall,
+            StringComparison.Ordinal);
+        Assert.True(
+            prepareToInstall >= 0
+            && unconditionalRunningCheck > prepareToInstall
+            && unconditionalRunningCheck < removeOldVersionExit,
+            "PrepareToInstall 必须在直接覆盖分支前检查运行中的程序");
         Assert.Contains("InstallDir[Length(InstallDir)] = '\\'", innoScript);
         Assert.Contains("function PrepareToInstall(var NeedsRestart: Boolean): String", innoScript);
         Assert.Contains("function RemoveOldInstall", innoScript);
