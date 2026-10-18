@@ -13,6 +13,17 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class SharedRuntimeLayoutScriptTests
 {
     [Fact]
+    public void SharedRuntimeLayout_ExcludesRetiredWinFormsIntegration()
+    {
+        string script = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "tools", "SharedRuntimeLayout.Common.ps1"),
+            Encoding.UTF8);
+
+        Assert.Contains("'WindowsFormsIntegration.dll'", script, StringComparison.Ordinal);
+        Assert.Contains("'WindowsFormsIntegration.resources.dll'", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Build_WritesManifestWithVersionsAndMigrationMap()
     {
         using var fixture = new Fixture();

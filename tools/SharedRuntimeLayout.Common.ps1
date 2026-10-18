@@ -22,6 +22,8 @@ $script:SharedRuntimeExcludedFileNames = @(
     'System.Windows.Forms.Design.Editors.dll',
     'System.Windows.Forms.Design.resources.dll',
     'System.Windows.Forms.Primitives.resources.dll',
+    'WindowsFormsIntegration.dll',
+    'WindowsFormsIntegration.resources.dll',
     'Microsoft.VisualBasic.Forms.dll',
     'Microsoft.VisualBasic.Forms.resources.dll',
     'System.Design.dll',
