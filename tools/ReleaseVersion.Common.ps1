@@ -145,6 +145,25 @@ function Get-ArchiveTextEntry {
     }
 }
 
+function Test-AllowedStoreArchiveEntry {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -in @(
+        "AppxManifest.xml",
+        "AppxBlockMap.xml",
+        "AppxSignature.p7x",
+        "[Content_Types].xml",
+        "PackingProof.PackageEdition.json"
+    )) {
+        return $true
+    }
+    if ($Name.StartsWith("Assets/", [System.StringComparison]::Ordinal) -or
+        $Name.StartsWith("AppxMetadata/", [System.StringComparison]::Ordinal)) {
+        return $true
+    }
+    return $Name -match '^resources(?:\..+)?\.pri$'
+}
+
 function Assert-AppPayloadMatchesArchive {
     param(
         [Parameter(Mandatory = $true)][string]$AppDir,
@@ -189,6 +208,19 @@ function Assert-AppPayloadMatchesArchive {
             }
         }
 
+        foreach ($entryName in $entries.Keys) {
+            if ($entryName.EndsWith("/", [System.StringComparison]::Ordinal)) {
+                continue
+            }
+            if ($expectedFiles.Contains($entryName)) {
+                continue
+            }
+            if (Test-AllowedStoreArchiveEntry -Name $entryName) {
+                continue
+            }
+            throw "MSIX 包含 Setup 负载之外的文件：$entryName"
+        }
+
         return $expectedFiles.Count
     }
     finally {
@@ -225,4 +257,52 @@ function Assert-StorePayloadManifest {
         [string]$Manifest.app_release_version -ne $Version) {
         throw "Store 包清单版本与发布版本不一致：$($Manifest.app_release_version) / $Version"
     }
+}
+
+# Setup 与 Store 同源校验只认本次构建目录。没有 ExpectedFingerprint 时
+# （AppPatch 产物守卫）才允许退回同版本最新 sibling，避免旧目录被误当成本次负载。
+function Resolve-ReleasePayloadAppDir {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackageRoot,
+        [Parameter(Mandatory = $true)][string]$Version,
+        [string]$ExpectedFingerprint = ""
+    )
+
+    $exact = Join-Path $PackageRoot ("PackingProof+v" + $Version + "\app")
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedFingerprint)) {
+        if (-not (Test-Path -LiteralPath (Join-Path $exact "ExpressPackingMonitoring.exe") -PathType Leaf)) {
+            throw "本次 Setup 的 app 目录不存在：$exact；不能用旧 sibling 目录替代"
+        }
+        $actualFingerprint = Get-AppPayloadFingerprint -AppDir $exact
+        if (-not [string]::Equals(
+                $actualFingerprint,
+                $ExpectedFingerprint,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "本次 Setup 的 app 目录与 Store 清单不一致（旧 MSIX 或旧清单），拒绝发布：$exact"
+        }
+        return $exact
+    }
+
+    $candidateAppDirs = @()
+    if (Test-Path -LiteralPath (Join-Path $exact "ExpressPackingMonitoring.exe") -PathType Leaf) {
+        $candidateAppDirs += $exact
+    }
+    $candidateAppDirs += @(
+        Get-ChildItem -LiteralPath $PackageRoot -Directory -Filter ("PackingProof+v" + $Version + "*") `
+            -ErrorAction SilentlyContinue |
+            Where-Object {
+                Test-Path -LiteralPath (Join-Path $_.FullName "app\ExpressPackingMonitoring.exe") `
+                    -PathType Leaf
+            } |
+            ForEach-Object { Join-Path $_.FullName "app" }
+    )
+    $candidateAppDirs = @(
+        $candidateAppDirs |
+            Sort-Object -Unique |
+            Sort-Object { (Get-Item -LiteralPath $_).LastWriteTime } -Descending
+    )
+    if ($candidateAppDirs.Count -eq 0) {
+        throw "找不到与版本 $Version 对应的 Setup app\ 负载：$PackageRoot"
+    }
+    return $candidateAppDirs[0]
 }

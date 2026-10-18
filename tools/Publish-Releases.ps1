@@ -65,52 +65,6 @@ function Get-LocalFileSha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-function Resolve-PayloadAppDir {
-    param(
-        [Parameter(Mandatory = $true)][string]$PackageRoot,
-        [Parameter(Mandatory = $true)][string]$Version,
-        [string]$ExpectedFingerprint = ""
-    )
-
-    $exact = Join-Path $PackageRoot ("PackingProof+v" + $Version + "\app")
-    $candidateAppDirs = @()
-    if (Test-Path -LiteralPath (Join-Path $exact "ExpressPackingMonitoring.exe") -PathType Leaf) {
-        $candidateAppDirs += $exact
-    }
-    $candidateAppDirs += @(
-        Get-ChildItem -LiteralPath $PackageRoot -Directory -Filter ("PackingProof+v" + $Version + "*") `
-            -ErrorAction SilentlyContinue |
-            Where-Object {
-                Test-Path -LiteralPath (Join-Path $_.FullName "app\ExpressPackingMonitoring.exe") `
-                    -PathType Leaf
-            } |
-            ForEach-Object { Join-Path $_.FullName "app" }
-    )
-    $candidateAppDirs = @(
-        $candidateAppDirs |
-            Sort-Object -Unique |
-            Sort-Object { (Get-Item -LiteralPath $_).LastWriteTime } -Descending
-    )
-    if ($candidateAppDirs.Count -eq 0) {
-        throw "找不到与版本 $Version 对应的 Setup app\ 负载：$PackageRoot"
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedFingerprint)) {
-        foreach ($candidate in $candidateAppDirs) {
-            $fingerprint = Get-AppPayloadFingerprint -AppDir $candidate
-            if ([string]::Equals(
-                    $fingerprint,
-                    $ExpectedFingerprint,
-                    [System.StringComparison]::OrdinalIgnoreCase)) {
-                return $candidate
-            }
-        }
-        throw "找到 Setup app\ 负载，但没有一份与 Store 清单记录的同源；请重新出包：$PackageRoot"
-    }
-
-    return $candidateAppDirs[0]
-}
-
 # 只挑内容真的变了的附件：GitHub 附件带 sha256 可以直接比对，
 # Gitee 附件只有大小，用大小判断（更新清单这类文本文件大小一定会变）。
 function Get-StaleGitHubAssets {
@@ -286,7 +240,7 @@ else {
         throw "Store MSIX 的大小或 SHA256 与清单不一致，拒绝发布"
     }
 
-    $payloadAppDir = Resolve-PayloadAppDir `
+    $payloadAppDir = Resolve-ReleasePayloadAppDir `
         -PackageRoot $packageRoot `
         -Version $version `
         -ExpectedFingerprint ([string]$storeManifest.app_payload_sha256)
@@ -373,7 +327,7 @@ if (Test-Path -LiteralPath $launcherPatchPath) {
 # 只看"补丁包存在"不够 —— 它可能是别处、别的提交构建出来的旧文件；这次现场之所以要返工，
 # 就是包看着是新的、里面却是旧的。这里把 AppPatch 解开，跟产物目录里的同一份程序集逐个比对。
 if (Test-Path -LiteralPath $appPatchPath) {
-    $payloadAppDir = Resolve-PayloadAppDir -PackageRoot $packageRoot -Version $version
+    $payloadAppDir = Resolve-ReleasePayloadAppDir -PackageRoot $packageRoot -Version $version
     $guardTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("epm-patch-guard-" + [System.Guid]::NewGuid().ToString("N"))
     Expand-Archive -LiteralPath $appPatchPath -DestinationPath $guardTmpDir -Force
     try {

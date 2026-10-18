@@ -385,6 +385,13 @@ if ([string]::Equals($packageArtifactRoot, $outputFullPath, [System.StringCompar
     throw "ZipPath must not be inside OutputDir, otherwise the package may include itself: $zipFullPath"
 }
 
+# 同版本重打时，在构建 Setup 之前就让旧 Store 清单失效。否则构建中途失败、
+# 或跳过 Store 打包时，旧清单仍可能与旧 MSIX/旧 sibling 一起通过发布门禁。
+$storeManifestPath = Join-Path $packageArtifactRoot "store_package_$releaseTag.json"
+if (Test-Path -LiteralPath $storeManifestPath) {
+    Remove-Item -LiteralPath $storeManifestPath -Force
+}
+
 $patchBaselineExplicit = $PSBoundParameters.ContainsKey("PatchBaselineVersion")
 $patchBaselineResolution = Resolve-EffectivePatchBaseline `
     -BaselineAppDir $BaselineAppDir `
@@ -1584,12 +1591,6 @@ $storePackageHash = ""
 $storePackageSize = 0
 $storePackageVersion = ""
 $storePackageIdentity = ""
-$storeManifestPath = Join-Path $packageRoot "store_package_$releaseTag.json"
-# 同版本重打时，旧清单必须失效；否则跳过 Store 打包后会留下“旧清单 + 旧 MSIX”
-# 被发布门禁误认为本次产物。先删旧清单，成功构建后再写新的。
-if (Test-Path -LiteralPath $storeManifestPath) {
-    Remove-Item -LiteralPath $storeManifestPath -Force
-}
 if ($SkipStorePackage) {
     Write-Warning "已跳过 Microsoft Store MSIX；该选项只用于本地验证，正式发布必须同时产出商店包。"
 }

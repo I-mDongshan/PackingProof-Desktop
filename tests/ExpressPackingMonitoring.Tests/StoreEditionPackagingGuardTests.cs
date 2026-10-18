@@ -79,6 +79,7 @@ public sealed class StoreEditionPackagingGuardTests
     {
         string publishScript = ReadRepositoryFile("tools", "Publish-CleanPackage.ps1");
         string releaseScript = ReadRepositoryFile("tools", "Publish-Releases.ps1");
+        string versionCommon = ReadRepositoryFile("tools", "ReleaseVersion.Common.ps1");
         string prereqs = ReadRepositoryFile("tools", "Check-ReleasePrereqs.ps1");
 
         Assert.Contains("-AppPayloadDir", publishScript, StringComparison.Ordinal);
@@ -88,18 +89,29 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("store_package_$releaseTag.json", publishScript, StringComparison.Ordinal);
         Assert.Contains("app_payload_sha256", publishScript, StringComparison.Ordinal);
         Assert.Contains("app_payload_file_count", publishScript, StringComparison.Ordinal);
-        Assert.Contains("Get-AppPayloadFingerprint", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Get-AppPayloadFingerprint", versionCommon, StringComparison.Ordinal);
         Assert.Contains("Assert-AppPayloadMatchesArchive", releaseScript, StringComparison.Ordinal);
         Assert.Contains("app_payload_sha256", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("Resolve-ReleasePayloadAppDir", releaseScript, StringComparison.Ordinal);
         int staleManifestRemoval = publishScript.IndexOf(
             "Remove-Item -LiteralPath $storeManifestPath -Force",
+            StringComparison.Ordinal);
+        int appPublishDir = publishScript.IndexOf(
+            "$appPublishDir = Join-Path $outputFullPath \"app\"",
+            StringComparison.Ordinal);
+        int firstAppPublish = publishScript.IndexOf(
+            "Invoke-DotNetPublish -Arguments @(",
+            staleManifestRemoval,
             StringComparison.Ordinal);
         int skipStoreBranch = publishScript.IndexOf(
             "if ($SkipStorePackage)",
             StringComparison.Ordinal);
         Assert.True(
-            staleManifestRemoval >= 0 && skipStoreBranch > staleManifestRemoval,
-            "跳过 Store 打包前必须先删除同版本旧清单");
+            staleManifestRemoval >= 0
+            && appPublishDir > staleManifestRemoval
+            && firstAppPublish > staleManifestRemoval
+            && skipStoreBranch > staleManifestRemoval,
+            "构建 Setup 前必须先删除同版本旧 Store 清单");
         Assert.Contains("正式发布必须包含 Microsoft Store 包", releaseScript, StringComparison.Ordinal);
         Assert.Contains("Microsoft Store MSIX (submit via Partner Center", publishScript, StringComparison.Ordinal);
         Assert.Contains("store-package.local.json", prereqs, StringComparison.Ordinal);

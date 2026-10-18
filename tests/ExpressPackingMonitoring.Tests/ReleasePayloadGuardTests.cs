@@ -84,7 +84,56 @@ public sealed class ReleasePayloadGuardTests
                     throw '缺少文件时应当拒绝'
                 }
                 catch {
-                    if ($_.Exception.Message -notlike '*缺少*') { throw }
+                    if ($_.Exception.Message -notlike '*缺少*' -and
+                        $_.Exception.Message -notlike '*之外*') { throw }
+                }
+            }
+            finally {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            """;
+
+        ProcessResult result = RunPowerShell(command);
+        Assert.True(result.ExitCode == 0, result.Combined);
+    }
+
+    [Fact]
+    public void AppPayloadArchiveGuard_RejectsExtraStoreFiles()
+    {
+        string common = EscapePowerShell(Path.Combine(
+            FindRepositoryRoot(),
+            "tools",
+            "ReleaseVersion.Common.ps1"));
+        string command = $$"""
+            $ErrorActionPreference = 'Stop'
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('pp-payload-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $app = Join-Path $root 'app'
+                New-Item -ItemType Directory -Path $app -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $app 'ExpressPackingMonitoring.exe') -Value 'exe'
+                $zip = Join-Path $root 'payload.zip'
+                Compress-Archive -Path (Join-Path $app '*') -DestinationPath $zip
+
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                $archive = [System.IO.Compression.ZipFile]::Open(
+                    $zip,
+                    [System.IO.Compression.ZipArchiveMode]::Update)
+                try {
+                    $extra = $archive.CreateEntry('old.dll')
+                    $writer = [System.IO.StreamWriter]::new($extra.Open())
+                    try { $writer.Write('old') } finally { $writer.Dispose() }
+                }
+                finally {
+                    $archive.Dispose()
+                }
+
+                . '{{common}}'
+                try {
+                    Assert-AppPayloadMatchesArchive -AppDir $app -ArchivePath $zip | Out-Null
+                    throw 'MSIX 中的额外旧文件应当被拒绝'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*之外*') { throw }
                 }
             }
             finally {
@@ -144,6 +193,72 @@ public sealed class ReleasePayloadGuardTests
                 }
                 catch {
                     if ($_.Exception.Message -notlike '*不一致*') { throw }
+                }
+            }
+            finally {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            """;
+
+        ProcessResult result = RunPowerShell(command);
+        Assert.True(result.ExitCode == 0, result.Combined);
+    }
+
+    [Fact]
+    public void StorePayloadDirectoryResolution_DoesNotFallBackToOldSibling()
+    {
+        string common = EscapePowerShell(Path.Combine(
+            FindRepositoryRoot(),
+            "tools",
+            "ReleaseVersion.Common.ps1"));
+        string command = $$"""
+            $ErrorActionPreference = 'Stop'
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('pp-payload-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $exactApp = Join-Path $root 'PackingProof+v0.0.86\app'
+                $oldApp = Join-Path $root 'PackingProof+v0.0.86-2-gold\app'
+                New-Item -ItemType Directory -Path $exactApp -Force | Out-Null
+                New-Item -ItemType Directory -Path $oldApp -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $exactApp 'ExpressPackingMonitoring.exe') -Value 'new'
+                Set-Content -LiteralPath (Join-Path $oldApp 'ExpressPackingMonitoring.exe') -Value 'old'
+                . '{{common}}'
+
+                $oldFingerprint = Get-AppPayloadFingerprint -AppDir $oldApp
+                $newFingerprint = Get-AppPayloadFingerprint -AppDir $exactApp
+                try {
+                    Resolve-ReleasePayloadAppDir `
+                        -PackageRoot $root `
+                        -Version '0.0.86' `
+                        -ExpectedFingerprint $oldFingerprint | Out-Null
+                    throw 'exact app 不匹配时不应回退到旧 sibling'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*不一致*') { throw }
+                }
+
+                $resolved = Resolve-ReleasePayloadAppDir `
+                    -PackageRoot $root `
+                    -Version '0.0.86' `
+                    -ExpectedFingerprint $newFingerprint
+                if ((Resolve-Path -LiteralPath $resolved).Path -ne
+                    (Resolve-Path -LiteralPath $exactApp).Path) {
+                    throw "应返回本次 exact app，实际返回：$resolved"
+                }
+
+                $missingExactRoot = Join-Path $root 'missing-exact'
+                $missingExactApp = Join-Path $missingExactRoot 'PackingProof+v0.0.86-2-gold\app'
+                New-Item -ItemType Directory -Path $missingExactApp -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $missingExactApp 'ExpressPackingMonitoring.exe') -Value 'old'
+                $missingExactFingerprint = Get-AppPayloadFingerprint -AppDir $missingExactApp
+                try {
+                    Resolve-ReleasePayloadAppDir `
+                        -PackageRoot $missingExactRoot `
+                        -Version '0.0.86' `
+                        -ExpectedFingerprint $missingExactFingerprint | Out-Null
+                    throw 'exact app 不存在时不应回退到 sibling'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*不存在*') { throw }
                 }
             }
             finally {
