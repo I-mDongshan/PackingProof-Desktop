@@ -146,6 +146,44 @@ public sealed class ReleasePayloadGuardTests
     }
 
     [Fact]
+    public void AppPayloadArchiveGuard_CanExcludeRuntimeSeedForStore()
+    {
+        string common = EscapePowerShell(Path.Combine(
+            FindRepositoryRoot(),
+            "tools",
+            "ReleaseVersion.Common.ps1"));
+        string command = $$"""
+            $ErrorActionPreference = 'Stop'
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('pp-payload-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $app = Join-Path $root 'app'
+                $seed = Join-Path $app 'runtime-seed\shared'
+                New-Item -ItemType Directory -Path $seed -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $app 'ExpressPackingMonitoring.exe') -Value 'exe'
+                Set-Content -LiteralPath (Join-Path $seed 'seed.dll') -Value 'seed'
+                $storePayload = Join-Path $root 'store-payload'
+                New-Item -ItemType Directory -Path $storePayload -Force | Out-Null
+                Copy-Item -LiteralPath (Join-Path $app 'ExpressPackingMonitoring.exe') -Destination $storePayload
+                $zip = Join-Path $root 'store.msix.zip'
+                Compress-Archive -Path (Join-Path $storePayload '*') -DestinationPath $zip
+                . '{{common}}'
+
+                $count = Assert-AppPayloadMatchesArchive `
+                    -AppDir $app `
+                    -ArchivePath $zip `
+                    -ExcludeRelativePrefixes @('runtime-seed/')
+                if ($count -ne 1) { throw "Exclude runtime-seed 后应比较 1 个文件，实际 $count" }
+            }
+            finally {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            """;
+
+        ProcessResult result = RunPowerShell(command);
+        Assert.True(result.ExitCode == 0, result.Combined);
+    }
+
+    [Fact]
     public void StorePayloadManifestGuard_RejectsLegacyOrStaleManifest()
     {
         string common = EscapePowerShell(Path.Combine(

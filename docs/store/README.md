@@ -86,6 +86,7 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 ## 5. 商店版与 Setup 版的差异
 
 - 商店版不运行根启动器和 AppPatch 自更新，更新由 Microsoft Store 负责。
+- 商店版以 MSIX 包身份运行，不落成共享 `runtime\`，因此 Store MSIX 不包含只供 Setup 版扩展市场使用的 `runtime-seed`。
 - 商店版数据在包自己的 LocalState 中，和 Setup 版的 `%LOCALAPPDATA%\ExpressPackingMonitoring` 使用独立数据目录，互不覆盖。
 - 两个版本可以并存，但始终安装在不同目录，不会互相覆盖程序文件。先装 Setup 再装商店版、先装商店版再装 Setup 都按这个规则处理；Setup 安装器检测到商店版时会明确提示。
 - 两个版本的数据不会自动迁移或同步：商店版看不到 Setup 版的设置和录像，反之亦然。切换版本前请先确认数据所在版本，不要把一边的配置/数据库手工覆盖到另一边。

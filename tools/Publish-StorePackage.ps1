@@ -230,6 +230,17 @@ if (-not (Test-Path -LiteralPath (Join-Path $payloadDir "coreclr.dll") -PathType
     throw "payload 不是自包含发布：缺少 coreclr.dll"
 }
 
+# Store 版以 MSIX 包身份运行，主程序启动时会跳过共享运行时落成；
+# runtime-seed 只服务 Setup 版的扩展市场，不能进入商店包。
+$runtimeSeedDir = [System.IO.Path]::GetFullPath((Join-Path $payloadDir "runtime-seed"))
+$payloadPrefix = [System.IO.Path]::GetFullPath($payloadDir).TrimEnd('\') + '\'
+if (-not $runtimeSeedDir.StartsWith($payloadPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "runtime-seed 路径不在 Store payload 内：$runtimeSeedDir"
+}
+if (Test-Path -LiteralPath $runtimeSeedDir -PathType Container) {
+    Remove-Item -LiteralPath $runtimeSeedDir -Recurse -Force
+}
+
 # 商店包必须是完整应用，不能夹带 Setup 版的手工更新入口。
 # 商店版更新统一由 Microsoft Store 负责；这些脚本一旦混入包内，
 # 用户会误以为可以绕过商店更新，甚至把补丁往 WindowsApps 里写。

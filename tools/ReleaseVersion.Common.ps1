@@ -167,10 +167,29 @@ function Test-AllowedStoreArchiveEntry {
 function Assert-AppPayloadMatchesArchive {
     param(
         [Parameter(Mandatory = $true)][string]$AppDir,
-        [Parameter(Mandatory = $true)][string]$ArchivePath
+        [Parameter(Mandatory = $true)][string]$ArchivePath,
+        [string[]]$ExcludeRelativePrefixes = @()
     )
 
     $expectedFiles = Get-AppPayloadFileHashes -AppDir $AppDir
+    if ($ExcludeRelativePrefixes.Count -gt 0) {
+        $filtered = [ordered]@{}
+        foreach ($expected in $expectedFiles.GetEnumerator()) {
+            $relativePath = [string]$expected.Key
+            $excluded = $false
+            foreach ($prefix in $ExcludeRelativePrefixes) {
+                if (-not [string]::IsNullOrWhiteSpace($prefix) -and
+                    $relativePath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $excluded = $true
+                    break
+                }
+            }
+            if (-not $excluded) {
+                $filtered[$relativePath] = $expected.Value
+            }
+        }
+        $expectedFiles = $filtered
+    }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($ArchivePath)
     try {

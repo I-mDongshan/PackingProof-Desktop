@@ -265,7 +265,10 @@ else {
         -Manifest $storeManifest `
         -Version $version `
         -AppDir $payloadAppDir
-    [void](Assert-AppPayloadMatchesArchive -AppDir $payloadAppDir -ArchivePath $storePackagePath)
+    [void](Assert-AppPayloadMatchesArchive `
+        -AppDir $payloadAppDir `
+        -ArchivePath $storePackagePath `
+        -ExcludeRelativePrefixes @("runtime-seed/"))
 
     $editionMarkerJson = Get-ArchiveTextEntry `
         -ArchivePath $storePackagePath `

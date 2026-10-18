@@ -23,6 +23,8 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("[string]$AppPayloadDir", script, StringComparison.Ordinal);
         Assert.Contains("Get-ChildItem -LiteralPath $resolvedAppPayloadDir -Force", script, StringComparison.Ordinal);
         Assert.Contains("Copy-Item -Destination $payloadDir -Recurse -Force", script, StringComparison.Ordinal);
+        Assert.Contains("runtime-seed 只服务 Setup 版", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item -LiteralPath $runtimeSeedDir -Recurse -Force", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -91,6 +93,7 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("app_payload_file_count", publishScript, StringComparison.Ordinal);
         Assert.Contains("Get-AppPayloadFingerprint", versionCommon, StringComparison.Ordinal);
         Assert.Contains("Assert-AppPayloadMatchesArchive", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("-ExcludeRelativePrefixes @(\"runtime-seed/\")", releaseScript, StringComparison.Ordinal);
         Assert.Contains("app_payload_sha256", releaseScript, StringComparison.Ordinal);
         Assert.Contains("Resolve-ReleasePayloadAppDir", releaseScript, StringComparison.Ordinal);
         Assert.Contains("package_integrity_$releaseTag.json", publishScript, StringComparison.Ordinal);
