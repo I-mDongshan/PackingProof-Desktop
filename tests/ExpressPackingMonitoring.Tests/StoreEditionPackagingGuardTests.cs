@@ -93,6 +93,9 @@ public sealed class StoreEditionPackagingGuardTests
         Assert.Contains("Assert-AppPayloadMatchesArchive", releaseScript, StringComparison.Ordinal);
         Assert.Contains("app_payload_sha256", releaseScript, StringComparison.Ordinal);
         Assert.Contains("Resolve-ReleasePayloadAppDir", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("package_integrity_$releaseTag.json", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Assert-SetupPayloadIntegrity", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("package_integrity_", releaseScript, StringComparison.Ordinal);
         int staleManifestRemoval = publishScript.IndexOf(
             "Remove-Item -LiteralPath $storeManifestPath -Force",
             StringComparison.Ordinal);

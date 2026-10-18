@@ -52,7 +52,7 @@
 - 生成 AppPatch 前必须验证固定基线 FFmpeg 的大小和 SHA256 位于兼容白名单，并确认当前保留的每个 LibVLC 必需文件在基线中存在且哈希一致；基线多出的旧 VLC 插件可以保留
 - 兼容基线生成的 AppPatch 不得包含 `tools/ffmpeg.exe`、任何 `libvlc/` 文件或 VLC 删除记录；无法证明兼容时不得生成大型补丁，更新 JSON 必须关闭 Patch、清空补丁信息并引导用户下载完整版本
 - AppPatch 包含 `patch_manifest.json`、`files/`、`双击更新主程序.cmd`、`apply_app_patch.ps1` 和主程序更新说明，不再生成或嵌套 ManualUpdate 包
-- Store MSIX 必须与 Setup 来自同一次 `app\` 负载；核对 `package\store\PackingProof_Store_v<X.Y.Z>\PackingProof_Store_v<X.Y.Z>.msix`、`store_package_v<X.Y.Z>.json` 的身份/版本/SHA256、`app_payload_sha256` 与本次 Setup `app\` 一致，以及包内 `PackingProof.PackageEdition.json`、AppxManifest 身份/版本和“无 AppPatch/LauncherPatch 脚本”守卫
+- Store MSIX 必须与 Setup 来自同一次 `app\` 负载；核对 `package\store\PackingProof_Store_v<X.Y.Z>\PackingProof_Store_v<X.Y.Z>.msix`、`store_package_v<X.Y.Z>.json` 的身份/版本/SHA256、`app_payload_sha256` 与本次 Setup `app\` 一致，以及包内 `PackingProof.PackageEdition.json`、AppxManifest 身份/版本和“无 AppPatch/LauncherPatch 脚本”守卫；同时核对 `package_integrity_v<X.Y.Z>.json` 的 Setup SHA256/大小和 exact `app\` 指纹
 - 使用 Git 比较当前启动器逻辑输入与 `tools/launcher-baseline.json` 对应的 `launcher-vX.Y.Z` 组件标签；组件标签只推送普通 Git 标签，不创建独立 Release
 - 启动器未变化时不执行 Native AOT 重编译、不生成或上传本版本 LauncherPatch；完整包根启动器必须与锁定基线 EXE 的大小和 SHA256 完全一致
 - 启动器变化时先运行 `tools/Publish-LauncherBaseline.ps1` 建立不可变基线；LauncherPatch 只包含根启动器、`launcher_patch_manifest.json`、`双击更新启动器.cmd`、`apply_launcher_patch.ps1` 和启动器更新说明

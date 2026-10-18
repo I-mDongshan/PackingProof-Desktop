@@ -245,6 +245,15 @@ public sealed class ReleasePayloadGuardTests
                     throw "应返回本次 exact app，实际返回：$resolved"
                 }
 
+                $exactOnly = Resolve-ReleasePayloadAppDir `
+                    -PackageRoot $root `
+                    -Version '0.0.86' `
+                    -RequireExact
+                if ((Resolve-Path -LiteralPath $exactOnly).Path -ne
+                    (Resolve-Path -LiteralPath $exactApp).Path) {
+                    throw "RequireExact 应返回 exact app，实际返回：$exactOnly"
+                }
+
                 $missingExactRoot = Join-Path $root 'missing-exact'
                 $missingExactApp = Join-Path $missingExactRoot 'PackingProof+v0.0.86-2-gold\app'
                 New-Item -ItemType Directory -Path $missingExactApp -Force | Out-Null
@@ -259,6 +268,84 @@ public sealed class ReleasePayloadGuardTests
                 }
                 catch {
                     if ($_.Exception.Message -notlike '*不存在*') { throw }
+                }
+                try {
+                    Resolve-ReleasePayloadAppDir `
+                        -PackageRoot $missingExactRoot `
+                        -Version '0.0.86' `
+                        -RequireExact | Out-Null
+                    throw 'RequireExact 在 exact app 不存在时不应回退到 sibling'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*不存在*') { throw }
+                }
+            }
+            finally {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            """;
+
+        ProcessResult result = RunPowerShell(command);
+        Assert.True(result.ExitCode == 0, result.Combined);
+    }
+
+    [Fact]
+    public void SetupPayloadIntegrity_RejectsReplacedInstallerOrChangedAppPayload()
+    {
+        string common = EscapePowerShell(Path.Combine(
+            FindRepositoryRoot(),
+            "tools",
+            "ReleaseVersion.Common.ps1"));
+        string command = $$"""
+            $ErrorActionPreference = 'Stop'
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('pp-payload-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $app = Join-Path $root 'app'
+                New-Item -ItemType Directory -Path $app -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $app 'ExpressPackingMonitoring.exe') -Value 'exe'
+                $setup = Join-Path $root 'PackingProof_Setup_v0.0.86.exe'
+                Set-Content -LiteralPath $setup -Value 'setup'
+                . '{{common}}'
+
+                $manifest = [pscustomobject]@{
+                    app_release_version = '0.0.86'
+                    app_payload_sha256 = (Get-AppPayloadFingerprint -AppDir $app)
+                    app_payload_file_count = 1
+                    setup_file = 'PackingProof_Setup_v0.0.86.exe'
+                    setup_sha256 = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+                    setup_size = (Get-Item -LiteralPath $setup).Length
+                }
+                Assert-SetupPayloadIntegrity `
+                    -Manifest $manifest `
+                    -Version '0.0.86' `
+                    -SetupPath $setup `
+                    -AppDir $app
+
+                Set-Content -LiteralPath $setup -Value 'tampered'
+                try {
+                    Assert-SetupPayloadIntegrity `
+                        -Manifest $manifest `
+                        -Version '0.0.86' `
+                        -SetupPath $setup `
+                        -AppDir $app
+                    throw 'Setup 被替换时应当拒绝'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*替换*') { throw }
+                }
+
+                Set-Content -LiteralPath $setup -Value 'setup'
+                Set-Content -LiteralPath (Join-Path $app 'ExpressPackingMonitoring.exe') -Value 'changed'
+                try {
+                    Assert-SetupPayloadIntegrity `
+                        -Manifest $manifest `
+                        -Version '0.0.86' `
+                        -SetupPath $setup `
+                        -AppDir $app
+                    throw 'app 负载变化时应当拒绝'
+                }
+                catch {
+                    if ($_.Exception.Message -notlike '*不一致*') { throw }
                 }
             }
             finally {

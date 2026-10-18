@@ -1384,6 +1384,8 @@ Write-Host ("运行时种子：布局 {0} 个文件，app\ 里已有同名同哈
 [System.IO.Directory]::Delete($runtimeSeedSourcePath, $true)
 
 $packageRoot = $packageArtifactRoot
+$appPayloadManifestFiles = @(Get-AppPayloadManifestFiles -AppDir $appPublishDir)
+$appPayloadFingerprint = Get-AppPayloadFingerprint -AppDir $appPublishDir
 $legacyAppFullZipPath = Join-Path $packageRoot "ExpressPackingMonitoring_AppFull_$releaseTag.zip"
 $appPatchZipName = "PackingProof_AppPatch_$releaseTag.zip"
 $appPatchZipPath = Join-Path $packageRoot $appPatchZipName
@@ -1396,6 +1398,8 @@ $launcherManifestName = "launcher_manifest_$releaseTag.json"
 $launcherManifestPath = Join-Path $packageRoot $launcherManifestName
 $releaseInfoName = "release_info_$releaseTag.txt"
 $releaseInfoPath = Join-Path $packageRoot $releaseInfoName
+$packageIntegrityName = "package_integrity_$releaseTag.json"
+$packageIntegrityPath = Join-Path $packageRoot $packageIntegrityName
 $setupFileName = "PackingProof_Setup_v$artifactVersion.exe"
 $setupPath = Join-Path $packageRoot $setupFileName
 $releaseUrlBase = Get-ReleaseUrlBase
@@ -1482,6 +1486,16 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $setupPath -PathType Le
 $setupHash = (Get-FileHash -LiteralPath $setupPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $setupSize = (Get-Item -LiteralPath $setupPath).Length
 $setupSignatureStatus = (Get-AuthenticodeSignature -LiteralPath $setupPath).Status.ToString()
+[ordered]@{
+    app_release_version = $normalizedVersion
+    app_payload_sha256 = $appPayloadFingerprint
+    app_payload_file_count = $appPayloadManifestFiles.Count
+    setup_file = Split-Path -Leaf $setupPath
+    setup_sha256 = $setupHash
+    setup_size = $setupSize
+} |
+    ConvertTo-Json -Depth 4 |
+    Set-Content -LiteralPath $packageIntegrityPath -Encoding UTF8
 
 $patchSupported = $false
 $patchReason = ""
@@ -1659,8 +1673,6 @@ else {
         $storeArchive.Dispose()
     }
 
-    $appPayloadManifestFiles = @(Get-AppPayloadManifestFiles -AppDir $appPublishDir)
-    $appPayloadFingerprint = Get-AppPayloadFingerprint -AppDir $appPublishDir
     $storeManifest = [ordered]@{
         app_release_version = $normalizedVersion
         package_version = $storePackageVersion

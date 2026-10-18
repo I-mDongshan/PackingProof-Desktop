@@ -83,6 +83,7 @@ pwsh -NoProfile -File tools\Publish-CleanPackage.ps1 -Version <X.Y.Z> -PatchBase
 
 - `-BaselineAppDir` 必须指向真实固定基线的 `app` 子目录并包含 `tools\ffmpeg.exe`。脚本从目录解析实际基线，并强制与更新清单和补丁清单一致，禁止手工伪造。
 - Store MSIX 复用同一次 Release 的 `app\` 负载构建，不重新 `dotnet publish`；本地身份取 `tools\store-package.local.json`，缺身份或 SDK 工具时 `Check-ReleasePrereqs.ps1` 会提前阻断。产物目录同时生成 `store_package_v<X.Y.Z>.json`，记录 MSIX 的身份、版本、大小、SHA256，以及 Setup `app\` 的逐文件指纹；`Publish-Releases.ps1` 会解开 MSIX 与本次 Setup 负载逐个文件比对，旧 MSIX 或旧清单不能借同版本号通过门禁。
+- 产物根目录同时生成 `package_integrity_v<X.Y.Z>.json`，记录 Setup 的文件名、大小、SHA256 和本次 exact `app\` 的逐文件指纹；`Publish-Releases.ps1` 会校验 Setup 未被替换，并要求 Setup 与 Store MSIX 指向同一份 exact 应用负载。
 - `-ReuseExistingLauncherBaseline` 只用于同一发布标签重发；普通新版本不传。
 - 正式标签构建通过后，只把 `vX.Y.Z` 标签推送到 GitHub 与组织 Gitee 仓库 `PackingProof/PackingProof-Desktop`（`main` 已在 PR 合并时更新，不再直接推送提交），然后创建 Release；同一版本的 Store MSIX 必须在 Partner Center 完成提交，才算这次发布完成。禁止普通 `main` push 触发发布包工作流。
 - 发布前执行 `pwsh -NoProfile -File tools/Test-Release-Automated.ps1`。不得在未完成真实设备检查时传 `-ConfirmManualCoreChecks`。

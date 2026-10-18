@@ -259,13 +259,57 @@ function Assert-StorePayloadManifest {
     }
 }
 
+function Assert-SetupPayloadIntegrity {
+    param(
+        [Parameter(Mandatory = $true)][object]$Manifest,
+        [Parameter(Mandatory = $true)][string]$Version,
+        [Parameter(Mandatory = $true)][string]$SetupPath,
+        [Parameter(Mandatory = $true)][string]$AppDir
+    )
+
+    if ([string]::IsNullOrWhiteSpace([string]$Manifest.app_payload_sha256) -or
+        [string]::IsNullOrWhiteSpace([string]$Manifest.setup_sha256)) {
+        throw "Setup 完整性清单缺少应用负载或安装包哈希；请重新出包"
+    }
+    if ([string]$Manifest.app_release_version -ne $Version) {
+        throw "Setup 完整性清单版本与发布版本不一致：$($Manifest.app_release_version) / $Version"
+    }
+    if ([string]$Manifest.setup_file -ne (Split-Path -Leaf $SetupPath)) {
+        throw "Setup 完整性清单文件名与安装包不一致：$($Manifest.setup_file)"
+    }
+
+    $actualSetupHash = (Get-FileHash -LiteralPath $SetupPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actualSetupSize = (Get-Item -LiteralPath $SetupPath).Length
+    if (-not [string]::Equals(
+            [string]$Manifest.setup_sha256,
+            $actualSetupHash,
+            [System.StringComparison]::OrdinalIgnoreCase) -or
+        [long]$Manifest.setup_size -ne $actualSetupSize) {
+        throw "Setup 安装包在出包后被替换或损坏，拒绝发布"
+    }
+
+    $actualFingerprint = Get-AppPayloadFingerprint -AppDir $AppDir
+    if (-not [string]::Equals(
+            [string]$Manifest.app_payload_sha256,
+            $actualFingerprint,
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Setup 完整性清单记录的 app 负载与本次 exact app 不一致，拒绝发布"
+    }
+    $fileCount = @(Get-AppPayloadManifestFiles -AppDir $AppDir).Count
+    if ($null -eq $Manifest.app_payload_file_count -or
+        [int]$Manifest.app_payload_file_count -ne $fileCount) {
+        throw "Setup 完整性清单记录的应用负载文件数与本次 exact app 不一致，拒绝发布"
+    }
+}
+
 # Setup 与 Store 同源校验只认本次构建目录。没有 ExpectedFingerprint 时
 # （AppPatch 产物守卫）才允许退回同版本最新 sibling，避免旧目录被误当成本次负载。
 function Resolve-ReleasePayloadAppDir {
     param(
         [Parameter(Mandatory = $true)][string]$PackageRoot,
         [Parameter(Mandatory = $true)][string]$Version,
-        [string]$ExpectedFingerprint = ""
+        [string]$ExpectedFingerprint = "",
+        [switch]$RequireExact
     )
 
     $exact = Join-Path $PackageRoot ("PackingProof+v" + $Version + "\app")
@@ -279,6 +323,13 @@ function Resolve-ReleasePayloadAppDir {
                 $ExpectedFingerprint,
                 [System.StringComparison]::OrdinalIgnoreCase)) {
             throw "本次 Setup 的 app 目录与 Store 清单不一致（旧 MSIX 或旧清单），拒绝发布：$exact"
+        }
+        return $exact
+    }
+
+    if ($RequireExact) {
+        if (-not (Test-Path -LiteralPath (Join-Path $exact "ExpressPackingMonitoring.exe") -PathType Leaf)) {
+            throw "本次 Setup 的 app 目录不存在：$exact；不能用旧 sibling 目录替代"
         }
         return $exact
     }

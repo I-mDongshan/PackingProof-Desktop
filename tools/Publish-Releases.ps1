@@ -213,10 +213,25 @@ foreach ($required in @($setupPath, $updateJsonPath)) {
 }
 $setupSize = (Get-Item -LiteralPath $setupPath).Length
 $giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize
+$packageIntegrityPath = Join-Path $packageRoot ("package_integrity_" + $releaseTag + ".json")
+if (-not (Test-Path -LiteralPath $packageIntegrityPath -PathType Leaf)) {
+    throw "缺少 Setup 完整性清单 $($packageIntegrityPath)；请用 tools\Publish-CleanPackage.ps1 重新出包"
+}
+$packageIntegrity = Get-Content -LiteralPath $packageIntegrityPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$payloadAppDir = Resolve-ReleasePayloadAppDir `
+    -PackageRoot $packageRoot `
+    -Version $version `
+    -ExpectedFingerprint ([string]$packageIntegrity.app_payload_sha256)
+Assert-SetupPayloadIntegrity `
+    -Manifest $packageIntegrity `
+    -Version $version `
+    -SetupPath $setupPath `
+    -AppDir $payloadAppDir
 $storeManifestPath = Join-Path $packageRoot $artifactNames.StoreManifestFileName
 $storePackagePath = Join-Path $artifactNames.StorePackageRoot $artifactNames.StorePackageFileName
 $storePackageRequired = -not $UpdateNotes
 $storePackageIncluded = $false
+$storeManifest = $null
 if (-not (Test-Path -LiteralPath $storeManifestPath -PathType Leaf)) {
     if ($storePackageRequired) {
         throw "正式发布必须包含 Microsoft Store 包：缺少 $($artifactNames.StoreManifestFileName)。请用 tools\Publish-CleanPackage.ps1 重新出包，正式发布不能跳过 Store MSIX。"
@@ -240,10 +255,12 @@ else {
         throw "Store MSIX 的大小或 SHA256 与清单不一致，拒绝发布"
     }
 
-    $payloadAppDir = Resolve-ReleasePayloadAppDir `
-        -PackageRoot $packageRoot `
-        -Version $version `
-        -ExpectedFingerprint ([string]$storeManifest.app_payload_sha256)
+    if (-not [string]::Equals(
+            [string]$storeManifest.app_payload_sha256,
+            [string]$packageIntegrity.app_payload_sha256,
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Store 清单与 Setup 完整性清单记录的应用负载不一致，拒绝发布"
+    }
     Assert-StorePayloadManifest `
         -Manifest $storeManifest `
         -Version $version `
@@ -327,7 +344,6 @@ if (Test-Path -LiteralPath $launcherPatchPath) {
 # 只看"补丁包存在"不够 —— 它可能是别处、别的提交构建出来的旧文件；这次现场之所以要返工，
 # 就是包看着是新的、里面却是旧的。这里把 AppPatch 解开，跟产物目录里的同一份程序集逐个比对。
 if (Test-Path -LiteralPath $appPatchPath) {
-    $payloadAppDir = Resolve-ReleasePayloadAppDir -PackageRoot $packageRoot -Version $version
     $guardTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("epm-patch-guard-" + [System.Guid]::NewGuid().ToString("N"))
     Expand-Archive -LiteralPath $appPatchPath -DestinationPath $guardTmpDir -Force
     try {
