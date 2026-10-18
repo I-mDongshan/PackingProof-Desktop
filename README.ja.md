@@ -25,7 +25,7 @@
 | プラットフォーム | 状態 | 入手方法 |
 | --- | --- | --- |
 | Windows パソコン版（本リポジトリ） | 正式版 | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
-| Windows パソコン版（Microsoft Store） | ストア審査中 | [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV)（審査通過後に有効になります） |
+| Windows パソコン版（Microsoft Store） | 正式版 | [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV) |
 | macOS パソコン版（本リポジトリ、Apple Silicon） | 正式版: 保存ホストとビューアー | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
 | Android スマートフォン版 | 正式版、正式署名済み APK | [GitHub Releases](https://github.com/PackingProof/PackingProof-Mobile/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Mobile/releases) |
 | iOS スマートフォン版 | 機能は Android と同等、TestFlight で配布 | [ベータに参加](https://testflight.apple.com/join/KR4qNs6t) |
@@ -202,7 +202,7 @@ PackingProof は公式の[拡張マーケット](https://gitee.com/PackingProof/
 
 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) または [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) からインストーラーをダウンロードしてインストールします。Gitee では完全な Setup が 100MB 未満のとき `PackingProof_Setup_vX.Y.Z.exe` を直接提供し、上限を超える場合は no-runtime インストーラーに切り替わります。中国国内回線では[百度網盤の予備ダウンロード](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（抽出コード 6666）も使えます。
 
-[Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV) からもインストールできます。ストア版は現在審査中で、リンクは掲載後に有効になります。
+[Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV) からもインストールできます。
 
 > **Store 版と Setup 版**：両方を同時にインストールできますが、プログラムとデータのフォルダーは別々です。設定と録画は自動移行・上書きされません。同時に保存ホストにできるのは 1 つだけです。Store 版は Microsoft Store から更新してください。Setup 版はランチャーで更新し、手動の AppPatch/LauncherPatch は Setup 版にのみ使用できます。
 
