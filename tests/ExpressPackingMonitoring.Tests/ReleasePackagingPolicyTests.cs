@@ -564,6 +564,27 @@ public sealed class ReleasePackagingPolicyTests
     }
 
     [Fact]
+    public void Packaging_EnforcesModernPatchBaselineAndDocsAgree()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string publishScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
+            Encoding.UTF8);
+        string runtimeDocument = File.ReadAllText(
+            Path.Combine(repositoryRoot, "docs", "development", "RELEASE_AND_RUNTIME.md"),
+            Encoding.UTF8);
+        string checklist = File.ReadAllText(
+            Path.Combine(repositoryRoot, "docs", "development", "RELEASE_CHECKLIST.md"),
+            Encoding.UTF8);
+
+        Assert.Contains("0.0.85 及以后正式版的补丁基线不得低于 0.0.84", publishScript, StringComparison.Ordinal);
+        Assert.Contains("0.0.85 及以后正式版统一使用 `-PatchBaselineVersion 0.0.84`", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("0.0.85 及以后正式版统一使用 `-PatchBaselineVersion 0.0.84`", checklist, StringComparison.Ordinal);
+        Assert.DoesNotContain("从下一版（0.0.84）起改成", checklist, StringComparison.Ordinal);
+        Assert.DoesNotContain("-PatchBaselineVersion 0.0.18 -BaselineAppDir", runtimeDocument, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ChangePrSubmitter_DefaultsToBothPlatformsAndStaysConfigurable()
     {
         string repositoryRoot = FindRepositoryRoot();

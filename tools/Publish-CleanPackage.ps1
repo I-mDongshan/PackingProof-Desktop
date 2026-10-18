@@ -398,6 +398,10 @@ $patchBaselineResolution = Resolve-EffectivePatchBaseline `
     -PatchBaselineVersion $PatchBaselineVersion `
     -Explicit:$patchBaselineExplicit
 $normalizedPatchBaselineVersion = $patchBaselineResolution.EffectiveVersion
+if ([version]$normalizedVersion -ge [version]'0.0.85' -and
+    [version]$normalizedPatchBaselineVersion -lt [version]'0.0.84') {
+    throw "0.0.85 及以后正式版的补丁基线不得低于 0.0.84；当前版本 $normalizedVersion 使用了 $normalizedPatchBaselineVersion。请使用 -PatchBaselineVersion 0.0.84 和对应的 v0.0.84 基线目录。"
+}
 
 Invoke-CoreRegressionTests
 if (-not $ConfirmManualCoreChecks) {
@@ -960,6 +964,9 @@ function New-AppPatchPackage {
         $relativePath = Get-RelativePath -BaseDir $BaselineDir -Path $baselineFile.FullName
         if ($currentRelativePaths.ContainsKey($relativePath)) { continue }
         if ($relativePath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        # runtime-seed 只能由落成器读取，补丁不得清理；旧装机里多出的 WinForms 种子
+        # 留着无害，下一次安装完整包会自然收敛。
+        if ($relativePath.StartsWith("runtime-seed\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
         # 白名单里的（用户可替换的 ffmpeg / libvlc）既不入退役清单也不删；基线里没有、
         # 当前目录故意不带的那批 libvlc 插件正是这一类，别让它们污染清单。
         if (Test-IsAppPatchManagedRuntimePath -RelativePath $relativePath) { continue }
