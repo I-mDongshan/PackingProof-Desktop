@@ -12,6 +12,8 @@ Tools/MacHost.entitlements text eol=lf
 # 市场目录签名覆盖原始字节，测试夹具禁止检出时转换行尾。
 ExpressPackingMonitoring.Tests/Fixtures/ExtensionMarket/catalog.v1.json -text
 ExpressPackingMonitoring.Tests/Fixtures/ExtensionMarket/catalog.v1.sig -text
+tests/ExpressPackingMonitoring.Tests/Fixtures/ExtensionMarket/catalog.v1.json -text
+tests/ExpressPackingMonitoring.Tests/Fixtures/ExtensionMarket/catalog.v1.sig -text
 
 # 第三方组件许可证全文按上游原样保留字节，不做行尾转换（随包分发，需与上游一致）。
 docs/third-party-licenses/*.txt -text
