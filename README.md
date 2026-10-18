@@ -25,6 +25,7 @@
 | 平台 | 状态 | 获取方式 |
 | --- | --- | --- |
 | Windows 电脑端（本仓库） | 正式版 | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
+| Windows 电脑端（Microsoft Store） | 商店审核中 | [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV)（链接在通过审核后生效） |
 | macOS 电脑端（本仓库，Apple Silicon） | 正式版：保存主机与查看端 | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
 | Android 手机端 | 正式版，正式签名 APK | [GitHub Releases](https://github.com/PackingProof/PackingProof-Mobile/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Mobile/releases) |
 | iOS 手机端 | 功能与 Android 一致，TestFlight 分发 | [加入内测](https://testflight.apple.com/join/KR4qNs6t) |
@@ -199,6 +200,8 @@ PackingProof 已支持官方[扩展市场](https://gitee.com/PackingProof/Packin
 ### 2. 安装软件
 
 从 [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) 或 [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) 下载安装包即可；Gitee 在完整 Setup 严格小于 100MB 时直接提供 `PackingProof_Setup_vX.Y.Z.exe`，达到限制时改用 no-runtime 安装包。国内网络也可以走[百度网盘备用下载](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666)（提取码 6666）。
+
+也可以从 [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV) 安装；商店版目前正在审核，链接会在通过审核后生效。
 
 > **商店版与 Setup 版**：两个版本可以并存，安装目录和数据目录彼此独立，设置与录像不会自动迁移或互相覆盖；但同一时间只能有一个版本作为保存主机。商店版由 Microsoft Store 更新；Setup 版继续使用启动器更新，手动 AppPatch/LauncherPatch 只适用于 Setup 版。
 

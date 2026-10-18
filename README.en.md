@@ -25,6 +25,7 @@
 | Platform | Status | How to get it |
 | --- | --- | --- |
 | Windows desktop (this repository) | Released | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
+| Windows desktop (Microsoft Store) | In Store review | [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV) (link goes live after approval) |
 | macOS desktop (this repository, Apple Silicon) | Released: save host and viewer | [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) |
 | Android mobile | Released, signed APK | [GitHub Releases](https://github.com/PackingProof/PackingProof-Mobile/releases) · [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Mobile/releases) |
 | iOS mobile | Same feature set as Android, distributed via TestFlight | [Join the beta](https://testflight.apple.com/join/KR4qNs6t) |
@@ -180,6 +181,8 @@ Camera recognition and a keyboard-mode scanner can be used together without chan
 ### 2. Install PackingProof
 
 Download the installer from [GitHub Releases](https://github.com/PackingProof/PackingProof-Desktop/releases) or [Gitee Releases](https://gitee.com/PackingProof/PackingProof-Desktop/releases) and install it. Gitee provides `PackingProof_Setup_vX.Y.Z.exe` directly when the full Setup is strictly under 100 MB, and switches to the no-runtime installer above that limit. On networks where GitHub is slow, the [Baidu Netdisk backup](https://pan.baidu.com/s/1B9L9l19ZkjtNpK_9rVZxbw?pwd=6666) (access code 6666) works too.
+
+You can also install PackingProof from the [Microsoft Store](https://apps.microsoft.com/detail/9PKXFSV7ZQPV); the Store edition is currently under review, so the link will become available after approval.
 
 > **Store edition and Setup edition**: both may coexist, and their program and data folders are separate; settings and recordings are not migrated or overwritten automatically. Only one edition can be the save host at a time. Update the Store edition from Microsoft Store. The Setup edition keeps using the launcher, and manual AppPatch/LauncherPatch packages apply only to the Setup edition.
 
