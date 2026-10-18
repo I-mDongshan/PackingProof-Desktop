@@ -398,9 +398,9 @@ $patchBaselineResolution = Resolve-EffectivePatchBaseline `
     -PatchBaselineVersion $PatchBaselineVersion `
     -Explicit:$patchBaselineExplicit
 $normalizedPatchBaselineVersion = $patchBaselineResolution.EffectiveVersion
-if ([version]$normalizedVersion -ge [version]'0.0.85' -and
+if ([version]$normalizedVersion -ge [version]'0.0.86' -and
     [version]$normalizedPatchBaselineVersion -lt [version]'0.0.84') {
-    throw "0.0.85 及以后正式版的补丁基线不得低于 0.0.84；当前版本 $normalizedVersion 使用了 $normalizedPatchBaselineVersion。请使用 -PatchBaselineVersion 0.0.84 和对应的 v0.0.84 基线目录。"
+    throw "0.0.86 及以后正式版的补丁基线不得低于 0.0.84；当前版本 $normalizedVersion 使用了 $normalizedPatchBaselineVersion。请使用 -PatchBaselineVersion 0.0.84 和对应的 v0.0.84 基线目录。"
 }
 
 Invoke-CoreRegressionTests

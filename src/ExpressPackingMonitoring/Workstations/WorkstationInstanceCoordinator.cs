@@ -151,7 +151,7 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
     }
 
     /// <summary>
-    /// v0.0.85 及更早的 Setup 版使用无后缀的实例锁和激活管道。
+    /// v0.0.84 及更早的 Setup 版使用无后缀的实例锁和激活管道。
     /// 新版检测到旧锁时先唤醒旧窗口，避免升级期间出现两个实例。
     /// </summary>
     public static bool RequestActivateLegacy()

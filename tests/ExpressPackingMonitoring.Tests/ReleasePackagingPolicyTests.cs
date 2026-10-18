@@ -577,9 +577,10 @@ public sealed class ReleasePackagingPolicyTests
             Path.Combine(repositoryRoot, "docs", "development", "RELEASE_CHECKLIST.md"),
             Encoding.UTF8);
 
-        Assert.Contains("0.0.85 及以后正式版的补丁基线不得低于 0.0.84", publishScript, StringComparison.Ordinal);
-        Assert.Contains("0.0.85 及以后正式版统一使用 `-PatchBaselineVersion 0.0.84`", runtimeDocument, StringComparison.Ordinal);
-        Assert.Contains("0.0.85 及以后正式版统一使用 `-PatchBaselineVersion 0.0.84`", checklist, StringComparison.Ordinal);
+        Assert.Contains("0.0.86 及以后正式版的补丁基线不得低于 0.0.84", publishScript, StringComparison.Ordinal);
+        Assert.Contains("0.0.84 之后的下一个正式版（本次 0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("0.0.84 之后的下一个正式版（0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", checklist, StringComparison.Ordinal);
+        Assert.Contains("0.0.85 从未正式发布", runtimeDocument, StringComparison.Ordinal);
         Assert.DoesNotContain("从下一版（0.0.84）起改成", checklist, StringComparison.Ordinal);
         Assert.DoesNotContain("-PatchBaselineVersion 0.0.18 -BaselineAppDir", runtimeDocument, StringComparison.Ordinal);
     }

@@ -27,18 +27,18 @@ Copy-Item tools\store-package.example.json tools\store-package.local.json
 下面的命令只用于单独调试商店包；正式发布由 `tools\Publish-CleanPackage.ps1` 统一调用，见 3.1。
 
 ```powershell
-pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireStoreIdentity -Sign
+pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.86 -RequireStoreIdentity -Sign
 ```
 
-产物在 `package\store\PackingProof_Store_v0.0.85\`：
+产物在 `package\store\PackingProof_Store_v0.0.86\`：
 
-- `PackingProof_Store_v0.0.85.msix`：提交到 Partner Center 的文件
+- `PackingProof_Store_v0.0.86.msix`：提交到 Partner Center 的文件
 - `payload\`：解包后的应用负载，便于核对
 
 `-Sign` 会用 `Publisher` 作为证书主题生成自签名证书，再给 MSIX 签名；Microsoft Store 在认证通过后替换为 Microsoft 证书。
 如果 Partner Center 的上传校验允许未签名包，也可以去掉 `-Sign`。
 
-应用版本 `0.0.85` 会映射为商店包版本 `1.0.85.0`。商店包版本第 1 段不能为 0，后续版本要保持递增。
+应用版本 `0.0.86` 会映射为商店包版本 `1.0.86.0`。商店包版本第 1 段不能为 0，后续版本要保持递增。
 
 ## 3.1 正式发布时一起出包
 
@@ -55,7 +55,7 @@ pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -RequireSto
 先构建并签名：
 
 ```powershell
-pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -Sign -TrustCertificate
+pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.86 -Sign -TrustCertificate
 ```
 
 安装和启动需要管理员权限，因为测试证书要写入 `LocalMachine\TrustedPeople`：
@@ -63,8 +63,8 @@ pwsh -NoProfile -File tools\Publish-StorePackage.ps1 -Version 0.0.85 -Sign -Trus
 ```powershell
 Start-Process pwsh -Verb RunAs -ArgumentList @(
   '-NoProfile','-File','tools\Test-StorePackage.ps1',
-  '-PackagePath','package\store\PackingProof_Store_v0.0.85\PackingProof_Store_v0.0.85.msix',
-  '-CertificatePath','package\store\PackingProof_Store_v0.0.85\PackingProof-test.cer',
+  '-PackagePath','package\store\PackingProof_Store_v0.0.86\PackingProof_Store_v0.0.86.msix',
+  '-CertificatePath','package\store\PackingProof_Store_v0.0.86\PackingProof-test.cer',
   '-Launch'
 )
 ```
@@ -74,7 +74,7 @@ Start-Process pwsh -Verb RunAs -ArgumentList @(
 ```powershell
 Start-Process pwsh -Verb RunAs -ArgumentList @(
   '-NoProfile','-File','tools\Test-StorePackage.ps1',
-  '-PackagePath','package\store\PackingProof_Store_v0.0.85\PackingProof_Store_v0.0.85.msix',
+  '-PackagePath','package\store\PackingProof_Store_v0.0.86\PackingProof_Store_v0.0.86.msix',
   '-Uninstall'
 )
 ```

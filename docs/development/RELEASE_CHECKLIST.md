@@ -41,7 +41,7 @@
 - 完整包包含预生成的默认 Edge TTS 语音缓存，首次使用固定文案不需要现场生成
 - 增量包不包含 TTS 缓存，并验证补丁清单、`update_vX.Y.Z.json`、启动器基线清单、标签和程序版本号一致
 - 发布前把仓根 `Directory.Build.props` 的 `<Version>` 更新为本次版本（这是唯一的版本来源，工程文件不得再各自写 `<Version>`），并与 `vX.Y.Z` 标签、`update_vX.Y.Z.json` 保持一致
-- 补丁基线：0.0.83、0.0.84 历史发布使用 `-PatchBaselineVersion 0.0.18`；**0.0.85 及以后正式版统一使用 `-PatchBaselineVersion 0.0.84`**，把 0.0.84 定成所有老装机必须经过的补丁基线（低于它的机器引导下载完整包）。打包脚本会拒绝 0.0.85+ 使用更低的基线
+- 补丁基线：0.0.83、0.0.84 历史发布使用 `-PatchBaselineVersion 0.0.18`；**0.0.84 之后的下一个正式版（0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`**，0.0.85 从未正式发布，不单独作为基线版本；把 0.0.84 定成所有老装机必须经过的补丁基线（低于它的机器引导下载完整包）。打包脚本会拒绝 0.0.86+ 使用更低的基线
 - 自包含发布形态核对：`app\` 有 `coreclr.dll`/`hostfxr.dll`、包根没有 `runtime\`、`app\runtime-seed\layout.json` 与布局清单逐文件一致；`pwsh -NoProfile -File tools\Test-RuntimeLayoutSeed.ps1` 全绿（含"框架依赖的探针带 DOTNET_ROOT 从落成的布局加载运行时"）
 - 升级时序字段核对：带 `root=runtime` 载荷的补丁必须声明 `required_launcher_protocol >= 2`；`launcher_package.required_app_protocol` 只在"新启动器需要更新的主程序"时才填
 - 清理列表核对：包内 `patch_manifest.json` 的 `deletes` 与 `tools\app-patch-retire-list.json`（累计退役清单）一致、不含白名单（`tts_cache` / `ffmpeg.exe` / `libvlc`）、不含主程序核心文件；**退役清单若有变化要随发布一起提交**；用 `pwsh -NoProfile -File tools\Test-UpgradeFromLegacyLauncher.ps1 -LegacyLauncherPath <新启动器> -PackageDir <产物目录> -SimulateSecondInstance` 验证"装完才启动 + 12 个旧文件确实清掉"
