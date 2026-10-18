@@ -146,7 +146,10 @@ public sealed class DeploymentStartupTests
     public void SingleInstanceCoordinatorIsGlobalWithinEdition()
     {
         string? previousScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
+        string? previousSkipLegacy =
+            Environment.GetEnvironmentVariable("EPM_SKIP_LEGACY_INSTANCE_LOCK");
         Environment.SetEnvironmentVariable("EPM_INSTANCE_SCOPE", $"deployment{Guid.NewGuid():N}");
+        Environment.SetEnvironmentVariable("EPM_SKIP_LEGACY_INSTANCE_LOCK", "1");
         try
         {
             Assert.True(WorkstationInstanceCoordinator.TryCreate(out WorkstationInstanceCoordinator? first));
@@ -161,6 +164,7 @@ public sealed class DeploymentStartupTests
         finally
         {
             Environment.SetEnvironmentVariable("EPM_INSTANCE_SCOPE", previousScope);
+            Environment.SetEnvironmentVariable("EPM_SKIP_LEGACY_INSTANCE_LOCK", previousSkipLegacy);
         }
     }
 

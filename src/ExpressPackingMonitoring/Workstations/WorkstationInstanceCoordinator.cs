@@ -39,7 +39,13 @@ public sealed class WorkstationInstanceCoordinator : IDisposable
     {
         string? explicitScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
         bool packaged = PackagingIdentity.IsPackaged;
-        bool acquireLegacyAlias = !packaged && string.IsNullOrWhiteSpace(NormalizeScope(explicitScope));
+        // 只有隔离测试显式设置这个开关时才跳过旧锁兼容；普通 EPM_INSTANCE_SCOPE
+        // 不能再关闭兼容锁，避免环境变量泄漏后升级窗口重新出现双实例。
+        bool skipLegacyAlias = string.Equals(
+            Environment.GetEnvironmentVariable("EPM_SKIP_LEGACY_INSTANCE_LOCK"),
+            "1",
+            StringComparison.OrdinalIgnoreCase);
+        bool acquireLegacyAlias = !packaged && !skipLegacyAlias;
         return TryCreateCore(
             out coordinator,
             out conflict,
