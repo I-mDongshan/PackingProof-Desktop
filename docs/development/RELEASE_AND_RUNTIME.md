@@ -113,6 +113,7 @@ pwsh -NoProfile -File tools\Publish-CleanPackage.ps1 -Version <X.Y.Z> -PatchBase
 - 完整 7z 与完整 ZIP 都不再上传到任何 Release，默认也不生成，仅在本地确有需要时分别传入 `-IncludeSevenZip` 和 `-IncludeFullZip`。对外分发只有 Setup（Gitee 侧在完整 Setup 小于 100MB 时直接复用，否则换成 no-runtime 安装向导）、AppPatch、update JSON 与 macOS DMG；普通用户通过启动器自动更新，无需手动下载清单。
 
 - Microsoft Store 包与 Setup 包是两套独立安装：商店包不包含 `AppPatch`/`LauncherPatch`，`Publish-StorePackage.ps1` 会写入 `PackingProof.PackageEdition.json` 标记并拒绝夹带 Setup 更新脚本；手动补丁脚本检测到 `WindowsApps`、`AppxManifest.xml`、商店包标记或商店版 `LocalState` 配置时直接拒绝，不允许把补丁写进 MSIX 包目录。两版数据目录分开，更新和卸载互不覆盖。
+- 自动化隔离使用 `EPM_SKIP_LEGACY_INSTANCE_LOCK` 和 `EPM_HOST_LEASE_SCOPE`；`EPM_INSTANCE_SCOPE` 只隔离同版本实例锁，不再改变保存主机锁的作用域，避免测试作用域让两个实例同时成为主机。
 - Gitee 发布令牌固定取仓库根目录 `.env` 的 `GITEE_TOKEN`，由脚本注入 `GITEE_TOKEN` 环境变量后交给 CLI；CLI 自己保存的登录态只作回退，而且它按身份字符串各存一份、`gitee auth status` 在令牌失效时仍返回 0，不能用来判断可用性。发布时对 `PackingProof/PackingProof-Desktop` 执行 `gitee release create --repo PackingProof/PackingProof-Desktop --target main` 和 `gitee release upload`；不再向旧个人仓库发布。
 - 两个平台的 Release 可由 `pwsh -NoProfile -File tools/Publish-Releases.ps1 -Title "<一句话内容>" -ConfirmCommitCoverage [-Prerelease]` 一次创建，发布笔记默认取产物目录里的 `RELEASE_NOTES_v<X.Y.Z>.md`（要指别处才传 `-NotesFile`）。脚本要求工作区干净、当前提交有精确 tag，并确认发布笔记已覆盖 `release_commits_v<X.Y.Z>.txt` 的全部提交后才按上面的资产表挑文件上传，GitHub 创建失败会自动重试；已发布版本补写正文用 `-UpdateNotes`，只校验不发布用 `-ValidateOnly`。GitHub 登录态由 gh CLI 维护，Gitee 令牌由脚本从 `.env` 读取后注入环境变量，不打印、不落盘、不提交。
 

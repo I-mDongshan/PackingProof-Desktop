@@ -82,10 +82,12 @@ try {
     if (-not (Test-Path $appExecutable)) { throw "Built WPF executable not found: $appExecutable" }
     $previousUserDataDir = $env:EPM_USER_DATA_DIR
     $previousInstanceScope = $env:EPM_INSTANCE_SCOPE
+    $previousHostLeaseScope = $env:EPM_HOST_LEASE_SCOPE
     $previousSkipLegacyInstanceLock = $env:EPM_SKIP_LEGACY_INSTANCE_LOCK
     $previousDisableLanAccessSetup = $env:EPM_DISABLE_LAN_ACCESS_SETUP
     $env:EPM_USER_DATA_DIR = $wpfDataRoot
     $env:EPM_INSTANCE_SCOPE = "automation$PID"
+    $env:EPM_HOST_LEASE_SCOPE = "automation-host$PID"
     $env:EPM_SKIP_LEGACY_INSTANCE_LOCK = "1"
     $env:EPM_DISABLE_LAN_ACCESS_SETUP = "1"
     $deploymentSetupVersion = Get-AppConfigVersion "CurrentDeploymentSetupVersion"
@@ -192,6 +194,7 @@ try {
         }
         $env:EPM_USER_DATA_DIR = $previousUserDataDir
         $env:EPM_INSTANCE_SCOPE = $previousInstanceScope
+        $env:EPM_HOST_LEASE_SCOPE = $previousHostLeaseScope
         $env:EPM_SKIP_LEGACY_INSTANCE_LOCK = $previousSkipLegacyInstanceLock
         $env:EPM_DISABLE_LAN_ACCESS_SETUP = $previousDisableLanAccessSetup
     }

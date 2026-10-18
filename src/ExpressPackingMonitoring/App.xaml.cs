@@ -217,8 +217,8 @@ namespace ExpressPackingMonitoring
 
             if (DeploymentCapabilities.ForPreset(startupPreset).IsHost)
             {
-                string? hostScope = Environment.GetEnvironmentVariable("EPM_INSTANCE_SCOPE");
-                if (!WorkstationInstanceCoordinator.TryAcquireHostLease(out _hostLease, hostScope))
+                string? hostLeaseScope = Environment.GetEnvironmentVariable("EPM_HOST_LEASE_SCOPE");
+                if (!WorkstationInstanceCoordinator.TryAcquireHostLease(out _hostLease, hostLeaseScope))
                 {
                     RuntimeLog.Info(
                         "Instance",

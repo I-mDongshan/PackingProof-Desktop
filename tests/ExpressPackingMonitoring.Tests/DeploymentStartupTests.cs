@@ -273,6 +273,8 @@ public sealed class DeploymentStartupTests
             "src", "ExpressPackingMonitoring", "Workstations", "WorkstationSelectionWindow.xaml");
 
         Assert.Contains("hostUnavailable: true", appSource, StringComparison.Ordinal);
+        Assert.Contains("EPM_HOST_LEASE_SCOPE", appSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("EPM_INSTANCE_SCOPE", appSource, StringComparison.Ordinal);
         Assert.Contains("HostUnavailableNotice", selectionXaml, StringComparison.Ordinal);
         Assert.Contains("StorageYesChoice.IsEnabled = false", selectionCode, StringComparison.Ordinal);
         Assert.Contains("StorageNoChoice.IsChecked = true", selectionCode, StringComparison.Ordinal);
