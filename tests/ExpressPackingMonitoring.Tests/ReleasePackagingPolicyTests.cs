@@ -581,6 +581,9 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("0.0.84 之后的下一个正式版（本次 0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", runtimeDocument, StringComparison.Ordinal);
         Assert.Contains("0.0.84 之后的下一个正式版（0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", checklist, StringComparison.Ordinal);
         Assert.Contains("0.0.85 从未正式发布", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("会沿 baseline 链查找 0.0.84", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("0.0.84 的 Release", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("会先通过 0.0.84 的 `update_v0.0.84.json`", checklist, StringComparison.Ordinal);
         Assert.DoesNotContain("从下一版（0.0.84）起改成", checklist, StringComparison.Ordinal);
         Assert.DoesNotContain("-PatchBaselineVersion 0.0.18 -BaselineAppDir", runtimeDocument, StringComparison.Ordinal);
     }
