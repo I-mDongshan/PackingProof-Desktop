@@ -84,7 +84,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: package/dependency-cache/ffmpeg
-          key: ffmpeg-${{ hashFiles('Tools/ffmpeg-baseline.json') }}
+          key: ffmpeg-${{ hashFiles('tools/ffmpeg-baseline.json') }}
 
       - name: 缓存 NuGet 包
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -99,13 +99,13 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: package/tts_cache
-          key: tts-${{ hashFiles('Tools/ExpressPackingMonitoring.TtsCacheBuilder/**', 'src/ExpressPackingMonitoring/Audio/**', 'src/ExpressPackingMonitoring/Localization/**', 'src/ExpressPackingMonitoring/Resources/**', 'src/ExpressPackingMonitoring/Config/**') }}
+          key: tts-${{ hashFiles('tools/ExpressPackingMonitoring.TtsCacheBuilder/**', 'src/ExpressPackingMonitoring/Audio/**', 'src/ExpressPackingMonitoring/Localization/**', 'src/ExpressPackingMonitoring/Resources/**', 'src/ExpressPackingMonitoring/Config/**') }}
           restore-keys: |
             tts-
 
       - name: 准备钉死的 FFmpeg 依赖
         shell: pwsh
-        run: pwsh -NoProfile -File Tools\Prepare-PinnedFFmpeg.ps1
+        run: pwsh -NoProfile -File tools\Prepare-PinnedFFmpeg.ps1
 
       - name: 运行发布自动验收（Release 构建、全量测试、WPF 启停、Web 端到端）
         shell: pwsh
@@ -113,7 +113,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $arguments = @(
             "-NoProfile",
-            "-File", "Tools\Test-Release-Automated.ps1",
+            "-File", "tools\Test-Release-Automated.ps1",
             "-Configuration", "Release"
           )
           for ($attempt = 1; $attempt -le 2; $attempt++) {
@@ -132,8 +132,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $baseline = Get-Content -Raw -Encoding UTF8 "Tools\launcher-baseline.json" | ConvertFrom-Json
-          pwsh -NoProfile -File "Tools\Publish-LauncherBaseline.ps1" -Version $baseline.version
+          $baseline = Get-Content -Raw -Encoding UTF8 "tools\launcher-baseline.json" | ConvertFrom-Json
+          pwsh -NoProfile -File "tools\Publish-LauncherBaseline.ps1" -Version $baseline.version
           "LAUNCHER_VERSION=$($baseline.version)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: 准备 Microsoft Store 身份
@@ -159,7 +159,7 @@ jobs:
             description = "PackingProof"
           } | ConvertTo-Json
           [System.IO.File]::WriteAllText(
-            (Join-Path $PWD "Tools\store-package.local.json"),
+            (Join-Path $PWD "tools\store-package.local.json"),
             $config,
             [System.Text.UTF8Encoding]::new($false))
           "STORE_PACKAGE_READY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -173,7 +173,7 @@ jobs:
           $arguments = @(
             "-NoProfile",
             "-File",
-            "Tools\Publish-CleanPackage.ps1",
+            "tools\Publish-CleanPackage.ps1",
             "-Configuration", "Release",
             "-Version", "$env:VERSION",
             "-DisablePatch"

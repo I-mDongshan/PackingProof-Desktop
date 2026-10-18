@@ -55,7 +55,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: package/dependency-cache/ffmpeg
-          key: ffmpeg-${{ hashFiles('Tools/ffmpeg-baseline.json') }}
+          key: ffmpeg-${{ hashFiles('tools/ffmpeg-baseline.json') }}
 
       - name: 缓存 NuGet 包
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -67,7 +67,7 @@ jobs:
 
       - name: 准备钉死的 FFmpeg 依赖
         shell: pwsh
-        run: pwsh -NoProfile -File Tools\Prepare-PinnedFFmpeg.ps1
+        run: pwsh -NoProfile -File tools\Prepare-PinnedFFmpeg.ps1
 
       - name: 还原依赖
         run: dotnet restore ExpressPackingMonitoring.sln --nologo
@@ -103,7 +103,7 @@ jobs:
       # 这里用真实 WebServer + 临时数据库 + 无头 Chrome/Edge 跑完全部 UI 用例。
       - name: 网页 UI 自动化测试（真实浏览器）
         shell: pwsh
-        run: pwsh -NoProfile -File Tools\Test-WebUi.ps1 -Configuration Debug -SkipBuild
+        run: pwsh -NoProfile -File tools\Test-WebUi.ps1 -Configuration Debug -SkipBuild
 
       - name: 检查扩展 API 示例语法
         shell: pwsh
