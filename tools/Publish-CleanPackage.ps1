@@ -1485,6 +1485,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $setupPath -PathType Le
 }
 $setupHash = (Get-FileHash -LiteralPath $setupPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $setupSize = (Get-Item -LiteralPath $setupPath).Length
+$giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize
 $setupSignatureStatus = (Get-AuthenticodeSignature -LiteralPath $setupPath).Status.ToString()
 [ordered]@{
     app_release_version = $normalizedVersion
