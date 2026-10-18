@@ -176,7 +176,7 @@ public sealed class SharedRuntimeLayoutScriptTests
 
         public ProcessResult Build()
         {
-            string script = Path.Combine(_repositoryRoot, "Tools", "Build-SharedRuntimeLayout.ps1");
+            string script = Path.Combine(_repositoryRoot, "tools", "Build-SharedRuntimeLayout.ps1");
             return RunPowerShell(
                 $"& '{EscapePowerShell(script)}' -AppDir '{EscapePowerShell(_appDir)}' " +
                 $"-OutputPath '{EscapePowerShell(LayoutPath)}' -DotNetRoot '{EscapePowerShell(_dotNetRoot)}'",
@@ -185,7 +185,7 @@ public sealed class SharedRuntimeLayoutScriptTests
 
         public ProcessResult Verify()
         {
-            string script = Path.Combine(_repositoryRoot, "Tools", "Test-SharedRuntimeLayout.ps1");
+            string script = Path.Combine(_repositoryRoot, "tools", "Test-SharedRuntimeLayout.ps1");
             return RunPowerShell(
                 $"& '{EscapePowerShell(script)}' -LayoutPath '{EscapePowerShell(LayoutPath)}'",
                 _repositoryRoot);

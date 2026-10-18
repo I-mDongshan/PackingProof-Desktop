@@ -15,7 +15,7 @@ public sealed class ManualPatchCommandTests
         string markerFileName)
     {
         string repositoryRoot = FindRepositoryRoot();
-        string sourceCommand = Path.Combine(repositoryRoot, "Tools", commandFileName);
+        string sourceCommand = Path.Combine(repositoryRoot, "tools", commandFileName);
         byte[] sourceBytes = File.ReadAllBytes(sourceCommand);
         Assert.All(sourceBytes, value => Assert.InRange(value, (byte)0, (byte)127));
 

@@ -132,7 +132,7 @@ public sealed class ManualLauncherPatchInstallerTests
             AppMarkerPath = Path.Combine(appRoot, "app-marker.txt");
             BackupDirectory = Path.Combine(userDataRoot, "cache", "launcher_backups");
             _configPath = Path.Combine(userDataRoot, "config.json");
-            _scriptPath = Path.Combine(FindRepositoryRoot(), "Tools", "Apply-LauncherPatch.ps1");
+            _scriptPath = Path.Combine(FindRepositoryRoot(), "tools", "Apply-LauncherPatch.ps1");
 
             Directory.CreateDirectory(appRoot);
             Directory.CreateDirectory(userDataRoot);

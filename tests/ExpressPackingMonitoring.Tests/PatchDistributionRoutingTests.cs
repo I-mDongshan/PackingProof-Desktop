@@ -46,7 +46,7 @@ public sealed class PatchDistributionRoutingTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publisher = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
 
         int patchHashIndex = publisher.IndexOf(
@@ -78,7 +78,7 @@ public sealed class PatchDistributionRoutingTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string installer = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Apply-AppPatch.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Apply-AppPatch.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("patch_manifest.json", installer);

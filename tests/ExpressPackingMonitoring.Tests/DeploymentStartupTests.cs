@@ -2107,7 +2107,7 @@ public sealed class DeploymentStartupTests
     public void ReleaseStartupSmokeTestReadsCurrentSetupVersions()
     {
         string script = ReadRepositoryFile(
-            "Tools",
+            "tools",
             "Test-Release-Automated.ps1");
 
         Assert.Contains("function Get-AppConfigVersion", script, StringComparison.Ordinal);

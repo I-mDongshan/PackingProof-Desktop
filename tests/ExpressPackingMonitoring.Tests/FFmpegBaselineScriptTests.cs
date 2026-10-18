@@ -144,7 +144,7 @@ public sealed class FFmpegBaselineScriptTests
 
         public ProcessResult RunExpand()
         {
-            string commonScript = Path.Combine(_repositoryRoot, "Tools", "FFmpegBaseline.Common.ps1");
+            string commonScript = Path.Combine(_repositoryRoot, "tools", "FFmpegBaseline.Common.ps1");
             string command = $$"""
                 $ErrorActionPreference = 'Stop'
                 . '{{EscapePowerShell(commonScript)}}'
@@ -156,7 +156,7 @@ public sealed class FFmpegBaselineScriptTests
 
         public ProcessResult RunResolve(string downloader, string? resolveArguments = null)
         {
-            string commonScript = Path.Combine(_repositoryRoot, "Tools", "FFmpegBaseline.Common.ps1");
+            string commonScript = Path.Combine(_repositoryRoot, "tools", "FFmpegBaseline.Common.ps1");
             string arguments = string.IsNullOrWhiteSpace(resolveArguments) ? "" : " " + resolveArguments;
             string command = $$"""
                 $ErrorActionPreference = 'Stop'

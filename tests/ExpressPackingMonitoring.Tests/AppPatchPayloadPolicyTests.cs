@@ -88,7 +88,7 @@ public sealed class AppPatchPayloadPolicyTests
             "runtime\\shared\\Microsoft.NETCore.App\\10.0.13\\System.Private.CoreLib.dll",
         ];
 
-        string script = Path.Combine(FindRepositoryRoot(), "Tools", "Apply-AppPatch.ps1");
+        string script = Path.Combine(FindRepositoryRoot(), "tools", "Apply-AppPatch.ps1");
         string command = new StringBuilder()
             .AppendLine("$ErrorActionPreference = 'Stop'")
             .AppendLine("$OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)")

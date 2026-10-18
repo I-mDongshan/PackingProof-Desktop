@@ -97,10 +97,10 @@ public sealed class ReleaseNotesPreservationTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string notesCommon = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "ReleaseNotes.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "ReleaseNotes.Common.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("Resolve-PreservedReleaseNotes", publishScript, StringComparison.Ordinal);
@@ -159,7 +159,7 @@ public sealed class ReleaseNotesPreservationTests
 
         public ResolvedNotes ResolveNotes(string outputDir)
         {
-            string commonScript = Path.Combine(FindRepositoryRoot(), "Tools", "ReleaseNotes.Common.ps1");
+            string commonScript = Path.Combine(FindRepositoryRoot(), "tools", "ReleaseNotes.Common.ps1");
             string resultPath = Path.Combine(Root, "resolved.json");
             string script = string.Join(
                 Environment.NewLine,

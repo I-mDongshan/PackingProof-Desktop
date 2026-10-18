@@ -75,10 +75,10 @@ public sealed class GiteeAssetRefreshTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string noRuntime = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-NoRuntimePackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-NoRuntimePackage.ps1"),
             Encoding.UTF8);
         string giteeAuth = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "GiteeAuth.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "GiteeAuth.Common.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("function Remove-GiteeReleaseAttachmentsForTag", giteeAuth, StringComparison.Ordinal);
@@ -99,7 +99,7 @@ public sealed class GiteeAssetRefreshTests
     [Fact]
     public void GiteeAttachmentSizePolicy_UsesStrictHundredMegabyteBoundary()
     {
-        string versionCommon = Path.Combine(FindRepositoryRoot(), "Tools", "ReleaseVersion.Common.ps1");
+        string versionCommon = Path.Combine(FindRepositoryRoot(), "tools", "ReleaseVersion.Common.ps1");
 
         (int exitCode, string output) = RunScript(string.Join(
             Environment.NewLine,
@@ -118,7 +118,7 @@ public sealed class GiteeAssetRefreshTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publisher = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-Releases.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-Releases.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("$giteeSetupIncluded = Test-GiteeAttachmentFits -Size $setupSize", publisher, StringComparison.Ordinal);
@@ -131,7 +131,7 @@ public sealed class GiteeAssetRefreshTests
     public void NoRuntimePackage_ReusesSmallStandardSetupBeforeBuilding()
     {
         string noRuntime = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Tools", "Publish-NoRuntimePackage.ps1"),
+            Path.Combine(FindRepositoryRoot(), "tools", "Publish-NoRuntimePackage.ps1"),
             Encoding.UTF8);
 
         int reuseIndex = noRuntime.IndexOf(
@@ -152,7 +152,7 @@ public sealed class GiteeAssetRefreshTests
     public void Republish_SkipsNoRuntimeWhenSmallStandardSetupFitsGitee()
     {
         string republish = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Tools", "Republish-SameVersion.ps1"),
+            Path.Combine(FindRepositoryRoot(), "tools", "Republish-SameVersion.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("$fullSetupFitsGitee", republish, StringComparison.Ordinal);
@@ -162,7 +162,7 @@ public sealed class GiteeAssetRefreshTests
     private static string Preamble()
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "GiteeAuth.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "GiteeAuth.Common.ps1");
         return string.Join(
             Environment.NewLine,
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",

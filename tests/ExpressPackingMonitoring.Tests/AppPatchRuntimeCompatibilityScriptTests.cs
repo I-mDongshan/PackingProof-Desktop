@@ -152,7 +152,7 @@ public sealed class AppPatchRuntimeCompatibilityScriptTests
     public void ManagedRuntimePathClassification_IsExact(string path, bool expected)
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "AppPatchRuntimeCompatibility.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "AppPatchRuntimeCompatibility.Common.ps1");
         string command = $$"""
             . '{{EscapePowerShell(commonScript)}}'
             [Console]::Write((Test-IsAppPatchManagedRuntimePath -RelativePath '{{EscapePowerShell(path)}}').ToString().ToLowerInvariant())
@@ -230,7 +230,7 @@ public sealed class AppPatchRuntimeCompatibilityScriptTests
 
         public CompatibilityResult Check()
         {
-            string commonScript = Path.Combine(_repositoryRoot, "Tools", "AppPatchRuntimeCompatibility.Common.ps1");
+            string commonScript = Path.Combine(_repositoryRoot, "tools", "AppPatchRuntimeCompatibility.Common.ps1");
             string manifestJson = JsonSerializer.Serialize(new
             {
                 package = new

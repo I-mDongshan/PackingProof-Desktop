@@ -76,7 +76,7 @@ public sealed class ReleaseUpdateManifestPatchGuardTests
     private static (int ExitCode, string Output) RunGuard(string jsonPath, string patchPath)
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "ReleaseNotes.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "ReleaseNotes.Common.ps1");
         string script = string.Join(
             Environment.NewLine,
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",

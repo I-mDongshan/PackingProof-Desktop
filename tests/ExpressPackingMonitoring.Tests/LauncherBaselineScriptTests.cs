@@ -39,7 +39,7 @@ public sealed class LauncherBaselineScriptTests
     public void LogicalFingerprint_IncludesRuntimeUpdateUrlAndTrackedInputs()
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "LauncherBaseline.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "LauncherBaseline.Common.ps1");
         string command = $$"""
             $ErrorActionPreference = 'Stop'
             . '{{EscapePowerShell(commonScript)}}'
@@ -73,7 +73,7 @@ public sealed class LauncherBaselineScriptTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string script = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-LauncherBaseline.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-LauncherBaseline.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("--artifacts-path $buildArtifacts", script, StringComparison.Ordinal);
@@ -85,7 +85,7 @@ public sealed class LauncherBaselineScriptTests
     public void CommandNormalizer_WritesAsciiCrLfRegardlessOfSourceLineEndings()
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "LauncherBaseline.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "LauncherBaseline.Common.ps1");
         string root = Path.Combine(Path.GetTempPath(), $"packingproof-command-normalize-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
         try
@@ -120,7 +120,7 @@ public sealed class LauncherBaselineScriptTests
     public void LogicalFingerprint_ChangesWhenManualLauncherInstallerChanges()
     {
         string repositoryRoot = FindRepositoryRoot();
-        string commonScript = Path.Combine(repositoryRoot, "Tools", "LauncherBaseline.Common.ps1");
+        string commonScript = Path.Combine(repositoryRoot, "tools", "LauncherBaseline.Common.ps1");
         string root = Path.Combine(Path.GetTempPath(), $"packingproof-launcher-inputs-{Guid.NewGuid():N}");
         try
         {
@@ -189,7 +189,7 @@ public sealed class LauncherBaselineScriptTests
 
         public ProcessResult RunValidation()
         {
-            string commonScript = Path.Combine(_repositoryRoot, "Tools", "LauncherBaseline.Common.ps1");
+            string commonScript = Path.Combine(_repositoryRoot, "tools", "LauncherBaseline.Common.ps1");
             string command = $$"""
                 $ErrorActionPreference = 'Stop'
                 . '{{EscapePowerShell(commonScript)}}'

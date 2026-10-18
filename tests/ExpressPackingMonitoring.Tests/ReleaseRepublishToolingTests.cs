@@ -88,7 +88,7 @@ public sealed class ReleaseRepublishToolingTests
         {
             string repositoryRoot = FindRepositoryRoot();
             string root = Path.Combine(Path.GetTempPath(), "pp-republish", Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path.Combine(root, "Tools"));
+            Directory.CreateDirectory(Path.Combine(root, "tools"));
             Directory.CreateDirectory(Path.Combine(root, "src", "ExpressPackingMonitoring"));
 
             foreach (string scriptName in new[]
@@ -99,8 +99,8 @@ public sealed class ReleaseRepublishToolingTests
                      })
             {
                 File.Copy(
-                    Path.Combine(repositoryRoot, "Tools", scriptName),
-                    Path.Combine(root, "Tools", scriptName));
+                    Path.Combine(repositoryRoot, "tools", scriptName),
+                    Path.Combine(root, "tools", scriptName));
             }
 
             // 产品版本号固定只有一个来源：仓根 Directory.Build.props。
@@ -136,7 +136,7 @@ public sealed class ReleaseRepublishToolingTests
 
         public (int ExitCode, string Output) RunRepublish(string arguments)
         {
-            string scriptPath = Path.Combine(Root, "Tools", "Republish-SameVersion.ps1");
+            string scriptPath = Path.Combine(Root, "tools", "Republish-SameVersion.ps1");
             // 子进程默认按本地代码页写 stdout，中文会变成乱码：先固定控制台编码再调用脚本。
             // 脚本保持正式形态（不为了测试改编码），这里用 -Command 包一层即可。
             string command = string.Join(

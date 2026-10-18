@@ -337,7 +337,7 @@ public sealed class ManualPatchInstallerTests
             string userDataRoot = Path.Combine(_root, "user-data");
             _configPath = Path.Combine(userDataRoot, "config.json");
             TargetFilePath = Path.Combine(_appRoot, "Web", "index.html");
-            _scriptPath = Path.Combine(FindRepositoryRoot(), "Tools", "Apply-AppPatch.ps1");
+            _scriptPath = Path.Combine(FindRepositoryRoot(), "tools", "Apply-AppPatch.ps1");
 
             Directory.CreateDirectory(Path.GetDirectoryName(TargetFilePath)!);
             Directory.CreateDirectory(userDataRoot);

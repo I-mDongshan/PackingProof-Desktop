@@ -33,13 +33,13 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string incrementalScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "打包脚本-增量.bat"),
+            Path.Combine(repositoryRoot, "tools", "打包脚本-增量.bat"),
             Encoding.UTF8);
         string baselineScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "打包脚本-基线.bat"),
+            Path.Combine(repositoryRoot, "tools", "打包脚本-基线.bat"),
             Encoding.UTF8);
 
         Assert.Contains("Packaging will continue", publishScript);
@@ -55,7 +55,7 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("function Test-IsStrictDescendantPath", publishScript, StringComparison.Ordinal);
@@ -90,16 +90,16 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string appInstallerScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Apply-AppPatch.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Apply-AppPatch.ps1"),
             Encoding.UTF8);
         string installerCmd = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Install-AppPatch.cmd"),
+            Path.Combine(repositoryRoot, "tools", "Install-AppPatch.cmd"),
             Encoding.UTF8);
         string launcherBaselineScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-LauncherBaseline.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-LauncherBaseline.ps1"),
             Encoding.UTF8);
 
         Assert.DoesNotContain("New-ManualUpdatePackage", publishScript);
@@ -126,13 +126,13 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string baselineScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-LauncherBaseline.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-LauncherBaseline.ps1"),
             Encoding.UTF8);
         string commonScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "LauncherBaseline.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "LauncherBaseline.Common.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("Read-LauncherBaselineManifest", publishScript);
@@ -175,13 +175,13 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string commonScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "FFmpegBaseline.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "FFmpegBaseline.Common.ps1"),
             Encoding.UTF8);
         string manifest = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "ffmpeg-baseline.json"),
+            Path.Combine(repositoryRoot, "tools", "ffmpeg-baseline.json"),
             Encoding.UTF8);
         XDocument project = XDocument.Load(
             Path.Combine(repositoryRoot, "src", "ExpressPackingMonitoring", "ExpressPackingMonitoring.csproj"));
@@ -216,10 +216,10 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string releaseScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Test-Release.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Test-Release.ps1"),
             Encoding.UTF8);
         string encoderScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Test-EncodingCodecs.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Test-EncodingCodecs.ps1"),
             Encoding.UTF8);
         string solution = File.ReadAllText(
             Path.Combine(repositoryRoot, "ExpressPackingMonitoring.sln"),
@@ -244,7 +244,7 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string releaseScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Test-Release.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Test-Release.ps1"),
             Encoding.UTF8);
         Match requiredTestsBlock = Regex.Match(
             releaseScript,
@@ -271,13 +271,13 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string compatibilityScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "AppPatchRuntimeCompatibility.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "AppPatchRuntimeCompatibility.Common.ps1"),
             Encoding.UTF8);
         string manifest = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "ffmpeg-baseline.json"),
+            Path.Combine(repositoryRoot, "tools", "ffmpeg-baseline.json"),
             Encoding.UTF8);
 
         Assert.Contains("Test-AppPatchRuntimeCompatibility", publishScript);
@@ -308,7 +308,7 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("^v\\d+\\.\\d+\\.\\d+", publishScript);
@@ -321,16 +321,16 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string innoScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Installer", "ExpressPackingMonitoring.iss"),
+            Path.Combine(repositoryRoot, "tools", "Installer", "ExpressPackingMonitoring.iss"),
             Encoding.UTF8);
         string chineseMessages = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Installer", "Languages", "ChineseSimplified.isl"),
+            Path.Combine(repositoryRoot, "tools", "Installer", "Languages", "ChineseSimplified.isl"),
             Encoding.UTF8);
         string buildScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Build-Installer.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Build-Installer.ps1"),
             Encoding.UTF8);
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
 
         Assert.Contains("99E9FCE3-C8FE-4D7A-9FA4-BC9CB9186B05", innoScript);
@@ -476,13 +476,13 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string publisher = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-Releases.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-Releases.ps1"),
             Encoding.UTF8);
         string publishScript = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Publish-CleanPackage.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
             Encoding.UTF8);
         string versionCommon = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "ReleaseVersion.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "ReleaseVersion.Common.ps1"),
             Encoding.UTF8);
 
         // 命名规则集中在 ReleaseVersion.Common.ps1，两边都必须复用它。
@@ -564,7 +564,7 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string submitter = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "Submit-ChangePr.ps1"),
+            Path.Combine(repositoryRoot, "tools", "Submit-ChangePr.ps1"),
             Encoding.UTF8);
         string releaseDocument = File.ReadAllText(
             Path.Combine(repositoryRoot, "docs", "development", "RELEASE_AND_RUNTIME.md"),
@@ -602,7 +602,7 @@ public sealed class ReleasePackagingPolicyTests
     {
         string repositoryRoot = FindRepositoryRoot();
         string notesCommon = File.ReadAllText(
-            Path.Combine(repositoryRoot, "Tools", "ReleaseNotes.Common.ps1"),
+            Path.Combine(repositoryRoot, "tools", "ReleaseNotes.Common.ps1"),
             Encoding.UTF8);
         string template = File.ReadAllText(
             Path.Combine(repositoryRoot, "docs", "development", "RELEASE_NOTES_TEMPLATE.md"),

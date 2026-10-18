@@ -9,7 +9,7 @@ public sealed class TaskbarIdentityTests
     public void AppAndInstallerUseSameStableIdentity()
     {
         string installer = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Tools", "Installer", "ExpressPackingMonitoring.iss"));
+            Path.Combine(FindRepositoryRoot(), "tools", "Installer", "ExpressPackingMonitoring.iss"));
 
         Assert.Equal("PackingProof.ExpressPackingMonitoring", TaskbarIdentityService.AppUserModelId);
         Assert.Contains(TaskbarIdentityService.AppUserModelId, installer, StringComparison.Ordinal);
