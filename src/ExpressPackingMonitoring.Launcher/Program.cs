@@ -695,7 +695,8 @@ internal static class Program
                 derivedGithubUrl,
                 failureState.ConsecutiveGithubDownloadFailures,
                 GithubDownloadFailureFallbackThreshold,
-                manifestSourceUrl);
+                manifestSourceUrl,
+                descriptor.DownloadSource);
 
             string downloadedPath;
             try
@@ -705,16 +706,24 @@ internal static class Program
                     route.SelectedUrl, partialPath, descriptor, downloadToken);
             }
             catch (Exception ex) when (!downloadToken.IsCancellationRequested
-                                       && !route.PreferGitee
                                        && !AreSameUrl(route.GithubUrl, route.GiteeUrl))
             {
-                failureState.ConsecutiveGithubDownloadFailures++;
-                SavePatchDownloadFailureState(failureState);
-                WriteLog($"GitHub Patch 下载失败 {failureState.ConsecutiveGithubDownloadFailures}/{GithubDownloadFailureFallbackThreshold}：{ex.Message}");
-
-                WriteLog($"GitHub Patch 下载失败，本次立即改用 Gitee：{route.GiteeUrl}");
+                string alternateUrl = route.PreferGitee ? route.GithubUrl : route.GiteeUrl;
+                if (string.IsNullOrWhiteSpace(alternateUrl))
+                    throw;
+                if (!route.PreferGitee)
+                {
+                    failureState.ConsecutiveGithubDownloadFailures++;
+                    SavePatchDownloadFailureState(failureState);
+                    WriteLog($"GitHub Patch 下载失败 {failureState.ConsecutiveGithubDownloadFailures}/{GithubDownloadFailureFallbackThreshold}：{ex.Message}");
+                    WriteLog($"GitHub Patch 下载失败，本次立即改用 Gitee：{alternateUrl}");
+                }
+                else
+                {
+                    WriteLog($"Gitee Patch 下载失败，本次立即改用 GitHub：{alternateUrl}：{ex.Message}");
+                }
                 downloadedPath = await DownloadVerifiedPatchAsync(
-                    route.GiteeUrl, partialPath, descriptor, downloadToken);
+                    alternateUrl, partialPath, descriptor, downloadToken);
             }
 
             WriteLog($"Patch 下载校验通过：version={descriptor.LatestVersion}, size={(new FileInfo(downloadedPath)).Length}");
@@ -1326,6 +1335,9 @@ internal static class Program
         if (string.IsNullOrWhiteSpace(fullDownloadPage))
             fullDownloadPage = ReadString(manifestRoot, "release_page");
         string fullDownloadFallbackPage = ReadString(manifestRoot, "full_download_fallback_page");
+        string downloadSource = ReadString(manifestRoot, "download_source").Trim().ToLowerInvariant();
+        if (downloadSource is not ("gitee" or "github" or "auto"))
+            downloadSource = "gitee";
 
         return new UpdateDescriptor(
             latestVersion,
@@ -1335,6 +1347,7 @@ internal static class Program
             fullDownloadFallbackPage,
             NormalizeVersion(ReadString(manifestRoot, "patch_baseline_version")),
             ReadBoolean(manifestRoot, "patch_supported"),
+            downloadSource,
             ReadPatchPackageInfo(manifestRoot));
     }
 
@@ -1524,7 +1537,7 @@ internal static class Program
         {
         }
 
-        return UpdateEndpointPolicy.DefaultGithubCheckUrl;
+        return UpdateEndpointPolicy.DefaultGiteeCheckUrl;
     }
 
     private static string ReadString(JsonElement element, string propertyName)
@@ -2059,6 +2072,7 @@ internal static class Program
         string FullDownloadFallbackPage,
         string PatchBaselineVersion,
         bool PatchSupported,
+        string DownloadSource,
         PatchPackageInfo PatchPackage);
 
     private sealed record UpdateNotification(string Title, string Message, bool IsError);

@@ -341,7 +341,10 @@ internal sealed class AppPatchDownloadService
         {
             Directory.CreateDirectory(partialDirectory);
             PruneLegacyDownloadDirectories(_updatesDirectory);
-            PackageDownloadRoute route = GetDownloadRoute(descriptor.PatchPackage, manifestSourceUrl);
+            PackageDownloadRoute route = GetDownloadRoute(
+                descriptor.PatchPackage,
+                manifestSourceUrl,
+                descriptor.DownloadSource);
             progress?.Report(new AppPatchDownloadProgress(
                 route.PreferGitee ? "正在从 Gitee 下载增量更新包" : "正在从 GitHub 下载增量更新包"));
             var downloadProgress = new PatchDownloadProgressAdapter(progress);
@@ -657,6 +660,9 @@ internal sealed class AppPatchDownloadService
         if (fullDownloadUrl.Length == 0)
             fullDownloadUrl = ReadString(root, "release_page");
         string fullDownloadFallbackUrl = ReadString(root, "full_download_fallback_page");
+        string downloadSource = ReadString(root, "download_source").Trim().ToLowerInvariant();
+        if (downloadSource is not ("gitee" or "github" or "auto"))
+            downloadSource = "gitee";
 
         AppPatchPackageInfo package = new("", "", "", -1);
         if (root.TryGetProperty("patch_package", out JsonElement packageElement)
@@ -678,6 +684,7 @@ internal sealed class AppPatchDownloadService
             ReadBoolean(root, "patch_supported"),
             fullDownloadUrl,
             fullDownloadFallbackUrl,
+            downloadSource,
             package);
     }
 
@@ -698,7 +705,7 @@ internal sealed class AppPatchDownloadService
     }
 
     internal static PackageDownloadRoute GetDownloadRoute(AppPatchPackageInfo package)
-        => GetDownloadRoute(package, manifestSourceUrl: null);
+        => GetDownloadRoute(package, manifestSourceUrl: null, downloadSource: "gitee");
 
     /// <param name="manifestSourceUrl">
     /// 这份清单实际是从哪个地址下来的。清单走 gitee.com 时增量包也优先走 Gitee：
@@ -706,7 +713,8 @@ internal sealed class AppPatchDownloadService
     /// </param>
     internal static PackageDownloadRoute GetDownloadRoute(
         AppPatchPackageInfo package,
-        string? manifestSourceUrl)
+        string? manifestSourceUrl,
+        string? downloadSource = "gitee")
     {
         return PackageDownloadRoutePolicy.Resolve(
             package.GithubUrl,
@@ -715,7 +723,8 @@ internal sealed class AppPatchDownloadService
             derivedGithubUrl: "",
             consecutiveGithubFailures: 0,
             fallbackThreshold: 3,
-            manifestSourceUrl);
+            manifestSourceUrl,
+            downloadSource);
     }
 
     private static void ValidatePackage(string path, AppPatchPackageInfo package)
@@ -864,6 +873,7 @@ internal sealed record AppPatchDescriptor(
     bool PatchSupported,
     string FullDownloadUrl,
     string FullDownloadFallbackUrl,
+    string DownloadSource,
     AppPatchPackageInfo PatchPackage);
 
 internal sealed record AppPatchPackageInfo(

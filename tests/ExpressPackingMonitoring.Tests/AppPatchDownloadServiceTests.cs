@@ -197,7 +197,11 @@ public sealed class AppPatchDownloadServiceTests
         using var fixture = new AppPatchFixture();
         byte[] package = BuildPackage(200_000);
         (string githubUrl, string giteeUrl) =
-            fixture.AddDualSourceRelease("1.2.3", package, githubServedBytes: 60_000);
+            fixture.AddDualSourceRelease(
+                "1.2.3",
+                package,
+                githubServedBytes: 60_000,
+                downloadSource: "github");
         fixture.EnableRangeSupport();
 
         AppPatchPreparationResult result = await fixture.PrepareAsync("1.2.3");
@@ -302,7 +306,10 @@ public sealed class AppPatchDownloadServiceTests
     {
         using var fixture = new AppPatchFixture();
         byte[] package = "gitee-fallback-patch"u8.ToArray();
-        (string githubUrl, string giteeUrl) = fixture.AddDualSourceRelease("1.2.3", package);
+        (string githubUrl, string giteeUrl) = fixture.AddDualSourceRelease(
+            "1.2.3",
+            package,
+            downloadSource: "github");
 
         AppPatchPreparationResult result = await fixture.PrepareAsync("1.2.3");
 
@@ -573,14 +580,15 @@ public sealed class AppPatchDownloadServiceTests
         internal (string GithubUrl, string GiteeUrl) AddDualSourceRelease(
             string version,
             byte[] package,
-            int? githubServedBytes = null)
+            int? githubServedBytes = null,
+            string? downloadSource = null)
         {
             string manifestUrl = ManifestBase + $"update-{version}.json";
             string githubUrl = ManifestBase + $"github-patch-{version}.zip";
             string giteeUrl = ManifestBase + $"gitee-patch-{version}.zip";
             _handler.Add(
                 manifestUrl,
-                Encoding.UTF8.GetBytes(BuildDualSourceManifest(version, package, githubUrl, giteeUrl)),
+                Encoding.UTF8.GetBytes(BuildDualSourceManifest(version, package, githubUrl, giteeUrl, downloadSource)),
                 "application/json");
             if (githubServedBytes is int servedBytes)
             {
@@ -619,13 +627,17 @@ public sealed class AppPatchDownloadServiceTests
             string version,
             byte[] package,
             string githubUrl,
-            string giteeUrl)
+            string giteeUrl,
+            string? downloadSource = null)
         {
             string hash = Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant();
+            string downloadSourceLine = string.IsNullOrWhiteSpace(downloadSource)
+                ? ""
+                : $"  \"download_source\": \"{downloadSource}\",\n";
             return
                 $$"""
                 {
-                  "latest_version": "{{version}}",
+                {{downloadSourceLine}}  "latest_version": "{{version}}",
                   "patch_baseline_version": "0.0.0",
                   "patch_supported": true,
                   "full_download_page": "https://example.com/releases",

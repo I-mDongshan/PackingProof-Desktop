@@ -34,6 +34,8 @@ public sealed class PatchDistributionRoutingTests
         Assert.Contains("UpdateMetadataClient", launcher);
         Assert.Contains("FetchLatestManifestAsync", launcher);
         Assert.Contains("本次立即改用 Gitee", launcher);
+        Assert.Contains("Gitee Patch 下载失败，本次立即改用 GitHub", launcher);
+        Assert.Contains("GitHub Patch 下载失败，本次立即改用 Gitee", launcher);
         Assert.Contains("PackageDownloadRoutePolicy.Resolve", launcher);
         Assert.Contains("SuccessfulUpdateCheckCacheHours", launcher);
         Assert.DoesNotContain(

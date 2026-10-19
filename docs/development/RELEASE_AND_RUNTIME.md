@@ -100,6 +100,7 @@ pwsh -NoProfile -File tools\Publish-CleanPackage.ps1 -Version <X.Y.Z> -PatchBase
 - 《下载与更新说明》必须与本次实际上传的资产逐条对齐：GitHub 的 Setup、Gitee 直接上传的完整 Setup 或 no-runtime 安装包（按 100MB 阈值二选一）、Microsoft Store 的 MSIX、macOS 的 DMG、建立新启动器基线时的 LauncherPatch；少写一项就属于发布不规范，多写未上传的资产、或写已经不存在的分发方式（例如整包 ZIP 免安装包）同样算错。
 - 条目顺序按重要性从高到低：本版重点功能 → 重要修复 → 小优化与文案调整；`update_v<X.Y.Z>.json` 的 `notes` 保持同一顺序。同一件事（同一模块的默认值、迁移、提示、界面入口等）必须合并成一条，不允许拆成多条重复描述。预览版需在 GitHub 与 Gitee 标记 prerelease；预览版只写本次增量，正式版汇总上一正式版以来所有预览版。
 - `update_vX.Y.Z.json` 的 `title` 与 Release 标题完全一致，`notes` 必须已经填写，发布脚本会直接拒绝“请填写更新标题”这类占位内容。`notes` 是供启动器直接显示的纯文本字符串数组，每项只写一条简洁、用户可见的变化；禁止 Markdown 标题、列表减号、序号、换行排版和“下载某某包更新”等说明。`notes` 按模块归并、控制在 15~20 条以内，但必须覆盖本版本全部用户可见变化，不能只写几条最重要的；超过 20 条发布脚本会拒绝。
+- `update_vX.Y.Z.json` 的 `download_source` 控制增量包默认从哪个平台下载：`gitee`（缺省，兼容国内网络）、`github`（便于用 Release 附件下载量观察自动更新规模）或 `auto`（跟随更新清单来源）。无论选哪个，GitHub 连续下载失败后都会自动回退 Gitee；大补丁建议显式使用 `gitee`。出包时通过 `Publish-CleanPackage.ps1 -DownloadSource gitee|github|auto` 写入。
 - `notes` 面向的是店员等最终用户，只写他们能感知的变化。工程与内部改动一律不写，例如运行时版本、打包与增量包机制、CI 门禁、代码重构、测试补充；这些留在发布笔记的“兼容与工程”里。
 - `notes` 每条要短：启动器会折行，但条目过长折成多行后整页看起来又乱又难读。单条建议 20~35 字，硬上限 40 字（含标点），发布脚本会拒绝超长条目。
 - 不生成 AppFull 或 ManualUpdate，不上传旧名 `ExpressPackingMonitoring_AppPatch_vX.Y.Z.zip`。`launcher_manifest` 和 `release_info` 仅作本地校验交接，默认不上传。

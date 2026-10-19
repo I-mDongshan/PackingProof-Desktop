@@ -17,6 +17,8 @@ param(
     [ValidateSet("lzma2/normal", "lzma2/max", "lzma2/ultra64")]
     [string]$InstallerCompression = "lzma2/ultra64",
     [string]$PatchBaselineVersion = "0.0.18",
+    [ValidateSet("gitee", "github", "auto")]
+    [string]$DownloadSource = "gitee",
     [switch]$IncludeFullZip,
     [switch]$IncludeSevenZip,
     [switch]$SkipTtsCacheGeneration,
@@ -1701,6 +1703,7 @@ else {
 $updateManifest = [ordered]@{}
 $updateManifest["latest_version"] = $normalizedVersion
 $updateManifest["title"] = ConvertFrom-Utf8Base64 "6K+35aGr5YaZ5pu05paw5qCH6aKY"
+$updateManifest["download_source"] = $DownloadSource
 $updateManifest["release_page"] = $releasePage
 $updateManifest["patch_baseline_version"] = $normalizedPatchBaselineVersion
 $updateManifest["patch_supported"] = $patchSupported

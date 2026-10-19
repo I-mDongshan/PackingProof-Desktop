@@ -11,10 +11,9 @@ public static class PackageDownloadRoutePolicy
     /// <summary>
     /// 挑主用下载源。
     ///
-    /// 除了原来的"GitHub 连续失败够多次就换 Gitee"，再加一条：**谁把更新清单送到手里，就从谁那儿下包**。
-    /// 清单能下来就说明这条链路对这台机器是通的；实测同一台机器 Gitee 附件比 GitHub 快十几倍
-    /// （2.1MB/s 对 148KB/s），国内用户按原来的 GitHub 优先只会在慢链路上白等。
-    /// 已经连续失败到阈值时仍然听失败记录的（比"哪条链路通"更可信）。
+    /// 更新清单可以用 <c>download_source</c> 指定 gitee / github / auto：
+    /// 缺省由调用方按 gitee 处理；auto 时才按"谁把更新清单送到手里"选择。
+    /// 已经连续失败到阈值时仍然听失败记录的（比偏好更可信）。
     /// </summary>
     public static PackageDownloadRoute Resolve(
         string? githubUrl,
@@ -23,7 +22,8 @@ public static class PackageDownloadRoutePolicy
         string? derivedGithubUrl,
         int consecutiveGithubFailures,
         int fallbackThreshold,
-        string? manifestSourceUrl = null)
+        string? manifestSourceUrl = null,
+        string? preferredSource = null)
     {
         string github = FirstValid(githubUrl, derivedGithubUrl);
         string gitee = FirstValid(giteeUrl, legacyUrl);
@@ -35,9 +35,16 @@ public static class PackageDownloadRoutePolicy
             throw new InvalidOperationException("更新包没有可用的 HTTPS 下载地址");
 
         bool bothHostsAvailable = !string.Equals(github, gitee, StringComparison.OrdinalIgnoreCase);
-        bool preferGitee = Math.Max(0, consecutiveGithubFailures) >= Math.Max(1, fallbackThreshold)
-            && bothHostsAvailable;
-        if (!preferGitee && bothHostsAvailable && IsGiteeHost(manifestSourceUrl))
+        string preference = (preferredSource ?? "").Trim().ToLowerInvariant();
+        bool preferGitee;
+        if (bothHostsAvailable && preference == "gitee")
+            preferGitee = true;
+        else if (bothHostsAvailable && preference == "github")
+            preferGitee = false;
+        else
+            preferGitee = bothHostsAvailable && IsGiteeHost(manifestSourceUrl);
+        if (bothHostsAvailable
+            && Math.Max(0, consecutiveGithubFailures) >= Math.Max(1, fallbackThreshold))
             preferGitee = true;
         return new PackageDownloadRoute(
             github,

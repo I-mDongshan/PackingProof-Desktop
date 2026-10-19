@@ -119,6 +119,24 @@ public sealed class LauncherProtocolTests : IDisposable
         Assert.Equal(0, legacy.PatchPackage.RequiredLauncherProtocol);
     }
 
+    [Fact]
+    public void ParseDescriptor_DefaultsDownloadSourceToGiteeAndReadsOverride()
+    {
+        AppPatchDescriptor legacy = AppPatchDownloadService.ParseDescriptor(
+            BuildPatchManifest(requiredLauncherProtocol: null),
+            "0.0.83");
+        AppPatchDescriptor github = AppPatchDownloadService.ParseDescriptor(
+            BuildPatchManifest(requiredLauncherProtocol: null)
+                .Replace(
+                    "\"patch_supported\": true,",
+                    "\"patch_supported\": true,\n  \"download_source\": \"github\",",
+                    StringComparison.Ordinal),
+            "0.0.83");
+
+        Assert.Equal("gitee", legacy.DownloadSource);
+        Assert.Equal("github", github.DownloadSource);
+    }
+
     /// <summary>启动器包声明的"我要多新的主程序"同样要解析出来。</summary>
     [Fact]
     public void ParsePackageInfo_ReadsRequiredAppProtocol()
