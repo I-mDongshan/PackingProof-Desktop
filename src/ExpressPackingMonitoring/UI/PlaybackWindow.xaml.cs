@@ -144,6 +144,8 @@ namespace ExpressPackingMonitoring.UI
         private bool _videoLoadLoopRunning;
         private bool _playerInitializationFailed;
         private Task<bool>? _playerReadyTask;
+        private readonly TaskCompletionSource<bool> _playerViewLoaded = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         private bool _awaitingFirstFrame;
         private int _currentPage = 1;
         private int _totalVideos;
@@ -1854,6 +1856,9 @@ namespace ExpressPackingMonitoring.UI
         private Task<bool> EnsurePlayerReadyAsync() =>
             _playerReadyTask ??= InitializePlayerAsync();
 
+        private void PlayerView_Loaded(object sender, RoutedEventArgs e) =>
+            _playerViewLoaded.TrySetResult(true);
+
         private async Task<bool> InitializePlayerAsync()
         {
             if (_playerInitializationFailed)
@@ -1888,7 +1893,22 @@ namespace ExpressPackingMonitoring.UI
                 // 首帧/视频输出就绪：这一对事件决定什么时候放开播放（见 PlaybackWindow.Playback.cs）
                 _mediaPlayer.Vout += MediaPlayer_Vout;
                 _mediaPlayer.Paused += MediaPlayer_Paused;
+
+                // VideoView 必须先完成模板应用并拿到原生 HWND，否则 libvlc 会自己创建一个
+                // 独立的 "VLC (Direct3D11 output)" 窗口，视频看起来就像从回放窗口里弹出去。
+                // 开窗时的初始化是异步的，列表自动选中第一段录像可能比 VideoView 的 Loaded 更早。
+                if (!PlayerView.IsLoaded)
+                {
+                    await Task.WhenAny(
+                        _playerViewLoaded.Task,
+                        Task.Delay(TimeSpan.FromSeconds(2)));
+                }
+                if (_isClosing)
+                    return false;
+                PlayerView.ApplyTemplate();
+                PlayerView.UpdateLayout();
                 PlayerView.MediaPlayer = _mediaPlayer;
+                await Dispatcher.Yield(DispatcherPriority.Loaded);
                 BtnTogglePlay.IsEnabled = true;
                 TimelineSlider.IsEnabled = true;
                 return true;

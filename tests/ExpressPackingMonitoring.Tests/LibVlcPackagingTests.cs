@@ -83,6 +83,22 @@ public sealed class LibVlcPackagingTests
         Assert.DoesNotContain("new Media(_libVLC!, new Uri(video.FullPath))", playback, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PlaybackWindow_WaitsForVideoViewBeforeAttachingMediaPlayer()
+    {
+        string xaml = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "PlaybackWindow.xaml");
+        string code = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "PlaybackWindow.xaml.cs");
+
+        Assert.Contains("Loaded=\"PlayerView_Loaded\"", xaml, StringComparison.Ordinal);
+        int waitIndex = code.IndexOf("_playerViewLoaded.Task", StringComparison.Ordinal);
+        int attachIndex = code.IndexOf("PlayerView.MediaPlayer = _mediaPlayer", StringComparison.Ordinal);
+        Assert.True(
+            waitIndex >= 0 && attachIndex > waitIndex,
+            "VideoView 必须先完成加载再绑定 MediaPlayer，否则 libvlc 会创建独立的 Direct3D 输出窗口");
+    }
+
     [Theory]
     [InlineData("codec\\libvpx_plugin.dll")]
     [InlineData("codec\\libaom_plugin.dll")]

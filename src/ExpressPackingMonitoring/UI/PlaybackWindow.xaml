@@ -597,7 +597,8 @@
                     <vlc:VideoView x:Name="PlayerView"
                                    Background="{DynamicResource VideoSurfaceBackground}"
                                    HorizontalAlignment="Stretch"
-                                   VerticalAlignment="Stretch">
+                                   VerticalAlignment="Stretch"
+                                   Loaded="PlayerView_Loaded">
                         <Border x:Name="PlaybackCover"
                                 Background="{DynamicResource PanelBackground}">
                             <StackPanel HorizontalAlignment="Center"
