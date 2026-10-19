@@ -1524,7 +1524,7 @@ internal static class Program
         {
         }
 
-        return UpdateEndpointPolicy.DefaultGiteeCheckUrl;
+        return UpdateEndpointPolicy.DefaultGithubCheckUrl;
     }
 
     private static string ReadString(JsonElement element, string propertyName)

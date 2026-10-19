@@ -13,8 +13,10 @@ public static class UpdateEndpointPolicy
     {
         string primary = configuredPrimary?.Trim() ?? "";
         string fallback = configuredFallback?.Trim() ?? "";
+        // GitHub 优先：Release 附件下载量能直接反映自动更新用户规模；Gitee 仍保留为
+        // 失败回退，GitHub 不可达时更新链路不受影响。
         if (primary.Length == 0)
-            primary = DefaultGiteeCheckUrl;
+            primary = DefaultGithubCheckUrl;
 
         if (fallback.Length == 0)
         {

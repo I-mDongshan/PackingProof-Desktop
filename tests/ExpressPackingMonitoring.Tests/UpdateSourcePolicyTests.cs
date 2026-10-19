@@ -9,12 +9,12 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class UpdateSourcePolicyTests
 {
     [Fact]
-    public void DefaultMetadataSources_PreferGiteeThenFallbackToCurrentGithubRepository()
+    public void DefaultMetadataSources_PreferGithubThenFallbackToGitee()
     {
         IReadOnlyList<string> urls = UpdateCheckOptions.ResolveUpdateCheckUrls(null, null);
 
-        Assert.Equal(UpdateCheckOptions.DefaultGiteeCheckUrl, urls[0]);
-        Assert.Equal(UpdateCheckOptions.DefaultGithubCheckUrl, urls[1]);
+        Assert.Equal(UpdateCheckOptions.DefaultGithubCheckUrl, urls[0]);
+        Assert.Equal(UpdateCheckOptions.DefaultGiteeCheckUrl, urls[1]);
         Assert.DoesNotContain("m-RNA", string.Join("\n", urls), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -29,7 +29,7 @@ public sealed class UpdateSourcePolicyTests
     }
 
     [Fact]
-    public async Task MetadataCheck_FallsBackToGithubWhenGiteeIsRateLimited()
+    public async Task MetadataCheck_FallsBackToGiteeWhenGithubIsRateLimited()
     {
         using var handler = new MetadataHandler();
         using var client = new HttpClient(handler);
@@ -74,13 +74,15 @@ public sealed class UpdateSourcePolicyTests
             TestContext.Current.CancellationToken);
 
         // SourceUrl 仍是策略生成的列表地址（翻页是在这一层内部做的），请求序列才是带 page=1 的
-        Assert.Equal(ReleaseListUrls()[1], resolved.SourceUrl);
+        Assert.Equal(ReleaseListUrls()[0], resolved.SourceUrl);
         Assert.Equal(githubManifest, resolved.ManifestUrl);
+        string giteeList = $"{UpdateCheckOptions.DefaultGiteeCheckUrl[..^"/latest".Length]}?per_page=100&direction=desc&page=1";
+        string githubList = $"{UpdateCheckOptions.DefaultGithubCheckUrl[..^"/latest".Length]}?per_page=100&page=1";
         Assert.Equal(
             [
-                PagedReleaseListUrls()[0],
+                giteeList,
                 giteeManifest,
-                PagedReleaseListUrls()[1],
+                githubList,
                 githubManifest
             ],
             handler.Requests);
@@ -150,7 +152,7 @@ public sealed class UpdateSourcePolicyTests
         Assert.Equal(UnreachableGithubAssetHandler.GiteeManifestUrl, resolved.ManifestUrl);
         Assert.Equal(
             [
-                PagedReleaseListUrls()[1],
+                PagedReleaseListUrls()[0],
                 UnreachableGithubAssetHandler.GithubManifestUrl,
                 UnreachableGithubAssetHandler.GiteeManifestUrl
             ],
@@ -172,8 +174,8 @@ public sealed class UpdateSourcePolicyTests
 
         string giteeList = UpdateCheckOptions.DefaultGiteeCheckUrl[..^"/latest".Length];
         string githubList = UpdateCheckOptions.DefaultGithubCheckUrl[..^"/latest".Length];
-        Assert.Equal($"{giteeList}?per_page=100&direction=desc", urls[0]);
-        Assert.Equal($"{githubList}?per_page=100", urls[1]);
+        Assert.Equal($"{githubList}?per_page=100", urls[0]);
+        Assert.Equal($"{giteeList}?per_page=100&direction=desc", urls[1]);
     }
 
     /// <summary>列表请求的第一个 URL：策略生成的列表地址 + 第一页。</summary>
@@ -276,8 +278,8 @@ public sealed class UpdateSourcePolicyTests
         {
             string url = request.RequestUri?.AbsoluteUri ?? "";
             Requests.Add(url);
-            // 列表按页取，Gitee 那条请求会带上 &page=1，所以按前缀判断
-            if (url.StartsWith(ReleaseListUrls()[0], StringComparison.OrdinalIgnoreCase))
+            // 列表按页取，GitHub 那条请求会带上 &page=1；按主机判断，避免依赖默认源顺序。
+            if (url.Contains("github.com", StringComparison.OrdinalIgnoreCase))
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
                 {
@@ -418,8 +420,8 @@ public sealed class UpdateSourcePolicyTests
                 });
             }
 
-            // 列表按页取，Gitee 那条请求会带上 &page=1，所以按前缀判断
-            string manifestUrl = url.StartsWith(ReleaseListUrls()[0], StringComparison.OrdinalIgnoreCase)
+            // 列表按页取；按主机判断，避免默认源顺序变化后把两个平台的夹具弄反。
+            string manifestUrl = url.Contains("gitee.com", StringComparison.OrdinalIgnoreCase)
                 ? giteeManifest
                 : githubManifest;
             string release = $$"""
