@@ -2776,104 +2776,6 @@ namespace ExpressPackingMonitoring.Data
         }
 
         /// <summary>
-        /// 手动清理候选：本地录像已定稿、未删除、结束时间早于截止时间、
-        /// 状态为已备份/失败/等待归档/仅本地，且文件位于任一托管本地根目录下。
-        /// 按 Verified → Failed → Pending → LocalOnly 分档、档内最旧优先；
-        /// archiveStatus 非空时只返回该状态，供分阶段清理。
-        /// </summary>
-        public IReadOnlyList<VideoRecord> GetManualCleanupCandidates(
-            DateTime cutoff,
-            IReadOnlyList<string> rootPrefixes,
-            int limit = 200,
-            string archiveStatus = null)
-        {
-            limit = Math.Clamp(limit, 1, 500);
-            lock (_lock)
-            {
-                var results = new List<VideoRecord>();
-                using var cmd = _connection.CreateCommand();
-                cmd.CommandText = @"
-                    SELECT Id, OrderId, Mode, VideoCodec, VideoEncoder, FilePath, FileSizeBytes,
-                           StartTime, EndTime, DurationSeconds, StopReason,
-                           IsDeleted, DeletedAt, DeleteReason,
-                           TrackingNumber, SourceOrderId, BuyerMessage, SellerMemo, ProductInfo, OrderInfoPushTime, OrderInfoJson,
-                           SourceType, SourceDeviceId, SourceDeviceName, SourceSessionId, ContentSha256,
-                           StorageState, RemoteVideoRecordId, SourceDeviceKind,
-                           ArchivePath, ArchiveStatus, ArchiveRetryCount,
-                           NextRetryAt, LastArchiveAttemptAt, ArchiveCompletedAt,
-                           LastArchiveProbeAt,
-                           ArchiveError, LocalCopyDeletedAt, LocalDeleteReason, DeleteReasonCode
-                    FROM VideoRecords
-                    WHERE IsDeleted = 0
-                      AND EndTime IS NOT NULL
-                      AND EndTime < @cutoff
-                      AND FilePath <> ''
-                      AND ArchiveStatus IN ('Verified', 'Failed', 'Pending', 'LocalOnly', 'NasDeleted')
-                      AND (ArchiveStatus <> 'Verified' OR ArchiveCompletedAt IS NOT NULL)
-                      " + BuildRootPrefixFilter(rootPrefixes) + @"
-                      " + (string.IsNullOrWhiteSpace(archiveStatus)
-                            ? ""
-                            : "AND ArchiveStatus = @archiveStatus") + @"
-                    ORDER BY
-                        CASE ArchiveStatus
-                            WHEN 'Verified' THEN 0
-                            WHEN 'NasDeleted' THEN 1
-                            WHEN 'Failed' THEN 2
-                            WHEN 'Pending' THEN 3
-                            ELSE 4
-                        END,
-                        EndTime ASC,
-                        Id ASC
-                    LIMIT @limit;";
-                cmd.Parameters.AddWithValue("@cutoff", cutoff.ToString("yyyy-MM-dd HH:mm:ss"));
-                cmd.Parameters.AddWithValue("@limit", limit);
-                if (!string.IsNullOrWhiteSpace(archiveStatus))
-                    cmd.Parameters.AddWithValue("@archiveStatus", archiveStatus);
-                AddRootPrefixParameters(cmd, rootPrefixes);
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                    results.Add(ReadVideoRecord(reader));
-                return results;
-            }
-        }
-
-        /// <summary>
-        /// 手动清理预览统计：条数、字节数（按数据库记录大小）与未备份条数。
-        /// </summary>
-        public ManualCleanupPreview GetManualCleanupPreview(
-            DateTime cutoff,
-            IReadOnlyList<string> rootPrefixes)
-        {
-            lock (_lock)
-            {
-                using var cmd = _connection.CreateCommand();
-                cmd.CommandText = @"
-                    SELECT COUNT(1),
-                           COALESCE(SUM(FileSizeBytes), 0),
-                           COALESCE(SUM(CASE
-                               WHEN ArchiveStatus IN ('Failed', 'Pending', 'LocalOnly', 'NasDeleted') THEN 1
-                               ELSE 0
-                           END), 0)
-                    FROM VideoRecords
-                    WHERE IsDeleted = 0
-                      AND EndTime IS NOT NULL
-                      AND EndTime < @cutoff
-                      AND FilePath <> ''
-                      AND ArchiveStatus IN ('Verified', 'Failed', 'Pending', 'LocalOnly', 'NasDeleted')
-                      AND (ArchiveStatus <> 'Verified' OR ArchiveCompletedAt IS NOT NULL)
-                      " + BuildRootPrefixFilter(rootPrefixes) + ";";
-                cmd.Parameters.AddWithValue("@cutoff", cutoff.ToString("yyyy-MM-dd HH:mm:ss"));
-                AddRootPrefixParameters(cmd, rootPrefixes);
-                using var reader = cmd.ExecuteReader();
-                reader.Read();
-                return new ManualCleanupPreview(
-                    Convert.ToInt32(reader.GetInt64(0)),
-                    reader.GetInt64(1),
-                    Convert.ToInt32(reader.GetInt64(2)));
-            }
-        }
-
-        /// <summary>
         /// 归档队列统计：由 ArchiveBackupStatePolicy 统一生成计入口径。
         /// RemainingCount = Pending + 上传中 + Failed + NASFull + LocalOnly + Conflict
         /// + 待核实（LocalMissingUnverified + LocalDeleted/UnconfirmedRemote）+ 丢失（BackupLost）；
@@ -2940,27 +2842,6 @@ namespace ExpressPackingMonitoring.Data
             }
         }
 
-        private static string BuildRootPrefixFilter(IReadOnlyList<string> rootPrefixes)
-        {
-            int count = 0;
-            foreach (string prefix in rootPrefixes)
-            {
-                if (!string.IsNullOrWhiteSpace(prefix))
-                    count++;
-            }
-            if (count == 0)
-                return "AND 0";
-
-            var conditions = new List<string>();
-            for (int i = 0; i < rootPrefixes.Count; i++)
-            {
-                if (string.IsNullOrWhiteSpace(rootPrefixes[i]))
-                    continue;
-                conditions.Add($"FilePath LIKE @root{i} ESCAPE '\\'");
-            }
-            return "AND (" + string.Join(" OR ", conditions) + ")";
-        }
-
         /// <summary>把网络根路径规范化为“以反斜杠结尾的目录前缀”，用于候选路径前缀匹配。</summary>
         private static string NormalizeRootPrefix(string rootPrefix)
         {
@@ -2970,27 +2851,6 @@ namespace ExpressPackingMonitoring.Data
             return trimmed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 + Path.DirectorySeparatorChar;
         }
-
-        private static void AddRootPrefixParameters(
-            SqliteCommand cmd,
-            IReadOnlyList<string> rootPrefixes)
-        {
-            for (int i = 0; i < rootPrefixes.Count; i++)
-            {
-                string prefix = rootPrefixes[i];
-                if (string.IsNullOrWhiteSpace(prefix))
-                    continue;
-                cmd.Parameters.AddWithValue(
-                    $"@root{i}",
-                    EscapeLikePattern(prefix) + "%");
-            }
-        }
-
-        private static string EscapeLikePattern(string value) =>
-            value
-                .Replace(@"\", @"\\")
-                .Replace("%", @"\%")
-                .Replace("_", @"\_");
 
         /// <summary>
         /// 录像完成后标记为等待网络归档（重置错误与重试计数）。

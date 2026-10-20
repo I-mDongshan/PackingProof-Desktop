@@ -39,7 +39,8 @@ public sealed class ManualCleanupServiceTests : IDisposable
         string content,
         DateTime endTime,
         string archiveStatus,
-        bool createNasCopy = false)
+        bool createNasCopy = false,
+        bool hostUploaded = false)
     {
         string localPath = Path.Combine(_localRoot, fileName);
         File.WriteAllText(localPath, content);
@@ -94,6 +95,8 @@ public sealed class ManualCleanupServiceTests : IDisposable
                 archiveStatus,
                 attemptedAt: endTime);
         }
+        if (hostUploaded)
+            _database.MarkVideoUploaded(id, 9000 + id);
         return id;
     }
 
@@ -393,5 +396,66 @@ public sealed class ManualCleanupServiceTests : IDisposable
 
         Assert.Equal(2, preview.Count);
         Assert.Equal(1, preview.UnarchivedCount);
+    }
+
+    [Fact]
+    public void HostUploadedCache_IsProtectedWithoutNasPrompt()
+    {
+        DateTime now = DateTime.Now;
+        long uploaded = InsertRecord(
+            "uploaded.mp4",
+            "uploaded-content",
+            now.AddDays(-10),
+            VideoArchiveStatus.LocalOnly,
+            hostUploaded: true);
+        var service = new ManualCleanupService(_database);
+        bool deciderCalled = false;
+
+        ManualCleanupResult result = service.Run(
+            new ManualCleanupOptions(ManualCleanupKind.ByTime, now.AddDays(-3), 0),
+            new[] { _localRoot },
+            _ =>
+            {
+                deciderCalled = true;
+                return false;
+            });
+
+        VideoRecord record = _database.GetVideoById(uploaded)!;
+        Assert.False(deciderCalled);
+        Assert.Equal(1, result.CleanedCount);
+        Assert.Equal(0, result.UnarchivedRemainingCount);
+        Assert.False(File.Exists(record.FilePath));
+        Assert.Equal("Remote", record.StorageState);
+        Assert.True(record.RemoteVideoRecordId > 0);
+    }
+
+    [Fact]
+    public void UnarchivedCleanup_ProcessesAllBatchesAndReportsTrueCount()
+    {
+        DateTime now = DateTime.Now;
+        for (int index = 0; index < 205; index++)
+        {
+            InsertRecord(
+                $"pending-{index:D3}.mp4",
+                "pending",
+                now.AddDays(-10).AddSeconds(index),
+                VideoArchiveStatus.LocalOnly);
+        }
+        var service = new ManualCleanupService(_database);
+        ManualCleanupPrompt? prompt = null;
+
+        ManualCleanupResult result = service.Run(
+            new ManualCleanupOptions(ManualCleanupKind.ByTime, now.AddDays(-3), 0),
+            new[] { _localRoot },
+            value =>
+            {
+                prompt = value;
+                return true;
+            });
+
+        Assert.NotNull(prompt);
+        Assert.Equal(205, prompt!.UnarchivedCount);
+        Assert.Equal(205, result.CleanedCount);
+        Assert.Equal(0, result.UnarchivedRemainingCount);
     }
 }

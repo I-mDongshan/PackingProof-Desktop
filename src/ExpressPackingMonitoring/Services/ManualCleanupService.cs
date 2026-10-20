@@ -46,6 +46,7 @@ internal sealed class ManualCleanupService
 {
     private const string CleanupReason = "手动清理本地录像";
     private const string MissingFileRepairReason = "本地文件已缺失，状态自动修复";
+    private const string HostUploadedStorageState = "Uploaded";
     private static readonly string[] UnarchivedTiers =
     [
         VideoArchiveStatus.NasDeleted,
@@ -80,12 +81,9 @@ internal sealed class ManualCleanupService
         int repairedCount = 0;
         int skippedCount = 0;
 
-        // 第一阶段：只清理已确认备份的本地副本。
-        foreach (VideoRecord record in _database.GetManualCleanupCandidates(
-                     cutoff,
-                     roots,
-                     500,
-                     VideoArchiveStatus.Verified))
+        // 第一阶段：清理已有可信备份的本地副本。录像从机上传到保存主机后，
+        // 主机校验回执同样是有效备份，不能继续按“未备份到 NAS”提示用户。
+        void CleanRecord(VideoRecord record)
         {
             if (TryCleanLocalCopy(record, out long bytes, out bool skipped, out bool repaired))
             {
@@ -101,8 +99,14 @@ internal sealed class ManualCleanupService
                 skippedCount++;
             }
         }
+        ProcessCandidatesInBatches(
+            limit => _database.GetManualCleanupBackedUpCandidates(
+                cutoff,
+                roots,
+                limit),
+            CleanRecord);
 
-        IReadOnlyList<VideoRecord> unarchived = GetUnarchivedCandidates(
+        ManualCleanupSelectionSummary unarchived = _database.GetManualCleanupUnarchivedSummary(
             cutoff,
             roots);
         bool targetReached = options.Kind == ManualCleanupKind.BySpace
@@ -117,59 +121,57 @@ internal sealed class ManualCleanupService
         if (needDecide
             && (unarchivedDecider?.Invoke(new ManualCleanupPrompt(
                     unarchived.Count,
-                    unarchived.Sum(record => Math.Max(0, record.FileSizeBytes))))
+                    unarchived.Bytes))
                 ?? false))
         {
             foreach (string tier in UnarchivedTiers)
             {
-                foreach (VideoRecord record in _database.GetManualCleanupCandidates(
-                             cutoff,
-                             roots,
-                             200,
-                             tier))
-                {
-                    if (TryCleanLocalCopy(
-                            record,
-                            out long bytes,
-                            out bool skipped,
-                            out bool repaired))
-                    {
-                        cleanedCount++;
-                        cleanedBytes += bytes;
-                    }
-                    else if (repaired)
-                    {
-                        repairedCount++;
-                    }
-                    else if (skipped)
-                    {
-                        skippedCount++;
-                    }
-                }
+                ProcessCandidatesInBatches(
+                    limit => _database.GetManualCleanupCandidates(
+                        cutoff,
+                        roots,
+                        limit,
+                        tier),
+                    CleanRecord);
             }
         }
 
-        int unarchivedRemaining = needDecide
-            ? GetUnarchivedCandidates(cutoff, roots).Count
-            : unarchived.Count;
+        ManualCleanupSelectionSummary remaining = needDecide
+            ? _database.GetManualCleanupUnarchivedSummary(cutoff, roots)
+            : unarchived;
         return new ManualCleanupResult(
             cleanedCount,
             cleanedBytes,
             repairedCount,
             skippedCount,
-            unarchivedRemaining,
+            remaining.Count,
             targetReached,
             unarchived.Count > 0);
     }
 
-    private IReadOnlyList<VideoRecord> GetUnarchivedCandidates(
-        DateTime cutoff,
-        IReadOnlyList<string> roots)
+    /// <summary>
+    /// 数据库单次取数有上限，但手动清理必须覆盖全部符合条件的录像。
+    /// 用已见 ID 兜住锁定文件或瞬时失败，避免同一个批次被无限重复读取。
+    /// </summary>
+    private static void ProcessCandidatesInBatches(
+        Func<int, IReadOnlyList<VideoRecord>> loadBatch,
+        Action<VideoRecord> process)
     {
-        var result = new List<VideoRecord>();
-        foreach (string tier in UnarchivedTiers)
-            result.AddRange(_database.GetManualCleanupCandidates(cutoff, roots, 200, tier));
-        return result;
+        var seen = new HashSet<long>();
+        while (true)
+        {
+            IReadOnlyList<VideoRecord> batch = loadBatch(200);
+            bool added = false;
+            foreach (VideoRecord record in batch)
+            {
+                if (!seen.Add(record.Id))
+                    continue;
+                process(record);
+                added = true;
+            }
+            if (!added)
+                break;
+        }
     }
 
     private static DateTime GetEffectiveCutoff(ManualCleanupOptions options) =>
@@ -222,10 +224,19 @@ internal sealed class ManualCleanupService
                     return false;
                 }
                 File.Delete(record.FilePath);
-                _database.MarkLocalCopyDeleted(
-                    record.Id,
-                    CleanupReason,
-                    RecordingDeletionReasonCode.ManualCleanup);
+                if (IsHostUploaded(record))
+                {
+                    _database.MarkVideoCacheDeleted(
+                        record.Id,
+                        record.RemoteVideoRecordId!.Value);
+                }
+                else
+                {
+                    _database.MarkLocalCopyDeleted(
+                        record.Id,
+                        CleanupReason,
+                        RecordingDeletionReasonCode.ManualCleanup);
+                }
             }
             bytes = size;
             return true;
@@ -239,6 +250,13 @@ internal sealed class ManualCleanupService
             return false;
         }
     }
+
+    private static bool IsHostUploaded(VideoRecord record) =>
+        string.Equals(
+            record.StorageState,
+            HostUploadedStorageState,
+            StringComparison.OrdinalIgnoreCase)
+        && record.RemoteVideoRecordId is > 0;
 
     /// <summary>本地文件缺失时走统一判定（历史证据 + 三态探测）。</summary>
     private void RepairMissingLocal(VideoRecord record)
