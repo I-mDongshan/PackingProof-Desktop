@@ -66,8 +66,8 @@
 新生成的录像、上传归档和导出文件一律使用 ASCII 命名，不把界面语言写进路径：
 
 - 本地录像：`<单号>_<yyyyMMdd_HHmmss>_Ship.mkv` / `_Return.mkv`
+- 手动开始且没有单号：`<yyyyMMdd_HHmmss>_Ship.mkv` / `_Return.mkv`
 - 外部上传：`<根>\PhoneBackup|<PCUpload>\<设备号>\<yyyy-MM-dd>\<单号>_<时间>_Ship|Return.mp4`
-- 识别不到单号时用 `UNKNOWN`，不再写“未识别面单”
 - 导出单号：`Orders_<范围>_<时间>.xlsx`
 
 旧版本已经生成的 `快递打包视频`、`手机备份`、`电脑上传` 目录和带中文模式后缀的文件保持原样，不迁移、不改名；读取与快捷方式扫描同时兼容新旧两种目录名。

@@ -752,7 +752,7 @@ public sealed class CameraBarcodeRecognitionTests
     [InlineData("CLEAR", "ClearInput", "ClearCommand")]
     [InlineData("SHIP", "SwitchToShipping", "ShippingCommand")]
     [InlineData("BACK", "SwitchToReturn", "ReturnCommand")]
-    [InlineData("START", "ToggleRecording", "StartCommand")]
+    [InlineData("START", "StartRecording", "StartCommand")]
     [InlineData("STOP", "Stop", "StopCommand")]
     public void RecordingDecisionPolicy_CommandsHaveExecutableDecisions(
         string scan,

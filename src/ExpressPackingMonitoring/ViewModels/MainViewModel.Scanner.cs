@@ -793,7 +793,7 @@ namespace ExpressPackingMonitoring.ViewModels
             });
         }
 
-        // ========================== 核心逻辑：恢复 MAN_ 前缀 ==========================
+        // ========================== 核心逻辑：手动开始录像 ==========================
         private async Task ToggleRecordingAsync()
         {
             NotifyUserActivity();
@@ -813,11 +813,11 @@ namespace ExpressPackingMonitoring.ViewModels
                 }
                 else
                 {
-                    // 恢复逻辑：如果扫码框为空，使用 MAN_ 前缀
+                    // 如果扫码框为空，用开始时间生成内部占位名；文件名只保留日期和时间。
                     string input = ScanInputText?.Trim().ToUpper() ?? "";
                     if (string.IsNullOrWhiteSpace(input))
                     {
-                        CurrentOrderId = $"MAN_{DateTime.Now:HHmmss}";
+                        CurrentOrderId = ManualRecordingNamePolicy.CreatePlaceholder(DateTime.Now);
                     }
                     else
                     {
@@ -959,7 +959,10 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 case BarcodeRecordingDecisionReason.StartCommand:
                     StartInputCooldown();
-                    await ToggleRecordingAsync();
+                    if (!IsRecording)
+                    {
+                        await ToggleRecordingAsync();
+                    }
                     return;
                 case BarcodeRecordingDecisionReason.StopCommand:
                     StartInputCooldown();
@@ -1242,7 +1245,7 @@ namespace ExpressPackingMonitoring.ViewModels
             BarcodeRecordingDecisionAction.ClearInput => "清除输入",
             BarcodeRecordingDecisionAction.SwitchToShipping => "切换发货模式",
             BarcodeRecordingDecisionAction.SwitchToReturn => "切换退货模式",
-            BarcodeRecordingDecisionAction.ToggleRecording => "切换录制状态",
+            BarcodeRecordingDecisionAction.StartRecording => "开始录制",
             _ => "忽略"
         };
 

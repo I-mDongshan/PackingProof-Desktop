@@ -42,6 +42,25 @@ public sealed class RecordingOrderStartHandlingTests
         Assert.Equal(1, CountOccurrences(scanner, "OrderIdExistsRecent("));
     }
 
+    [Fact]
+    public void StartCommand_OnlyStartsWhenNotAlreadyRecording()
+    {
+        string scanner = ReadProjectFile("ViewModels", "MainViewModel.Scanner.cs");
+        int commandIndex = scanner.IndexOf(
+            "case BarcodeRecordingDecisionReason.StartCommand:",
+            StringComparison.Ordinal);
+        int stopCommandIndex = scanner.IndexOf(
+            "case BarcodeRecordingDecisionReason.StopCommand:",
+            commandIndex,
+            StringComparison.Ordinal);
+
+        Assert.True(commandIndex >= 0);
+        Assert.True(stopCommandIndex > commandIndex);
+        string branch = scanner[commandIndex..stopCommandIndex];
+        Assert.Contains("if (!IsRecording)", branch, StringComparison.Ordinal);
+        Assert.Contains("await ToggleRecordingAsync();", branch, StringComparison.Ordinal);
+    }
+
     private static int CountOccurrences(string source, string value)
     {
         int count = 0;

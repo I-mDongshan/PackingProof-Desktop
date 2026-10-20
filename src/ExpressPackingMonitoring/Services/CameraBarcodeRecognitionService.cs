@@ -46,7 +46,7 @@ internal enum BarcodeRecordingDecisionAction
     ClearInput,
     SwitchToShipping,
     SwitchToReturn,
-    ToggleRecording
+    StartRecording
 }
 
 internal enum BarcodeRecordingDecisionReason
@@ -167,7 +167,7 @@ internal static class BarcodeRecordingDecisionPolicy
         }
         if (normalized.Contains("START") || normalized.Contains("开始录制"))
         {
-            decision = Create(BarcodeRecordingDecisionAction.ToggleRecording, BarcodeRecordingDecisionReason.StartCommand, normalized);
+            decision = Create(BarcodeRecordingDecisionAction.StartRecording, BarcodeRecordingDecisionReason.StartCommand, normalized);
             return true;
         }
         if (normalized.Contains("STOP") || normalized.Contains("停止录制"))
