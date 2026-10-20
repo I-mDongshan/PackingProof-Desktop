@@ -1086,6 +1086,7 @@
   <data name="Extension.Access.UnknownPermission" xml:space="preserve"><value>• Unknown permission: {0}</value></data>
   <data name="Extension.Access.None" xml:space="preserve"><value>• No usable API access requested</value></data>
   <data name="Extension.Market.PreviewLoadFailed" xml:space="preserve"><value>Could not load extension preview: {0}</value></data>
+  <data name="Extension.Market.OfflineLocalAvailable" xml:space="preserve"><value>Extension market is unavailable, but local extensions can still be installed: {0}</value></data>
   <data name="扫码预录制" xml:space="preserve"><value>Scan pre-recording</value></data>
   <data name="约 0 秒 / 0 MB 内存" xml:space="preserve"><value>About 0 seconds / 0 MB memory</value></data>
   <data name="播报时调为最大音量" xml:space="preserve"><value>Max volume for announcements</value></data>

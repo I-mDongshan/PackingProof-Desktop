@@ -26,6 +26,7 @@ public partial class ExtensionMarketWindow : Window
     private readonly ObservableCollection<ExtensionMarketScreenshotItem> _screenshots = new();
     private CancellationTokenSource? _operationCancellation;
     private CancellationTokenSource? _screenshotCancellation;
+    private bool _localMutationBusy;
     private ExtensionMarketSession? _session;
     private ExtensionMarketDetails? _selectedDetails;
     private ExtensionMarketRelease? _selectedRelease;
@@ -53,7 +54,7 @@ public partial class ExtensionMarketWindow : Window
         _initialExtensionId = initialExtensionId;
         CatalogList.ItemsSource = _items;
         ScreenshotList.ItemsSource = _screenshots;
-        Loaded += async (_, _) => await RefreshMarketAsync();
+        Loaded += async (_, _) => await RefreshMarketAsync(showErrorDialog: false);
         Closed += (_, _) =>
         {
             _operationCancellation?.Cancel();
@@ -61,7 +62,7 @@ public partial class ExtensionMarketWindow : Window
         };
     }
 
-    private async Task RefreshMarketAsync()
+    private async Task RefreshMarketAsync(bool showErrorDialog = true)
     {
         SetBusy(true, "正在读取经过签名的市场目录");
         try
@@ -93,8 +94,11 @@ public partial class ExtensionMarketWindow : Window
         }
         catch (Exception ex)
         {
-            SourceStatusText.Text = ex.Message;
-            AppDialog.Error(this, ex.Message, "扩展市场不可用");
+            SourceStatusText.Text = AppLanguage.Format(
+                "Extension.Market.OfflineLocalAvailable",
+                ex.Message);
+            if (showErrorDialog)
+                AppDialog.Error(this, ex.Message, "扩展市场不可用");
         }
         finally
         {
@@ -336,6 +340,7 @@ public partial class ExtensionMarketWindow : Window
         SetBusy(true, "正在下载扩展包", showProgress: true);
         try
         {
+            SetLocalMutationBusy(true);
             _operationCancellation?.Cancel();
             _operationCancellation = new CancellationTokenSource();
             var progress = new Progress<ExtensionPackageProgress>(value =>
@@ -384,6 +389,7 @@ public partial class ExtensionMarketWindow : Window
             selected.SetDownloading(false);
             CatalogList.Items.Refresh();
             SetBusy(false);
+            SetLocalMutationBusy(false);
             if (restoreReadyStatus) ShowMarketReadyStatus();
         }
     }
@@ -403,6 +409,7 @@ public partial class ExtensionMarketWindow : Window
             ImportLegacyUserscript(dialog.FileName);
             return;
         }
+        SetLocalMutationBusy(true);
         try
         {
             ExtensionPackageInspection inspection = _packageService.Inspect(dialog.FileName);
@@ -425,6 +432,10 @@ public partial class ExtensionMarketWindow : Window
         catch (Exception ex)
         {
             AppDialog.Error(this, $"安装本地扩展失败：{ex.Message}", "安装失败");
+        }
+        finally
+        {
+            SetLocalMutationBusy(false);
         }
     }
 
@@ -475,6 +486,7 @@ public partial class ExtensionMarketWindow : Window
         if (!AppDialog.Confirm(this, message + "\n\n确定继续吗？", "删除扩展", AppDialogSeverity.Warning, confirmText))
             return;
 
+        SetLocalMutationBusy(true);
         SetBusy(true, runningProcesses.Count > 0 ? "正在终止并删除扩展" : "正在删除扩展");
         try
         {
@@ -512,6 +524,7 @@ public partial class ExtensionMarketWindow : Window
         finally
         {
             SetBusy(false);
+            SetLocalMutationBusy(false);
             ShowMarketReadyStatus();
         }
     }
@@ -619,7 +632,6 @@ public partial class ExtensionMarketWindow : Window
     private void SetBusy(bool busy, string? message = null, bool showProgress = false)
     {
         CatalogList.IsHitTestVisible = !busy;
-        InstallLocalButton.IsEnabled = !busy;
         RefreshButton.IsEnabled = !busy;
         InstallButton.IsEnabled = false;
         InstallOtherVersionButton.IsEnabled = false;
@@ -632,6 +644,12 @@ public partial class ExtensionMarketWindow : Window
             && CatalogList.SelectedItem is ExtensionMarketDisplayItem selected
             && _selectedDetails != null)
             UpdateActionState(selected);
+    }
+
+    private void SetLocalMutationBusy(bool busy)
+    {
+        _localMutationBusy = busy;
+        InstallLocalButton.IsEnabled = !_localMutationBusy;
     }
 
     private void ShowMarketReadyStatus()

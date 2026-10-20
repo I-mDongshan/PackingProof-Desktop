@@ -155,6 +155,22 @@ public sealed class ExtensionMarketWindowTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void LocalInstallAvailabilityIsIndependentFromMarketNetworkBusy()
+    {
+        string source = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "ExtensionMarketWindow.xaml.cs");
+        int start = source.IndexOf("private void SetBusy(", StringComparison.Ordinal);
+        int end = source.IndexOf("private void SetLocalMutationBusy(", start, StringComparison.Ordinal);
+
+        Assert.True(start >= 0 && end > start);
+        Assert.DoesNotContain("InstallLocalButton.IsEnabled", source[start..end], StringComparison.Ordinal);
+        Assert.Contains(
+            "Loaded += async (_, _) => await RefreshMarketAsync(showErrorDialog: false);",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(params string[] parts)
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
