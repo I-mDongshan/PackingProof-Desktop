@@ -889,6 +889,13 @@ namespace ExpressPackingMonitoring.ViewModels
 
             if (decision.Reason == BarcodeRecordingDecisionReason.CannotProcess)
             {
+                if (TryQueueScanForRetry(
+                        decision.NormalizedValue,
+                        fromCamera,
+                        "程序忙碌"))
+                {
+                    return;
+                }
                 ScanInputText = "";
                 return;
             }
@@ -1041,16 +1048,20 @@ namespace ExpressPackingMonitoring.ViewModels
 
             StartInputCooldown();
 
-            CurrentOrderId = upperResult;
-            _sameCodePostRollCts?.Cancel();
-            if (IsRecording) _stopReason = "扫码切换";
             if (!await _recorderLock.WaitAsync(0))
             {
                 RuntimeLog.Warn("Scan", $"Recording switch skipped because recorder lock is busy, order={upperResult}");
+                TryQueueScanForRetry(
+                    upperResult,
+                    fromCamera,
+                    "录制切换锁忙");
                 return;
             }
             try
             {
+                CurrentOrderId = upperResult;
+                _sameCodePostRollCts?.Cancel();
+                if (IsRecording) _stopReason = "扫码切换";
                 // 预录快照必须在录制串行锁内获取，避免并发扫码分别消费同一环形缓冲。
                 List<Mat> pendingPreRecordFrames = null;
                 DateTime? pendingPreRecordStartTime = null;
@@ -1253,6 +1264,31 @@ namespace ExpressPackingMonitoring.ViewModels
                 RuntimeLog.Info("Scan", $"Processing queued scan after cooldown: {pending}");
                 _ = HandleScanAsync(pending, pendingFromCamera);
             }
+        }
+
+        private bool TryQueueScanForRetry(
+            string scanValue,
+            bool fromCamera,
+            string reason)
+        {
+            string normalized = JdBarcodePolicy.Normalize(scanValue);
+            if (!BarcodeScanRetryPolicy.ShouldQueue(
+                    _isDisposed,
+                    _shutdownRequested,
+                    IsOrderScan(normalized)))
+            {
+                return false;
+            }
+
+            _pendingScanDuringCooldown = normalized;
+            _pendingScanDuringCooldownFromCamera = fromCamera;
+            ScanInputText = "";
+            StartInputCooldown();
+            RuntimeLog.Warn(
+                "Scan",
+                $"Scan retained for retry because {reason}: {normalized}");
+            ShowToast("录制状态正在切换，已保留单号", ToastSeverity.Information);
+            return true;
         }
 
         private bool IsOrderScan(string upperResult)

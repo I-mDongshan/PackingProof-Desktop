@@ -213,6 +213,19 @@ internal static class BarcodeRecordingDecisionPolicy
     }
 }
 
+internal static class BarcodeScanRetryPolicy
+{
+    /// <summary>
+    /// 忙碌或录像切换锁暂时被占用时，合法单号仍要保留一次重试机会。
+    /// 只有程序已经释放或正在关闭时才可以丢弃扫码。
+    /// </summary>
+    public static bool ShouldQueue(
+        bool isDisposed,
+        bool shutdownRequested,
+        bool isValidOrder) =>
+        !isDisposed && !shutdownRequested && isValidOrder;
+}
+
 internal static class CameraBarcodeRuntimeOptions
 {
     internal const string ShadowModeArgument = "--camera-barcode-shadow";

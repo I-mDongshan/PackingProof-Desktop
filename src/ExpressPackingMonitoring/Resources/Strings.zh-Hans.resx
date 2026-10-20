@@ -531,6 +531,7 @@
   <data name="警告：预览画面卡住，正在重连摄像头..." xml:space="preserve"><value>警告：预览画面卡住，正在重连摄像头...</value></data>
   <data name="录像保存失败，请检查日志" xml:space="preserve"><value>录像保存失败，请检查日志</value></data>
   <data name="录制状态正在切换，请稍后再试" xml:space="preserve"><value>录制状态正在切换，请稍后再试</value></data>
+  <data name="录制状态正在切换，已保留单号" xml:space="preserve"><value>录制状态正在切换，已保留单号</value></data>
   <data name="切换为发货模式" xml:space="preserve"><value>切换为发货模式</value></data>
   <data name="切换为退货模式" xml:space="preserve"><value>切换为退货模式</value></data>
   <data name="扫码过快，已保留最后一个单号" xml:space="preserve"><value>扫码过快，已保留最后一个单号</value></data>

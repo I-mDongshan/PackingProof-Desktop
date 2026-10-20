@@ -6,6 +6,25 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class JdBarcodePolicyTests
 {
     [Theory]
+    [InlineData(false, false, true, true)]
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    public void BusyScanRetry_OnlyRetainsValidOrdersWhileRunning(
+        bool isDisposed,
+        bool shutdownRequested,
+        bool isValidOrder,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            BarcodeScanRetryPolicy.ShouldQueue(
+                isDisposed,
+                shutdownRequested,
+                isValidOrder));
+    }
+
+    [Theory]
     [InlineData("JDX058278770023", "JDX058278770023-1-1-")]
     [InlineData("JDX058278770023-1-1-", "JDX058278770023")]
     [InlineData("JDAA123456789", "JDAA123456789-1-1-")]

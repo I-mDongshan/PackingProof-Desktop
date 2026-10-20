@@ -537,6 +537,7 @@
   <data name="警告：预览画面卡住，正在重连摄像头..." xml:space="preserve"><value>警告: プレビューが停止しました。カメラを再接続しています...</value></data>
   <data name="录像保存失败，请检查日志" xml:space="preserve"><value>録画の保存に失敗しました。ログを確認してください</value></data>
   <data name="录制状态正在切换，请稍后再试" xml:space="preserve"><value>録画状態を切り替えています。しばらくしてから再度お試しください</value></data>
+  <data name="录制状态正在切换，已保留单号" xml:space="preserve"><value>録画状態を切り替えています。送り状番号を保持し、後で再試行します</value></data>
   <data name="切换为发货模式" xml:space="preserve"><value>出荷モードに切り替え</value></data>
   <data name="切换为退货模式" xml:space="preserve"><value>返品モードに切り替え</value></data>
   <data name="扫码过快，已保留最后一个单号" xml:space="preserve"><value>スキャンが速すぎたため、最後の送り状番号を保持しました</value></data>
