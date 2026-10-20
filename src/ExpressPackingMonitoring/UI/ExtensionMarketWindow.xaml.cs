@@ -169,20 +169,19 @@ public partial class ExtensionMarketWindow : Window
         {
             return false;
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or NotSupportedException or FormatException)
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or NotSupportedException or FormatException or ArgumentException)
         {
             SourceStatusText.Text = AppLanguage.Format("Extension.Market.PreviewLoadFailed", ex.Message);
             return false;
         }
     }
 
-    private static BitmapImage CreateScreenshotImage(byte[] bytes)
+    internal static BitmapImage CreateScreenshotImage(byte[] bytes)
     {
         using var stream = new MemoryStream(bytes, writable: false);
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
-        image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
         image.DecodePixelWidth = 900;
         image.StreamSource = stream;
         image.EndInit();

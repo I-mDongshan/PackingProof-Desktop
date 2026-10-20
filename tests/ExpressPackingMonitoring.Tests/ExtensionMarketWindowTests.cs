@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Services.Extensions;
 using ExpressPackingMonitoring.UI;
+using System.Threading;
 using System.Xml.Linq;
 using Xunit;
 
@@ -126,6 +127,32 @@ public sealed class ExtensionMarketWindowTests
         Assert.Contains(
             screenshotList.Descendants(Presentation + "Image"),
             element => element.Attribute("AutomationProperties.Name")?.Value == "{Binding Alt}");
+    }
+
+    [Fact]
+    public void ScreenshotImageDecodesFromMemoryWithoutImageCacheKey()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                byte[] png = Convert.FromBase64String(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+                var image = ExtensionMarketWindow.CreateScreenshotImage(png);
+                Assert.True(image.IsFrozen);
+                Assert.True(image.PixelWidth > 0);
+                Assert.True(image.PixelHeight > 0);
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(10)), "截图解码测试超时");
+        Assert.Null(failure);
     }
 
     private static string ReadRepositoryFile(params string[] parts)
