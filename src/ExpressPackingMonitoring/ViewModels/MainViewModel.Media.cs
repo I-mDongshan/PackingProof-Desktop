@@ -53,8 +53,12 @@ namespace ExpressPackingMonitoring.ViewModels
 
         private async void OpenPlaybackWindow()
         {
-            if (ActivateExistingWindow(_playbackWindow))
+            if (_playbackWindow is { } existingPlayback)
+            {
+                existingPlayback.RefreshLatestVideos();
+                ActivateExistingWindow(existingPlayback);
                 return;
+            }
 
             string folderPath;
             try
@@ -123,6 +127,22 @@ namespace ExpressPackingMonitoring.ViewModels
                 window.WindowState = WindowState.Normal;
             window.Activate();
             return true;
+        }
+
+        private void OnVideoRecordFinalized(long recordId)
+        {
+            if (_isDisposed)
+                return;
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (_isDisposed
+                    || _playbackWindow is not { IsLoaded: true } playback
+                    || playback.IsActive)
+                {
+                    return;
+                }
+                playback.RefreshLatestVideos();
+            });
         }
 
         /// <summary>

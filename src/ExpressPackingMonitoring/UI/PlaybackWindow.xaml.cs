@@ -612,6 +612,15 @@ namespace ExpressPackingMonitoring.UI
             _ = EnsurePlayerReadyAsync();
         }
 
+        /// <summary>重新打开回放或本机新录像定稿后，回到第一页显示最新记录。</summary>
+        internal void RefreshLatestVideos()
+        {
+            if (!IsLoaded || _isClosing)
+                return;
+            ApplyDatePickerLimits();
+            RequestVideoLoad(1);
+        }
+
         private void DateFilterChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_suppressFilterEvents) return;

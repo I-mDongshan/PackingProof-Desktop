@@ -1008,6 +1008,8 @@ namespace ExpressPackingMonitoring.ViewModels
                 _archiveService.ArchiveQueueChanged -= OnArchiveQueueChanged;
                 try { _archiveService.Dispose(); } catch { }
             }
+            if (_db != null)
+                _db.VideoRecordFinalized -= OnVideoRecordFinalized;
             try { _db?.Dispose(); } catch { }
         }
     }

@@ -1036,6 +1036,7 @@ namespace ExpressPackingMonitoring.Data
         /// </summary>
         public void UpdateVideoRecordOnStop(long recordId, DateTime endTime, double durationSeconds, long fileSizeBytes, string stopReason, string videoCodec = null, string videoEncoder = null)
         {
+            bool updated;
             lock (_lock)
             {
                 using var cmd = _connection.CreateCommand();
@@ -1055,11 +1056,13 @@ namespace ExpressPackingMonitoring.Data
                 cmd.Parameters.AddWithValue("@stopReason", stopReason ?? "");
                 cmd.Parameters.AddWithValue("@videoCodec", (object)videoCodec ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@videoEncoder", (object)videoEncoder ?? DBNull.Value);
-                cmd.ExecuteNonQuery();
+                updated = cmd.ExecuteNonQuery() > 0;
                 string filePath = GetVideoFilePath(recordId);
                 if (!string.IsNullOrWhiteSpace(filePath) && fileSizeBytes > 0)
                     UpsertLocalVideoFileCore(filePath, fileSizeBytes);
             }
+            if (updated)
+                NotifyVideoRecordFinalized(recordId);
         }
 
         public List<(long Id, string FilePath)> GetVideosWithoutCodec(long afterId, int limit)

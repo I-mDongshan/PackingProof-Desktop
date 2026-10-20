@@ -8,6 +8,34 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class VideoDatabaseTests
 {
     [Fact]
+    public void FinalizingRecording_NotifiesVideoRecordFinalized()
+    {
+        string tempDirectory = CreateTempDirectory();
+        try
+        {
+            using var database = new VideoDatabase(Path.Combine(tempDirectory, "videos.db"));
+            long id = database.InsertVideoRecord(
+                "PC",
+                "发货",
+                "",
+                "",
+                Path.Combine(tempDirectory, "recording.mkv"),
+                DateTime.Now);
+            var finalized = new List<long>();
+            database.VideoRecordFinalized += finalized.Add;
+
+            database.UpdateVideoRecordOnStop(id, DateTime.Now, 12, 1024, "手动");
+            database.UpdateVideoRecordOnStop(id + 999, DateTime.Now, 12, 1024, "手动");
+
+            Assert.Equal(new[] { id }, finalized);
+        }
+        finally
+        {
+            DeleteTempDirectory(tempDirectory);
+        }
+    }
+
+    [Fact]
     public void UpdateVideoDurationByFilePath_UsesProbedMediaDuration()
     {
         string tempDirectory = CreateTempDirectory();

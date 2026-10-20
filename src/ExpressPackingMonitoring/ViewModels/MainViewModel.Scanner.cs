@@ -688,6 +688,7 @@ namespace ExpressPackingMonitoring.ViewModels
             try
             {
                 _db = new VideoDatabase(_dbFilePath);
+                _db.VideoRecordFinalized += OnVideoRecordFinalized;
                 if (_archiveService != null)
                 {
                     _archiveService.BackupTargetAvailabilityChanged -=
