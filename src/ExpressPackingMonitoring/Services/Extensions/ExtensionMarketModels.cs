@@ -39,6 +39,15 @@ internal sealed class ExtensionMarketDescriptor
     public string Type { get; set; } = "";
     public string SourceAvailability { get; set; } = "open-source";
     public string? Homepage { get; set; }
+    public List<ExtensionMarketScreenshot> Screenshots { get; set; } = new();
+}
+
+internal sealed class ExtensionMarketScreenshot
+{
+    public string Url { get; set; } = "";
+    public string Sha256 { get; set; } = "";
+    public long Size { get; set; }
+    public string Alt { get; set; } = "";
 }
 
 internal sealed class ExtensionMarketPublisher

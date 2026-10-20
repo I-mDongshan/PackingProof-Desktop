@@ -1084,6 +1084,7 @@
   <data name="Extension.Access.RecordingsDownload" xml:space="preserve"><value>• 検索で返された元の録画ファイルをダウンロードします</value></data>
   <data name="Extension.Access.UnknownPermission" xml:space="preserve"><value>• 不明な権限: {0}</value></data>
   <data name="Extension.Access.None" xml:space="preserve"><value>• 利用可能な API アクセスは要求されていません</value></data>
+  <data name="Extension.Market.PreviewLoadFailed" xml:space="preserve"><value>拡張機能のプレビューを読み込めませんでした: {0}</value></data>
   <data name="扫码预录制" xml:space="preserve"><value>スキャン前の事前録画</value></data>
   <data name="约 0 秒 / 0 MB 内存" xml:space="preserve"><value>約 0 秒 / メモリ 0 MB</value></data>
   <data name="播报时调为最大音量" xml:space="preserve"><value>読み上げ時は最大音量</value></data>

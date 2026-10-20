@@ -319,6 +319,30 @@
                     <ScrollViewer Grid.Row="3" Margin="0,16,0,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock x:Name="DescriptionText" TextWrapping="Wrap" LineHeight="22"/>
+                            <ItemsControl x:Name="ScreenshotList" Margin="0,16,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,12"
+                                                Background="{DynamicResource ControlBackground}"
+                                                BorderBrush="{DynamicResource BorderDefault}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                ClipToBounds="True">
+                                            <Image Source="{Binding Source}"
+                                                   AutomationProperties.Name="{Binding Alt}"
+                                                   MaxWidth="420"
+                                                   MaxHeight="260"
+                                                   Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
                     <WrapPanel Grid.Row="4" Margin="0,20,0,0">

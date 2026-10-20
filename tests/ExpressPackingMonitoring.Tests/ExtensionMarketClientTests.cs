@@ -83,6 +83,39 @@ public sealed class ExtensionMarketClientTests
     }
 
     [Fact]
+    public async Task ScreenshotDownloadRequiresExactSignedBytes()
+    {
+        byte[] bytes = "signed-preview"u8.ToArray();
+        string digest = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        var screenshot = new ExtensionMarketScreenshot
+        {
+            Url = "https://gitee.com/example/demo/raw/abc/docs/preview.png",
+            Sha256 = digest,
+            Size = bytes.Length,
+            Alt = "订单联动截图"
+        };
+        var handler = new RouteHandler(_ => Bytes(bytes));
+        using var client = new HttpClient(handler);
+        string cache = CreateTemporaryDirectory();
+        try
+        {
+            var market = new ExtensionMarketClient(client, cache);
+            Assert.Equal(bytes, await market.DownloadScreenshotAsync(
+                screenshot,
+                TestContext.Current.CancellationToken));
+
+            screenshot.Sha256 = new string('0', 64);
+            await Assert.ThrowsAsync<InvalidDataException>(() => market.DownloadScreenshotAsync(
+                screenshot,
+                TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(cache, true);
+        }
+    }
+
+    [Fact]
     public async Task SignedCatalogRejectsChangedBytes()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

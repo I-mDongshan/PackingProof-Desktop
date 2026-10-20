@@ -6,10 +6,12 @@ using ExpressPackingMonitoring.Services.Extensions;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 
 namespace ExpressPackingMonitoring.UI;
@@ -21,7 +23,9 @@ public partial class ExtensionMarketWindow : Window
     private readonly ExtensionPackageService _packageService;
     private readonly string? _initialExtensionId;
     private readonly ObservableCollection<ExtensionMarketDisplayItem> _items = new();
+    private readonly ObservableCollection<ExtensionMarketScreenshotItem> _screenshots = new();
     private CancellationTokenSource? _operationCancellation;
+    private CancellationTokenSource? _screenshotCancellation;
     private ExtensionMarketSession? _session;
     private ExtensionMarketDetails? _selectedDetails;
     private ExtensionMarketRelease? _selectedRelease;
@@ -48,8 +52,13 @@ public partial class ExtensionMarketWindow : Window
         _packageService = packageService;
         _initialExtensionId = initialExtensionId;
         CatalogList.ItemsSource = _items;
+        ScreenshotList.ItemsSource = _screenshots;
         Loaded += async (_, _) => await RefreshMarketAsync();
-        Closed += (_, _) => _operationCancellation?.Cancel();
+        Closed += (_, _) =>
+        {
+            _operationCancellation?.Cancel();
+            _screenshotCancellation?.Cancel();
+        };
     }
 
     private async Task RefreshMarketAsync()
@@ -59,6 +68,8 @@ public partial class ExtensionMarketWindow : Window
         {
             _operationCancellation?.Cancel();
             _operationCancellation = new CancellationTokenSource();
+            _screenshotCancellation?.Cancel();
+            _screenshots.Clear();
             _session = await _marketClient.LoadCatalogAsync(_operationCancellation.Token);
             IReadOnlyDictionary<string, InstalledExtensionRecord> installed = _installationService
                 .GetInstalled()
@@ -106,7 +117,10 @@ public partial class ExtensionMarketWindow : Window
                 _selectedDetails,
                 selected.Item.LatestVersion);
             ShowDetails(selected);
-            restoreReadyStatus = true;
+            restoreReadyStatus = await LoadScreenshotsAsync(
+                _selectedDetails.Extension,
+                selected.Item.Id,
+                _operationCancellation?.Token ?? CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -125,6 +139,55 @@ public partial class ExtensionMarketWindow : Window
             SetBusy(false);
             if (restoreReadyStatus) ShowMarketReadyStatus();
         }
+    }
+
+    private async Task<bool> LoadScreenshotsAsync(
+        ExtensionMarketDescriptor extension,
+        string extensionId,
+        CancellationToken cancellationToken)
+    {
+        _screenshotCancellation?.Cancel();
+        _screenshots.Clear();
+        if (extension.Screenshots.Count == 0) return true;
+
+        _screenshotCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        CancellationToken token = _screenshotCancellation.Token;
+        try
+        {
+            foreach (ExtensionMarketScreenshot screenshot in extension.Screenshots)
+            {
+                byte[] bytes = await _marketClient.DownloadScreenshotAsync(screenshot, token);
+                token.ThrowIfCancellationRequested();
+                if (CatalogList.SelectedItem is not ExtensionMarketDisplayItem selected
+                    || !string.Equals(selected.Item.Id, extensionId, StringComparison.Ordinal))
+                    return false;
+                _screenshots.Add(new ExtensionMarketScreenshotItem(CreateScreenshotImage(bytes), screenshot.Alt));
+            }
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or NotSupportedException or FormatException)
+        {
+            SourceStatusText.Text = AppLanguage.Format("Extension.Market.PreviewLoadFailed", ex.Message);
+            return false;
+        }
+    }
+
+    private static BitmapImage CreateScreenshotImage(byte[] bytes)
+    {
+        using var stream = new MemoryStream(bytes, writable: false);
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+        image.DecodePixelWidth = 900;
+        image.StreamSource = stream;
+        image.EndInit();
+        image.Freeze();
+        return image;
     }
 
     private void ShowDetails(ExtensionMarketDisplayItem selected)
@@ -652,3 +715,5 @@ internal sealed class ExtensionMarketDisplayItem
                     : "已安装";
     }
 }
+
+internal sealed record ExtensionMarketScreenshotItem(ImageSource Source, string Alt);

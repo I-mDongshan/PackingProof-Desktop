@@ -147,6 +147,49 @@ internal sealed class ExtensionMarketClient : IExtensionMarketSource
         throw new InvalidDataException($"所有发布源均无法提供通过校验的扩展包：{string.Join("；", errors)}");
     }
 
+    public async Task<byte[]> DownloadScreenshotAsync(
+        ExtensionMarketScreenshot screenshot,
+        CancellationToken cancellationToken = default)
+    {
+        const int maxScreenshotBytes = 4 * 1024 * 1024;
+        if (screenshot.Size <= 0 || screenshot.Size > maxScreenshotBytes)
+            throw new InvalidDataException("市场预览图大小无效");
+        if (screenshot.Sha256.Length != 64 || !screenshot.Sha256.All(Uri.IsHexDigit))
+            throw new InvalidDataException("市场预览图缺少可信 SHA-256");
+        if (!Uri.TryCreate(screenshot.Url, UriKind.Absolute, out Uri? uri)
+            || uri.Scheme != Uri.UriSchemeHttps)
+            throw new InvalidDataException("市场预览图地址必须是 HTTPS");
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        using HttpResponseMessage response = await _client.GetAsync(
+            uri,
+            HttpCompletionOption.ResponseHeadersRead,
+            timeout.Token);
+        response.EnsureSuccessStatusCode();
+        if (response.Content.Headers.ContentLength is long contentLength && contentLength != screenshot.Size)
+            throw new InvalidDataException("市场预览图大小与签名记录不一致");
+
+        await using Stream stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+        using var memory = new MemoryStream((int)Math.Min(screenshot.Size, maxScreenshotBytes));
+        byte[] buffer = new byte[32768];
+        long received = 0;
+        while (true)
+        {
+            int read = await stream.ReadAsync(buffer, timeout.Token);
+            if (read == 0) break;
+            received += read;
+            if (received > screenshot.Size || received > maxScreenshotBytes)
+                throw new InvalidDataException("市场预览图超过登记大小");
+            memory.Write(buffer, 0, read);
+        }
+        if (received != screenshot.Size)
+            throw new InvalidDataException("市场预览图大小与签名记录不一致");
+        byte[] bytes = memory.ToArray();
+        VerifySha256(bytes, screenshot.Sha256, "市场预览图");
+        return bytes;
+    }
+
     internal static void VerifyCatalog(byte[] catalogBytes, byte[] signatureBytes)
     {
         ExtensionCatalogSignature signature = JsonSerializer.Deserialize<ExtensionCatalogSignature>(signatureBytes, JsonOptions)

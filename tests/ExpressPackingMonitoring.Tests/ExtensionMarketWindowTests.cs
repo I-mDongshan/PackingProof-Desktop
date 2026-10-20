@@ -113,4 +113,31 @@ public sealed class ExtensionMarketWindowTests
     {
         Assert.Equal(expected, ExtensionMarketWindow.GetMarketReadyStatus(isCached));
     }
+
+    [Fact]
+    public void MarketDetailsRenderScreenshotGalleryFromSignedMetadata()
+    {
+        string xaml = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "ExtensionMarketWindow.xaml");
+
+        XElement screenshotList = Assert.Single(
+            XDocument.Parse(xaml).Descendants(Presentation + "ItemsControl"),
+            element => element.Attribute(Xaml + "Name")?.Value == "ScreenshotList");
+        Assert.Contains(
+            screenshotList.Descendants(Presentation + "Image"),
+            element => element.Attribute("AutomationProperties.Name")?.Value == "{Binding Alt}");
+    }
+
+    private static string ReadRepositoryFile(params string[] parts)
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "ExpressPackingMonitoring.sln")))
+                return File.ReadAllText(Path.Combine([directory.FullName, .. parts]));
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(string.Join(Path.DirectorySeparatorChar, parts));
+    }
 }
