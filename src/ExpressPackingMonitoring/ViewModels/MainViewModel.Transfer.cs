@@ -33,6 +33,13 @@ public partial class MainViewModel
     private bool _isRecordingCacheWarning;
     private bool _recordingCacheBlockedDialogShown;
     private int _recordingCacheEmergencyStopRequested;
+    private readonly object _recordingTransferProgressGate = new();
+    private readonly RecordingTransferProgressAccumulator
+        _recordingTransferProgressAccumulator = new();
+    private System.Windows.Threading.DispatcherTimer?
+        _recordingTransferProgressTimer;
+    private bool _recordingTransferProgressTimerRunning;
+    private bool _recordingTransferProgressWakeScheduled;
     private DateTime _lastRecordingWorkstationHeartbeatAt = DateTime.MinValue;
     private DateTime _nextRecordingWorkstationDiscoveryAt = DateTime.MinValue;
     private int _recordingWorkstationDiscoveryFailureCount;
@@ -135,6 +142,7 @@ public partial class MainViewModel
                 _db,
                 () => Config,
                 hostAddressChanged: PersistResolvedRecordingHost);
+            InitializeRecordingTransferProgressUi();
             _recordingTransferService.ProgressChanged += OnRecordingTransferProgressChanged;
             _recordingTransferService.Start();
             RefreshRecordingTransferSummary();
@@ -423,25 +431,96 @@ public partial class MainViewModel
 
     private void OnRecordingTransferProgressChanged(RecordingTransferProgress progress)
     {
-        Application.Current?.Dispatcher.BeginInvoke(() =>
+        if (_isDisposed)
+            return;
+        _recordingTransferProgressAccumulator.Accept(progress);
+        bool scheduleWake = false;
+        lock (_recordingTransferProgressGate)
         {
-            if (_isDisposed) return;
-            RecordingTransferProgress = progress.TotalBytes <= 0
+            if (!_recordingTransferProgressTimerRunning
+                && !_recordingTransferProgressWakeScheduled)
+            {
+                _recordingTransferProgressWakeScheduled = true;
+                scheduleWake = true;
+            }
+        }
+        if (!scheduleWake)
+            return;
+
+        if (Application.Current?.Dispatcher is not { } dispatcher)
+        {
+            lock (_recordingTransferProgressGate)
+                _recordingTransferProgressWakeScheduled = false;
+            return;
+        }
+        dispatcher.BeginInvoke(
+            new Action(StartRecordingTransferProgressTimer),
+            System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void InitializeRecordingTransferProgressUi()
+    {
+        if (Application.Current?.Dispatcher is not { } dispatcher)
+            return;
+
+        _recordingTransferProgressTimer =
+            new System.Windows.Threading.DispatcherTimer(
+                System.Windows.Threading.DispatcherPriority.Background,
+                dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+        _recordingTransferProgressTimer.Tick +=
+            RecordingTransferProgressTimer_Tick;
+    }
+
+    private void StartRecordingTransferProgressTimer()
+    {
+        bool shouldStart;
+        lock (_recordingTransferProgressGate)
+        {
+            _recordingTransferProgressWakeScheduled = false;
+            shouldStart = !_isDisposed
+                && !_recordingTransferProgressTimerRunning
+                && _recordingTransferProgressAccumulator.HasPending;
+            if (shouldStart)
+                _recordingTransferProgressTimerRunning = true;
+        }
+        if (shouldStart)
+            _recordingTransferProgressTimer?.Start();
+    }
+
+    private void RecordingTransferProgressTimer_Tick(object? sender, EventArgs e)
+    {
+        RecordingTransferProgressUpdate? update =
+            _recordingTransferProgressAccumulator.Take();
+        if (update != null && !_isDisposed)
+        {
+            RecordingTransferProgress = update.Progress.TotalBytes <= 0
                 ? 0
-                : Math.Clamp(progress.SentBytes * 100d / progress.TotalBytes, 0, 100);
-            if (progress.State == RecordingTransferStates.Uploaded)
-            {
-                RefreshRecordingTransferSummary(recentlyUploaded: true);
+                : Math.Clamp(
+                    update.Progress.SentBytes
+                    * 100d
+                    / update.Progress.TotalBytes,
+                    0,
+                    100);
+            if (update.Error.Length > 0)
+                LastRecordingTransferError = update.Error;
+            RefreshRecordingTransferSummary(recentlyUploaded: update.Uploaded);
+            if (update.Uploaded)
                 RunRecordingCacheCleanup();
-            }
-            else
-            {
-                if (progress.State == RecordingTransferStates.Failed
-                    || progress.State == RecordingTransferStates.Abandoned)
-                    LastRecordingTransferError = progress.Error;
-                RefreshRecordingTransferSummary();
-            }
-        });
+        }
+
+        bool keepRunning;
+        lock (_recordingTransferProgressGate)
+        {
+            keepRunning = !_isDisposed
+                && _recordingTransferProgressAccumulator.HasPending;
+            if (!keepRunning)
+                _recordingTransferProgressTimerRunning = false;
+        }
+        if (!keepRunning)
+            _recordingTransferProgressTimer?.Stop();
     }
 
     private void RefreshRecordingTransferSummary(bool recentlyUploaded = false)
@@ -1059,6 +1138,18 @@ public partial class MainViewModel
         try { _recordingTransferService?.Dispose(); } catch { }
         _recordingTransferService = null;
         _recordingTransferStore = null;
+        if (_recordingTransferProgressTimer != null)
+        {
+            _recordingTransferProgressTimer.Stop();
+            _recordingTransferProgressTimer.Tick -=
+                RecordingTransferProgressTimer_Tick;
+            _recordingTransferProgressTimer = null;
+        }
+        lock (_recordingTransferProgressGate)
+        {
+            _recordingTransferProgressTimerRunning = false;
+            _recordingTransferProgressWakeScheduled = false;
+        }
     }
 }
 

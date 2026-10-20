@@ -908,6 +908,44 @@ public sealed class RecordingTransferTests
             Directory.Delete(path, recursive: true);
     }
 
+    [Fact]
+    public void ProgressAccumulator_CoalescesUploadingAndPreservesCompletion()
+    {
+        var accumulator = new RecordingTransferProgressAccumulator();
+        accumulator.Accept(new RecordingTransferProgress(
+            1, 4_000_000, 40_000_000, RecordingTransferStates.Uploading));
+        accumulator.Accept(new RecordingTransferProgress(
+            1, 20_000_000, 40_000_000, RecordingTransferStates.Uploading));
+        accumulator.Accept(new RecordingTransferProgress(
+            1, 40_000_000, 40_000_000, RecordingTransferStates.Uploaded));
+        accumulator.Accept(new RecordingTransferProgress(
+            2, 4_000_000, 30_000_000, RecordingTransferStates.Uploading));
+
+        RecordingTransferProgressUpdate? update = accumulator.Take();
+
+        Assert.NotNull(update);
+        Assert.Equal(4_000_000, update!.Progress.SentBytes);
+        Assert.True(update.Uploaded);
+        Assert.False(accumulator.HasPending);
+        Assert.Null(accumulator.Take());
+    }
+
+    [Fact]
+    public void ProgressAccumulator_PreservesFailureAcrossLatestProgress()
+    {
+        var accumulator = new RecordingTransferProgressAccumulator();
+        accumulator.Accept(new RecordingTransferProgress(
+            1, 2_000_000, 40_000_000, RecordingTransferStates.Failed, "主机离线"));
+        accumulator.Accept(new RecordingTransferProgress(
+            2, 1_000_000, 30_000_000, RecordingTransferStates.Uploading));
+
+        RecordingTransferProgressUpdate? update = accumulator.Take();
+
+        Assert.NotNull(update);
+        Assert.False(update!.Uploaded);
+        Assert.Equal("主机离线", update.Error);
+    }
+
     private sealed class BackupProtocolHandler(
         bool verified,
         string hostNodeId = "",

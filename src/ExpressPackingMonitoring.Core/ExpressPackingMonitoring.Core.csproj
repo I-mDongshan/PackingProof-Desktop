@@ -164,6 +164,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Services\RecordingDeleteService.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\RecordingTreeEnumeration.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\RecordingSourceNameLookup.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Services\RecordingTransferProgressAccumulator.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\RecordingTransferService.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\RecordingWorkstationCachePolicy.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\RemoteFileProbe.cs" />
