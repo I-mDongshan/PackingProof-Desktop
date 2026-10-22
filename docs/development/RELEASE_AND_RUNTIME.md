@@ -81,7 +81,7 @@
 pwsh -NoProfile -File tools\Publish-CleanPackage.ps1 -Version <X.Y.Z> -PatchBaselineVersion <基线版本> -BaselineAppDir "package\PackingProof+v<基线版本>\PackingProof+v<基线版本>\app"
 ```
 
-- `<基线版本>` 在 0.0.86 及以后固定为 `0.0.84`；0.0.83/0.0.84 历史发布才使用 `0.0.18`。不要再复制旧命令里的 `0.0.18`。
+- `<基线版本>` 在 0.0.86 及以后固定为 `0.0.84`；0.0.83/0.0.84 历史发布才使用 `0.0.18`。`tools\打包脚本-增量.bat` 与 `tools\Publish-CleanPackage.ps1` 的默认补丁基线都必须是 `0.0.84`，不要再复制旧命令里的 `0.0.18`。
 - `-BaselineAppDir` 必须指向真实固定基线的 `app` 子目录并包含 `tools\ffmpeg.exe`。脚本从目录解析实际基线，并强制与更新清单和补丁清单一致，禁止手工伪造。
 - Store MSIX 复用同一次 Release 的 `app\` 负载构建，不重新 `dotnet publish`；本地身份取 `tools\store-package.local.json`，缺身份或 SDK 工具时 `Check-ReleasePrereqs.ps1` 会提前阻断。产物目录同时生成 `store_package_v<X.Y.Z>.json`，记录 MSIX 的身份、版本、大小、SHA256，以及 Setup `app\` 的逐文件指纹；`Publish-Releases.ps1` 会解开 MSIX 与本次 Setup 负载逐个文件比对，旧 MSIX 或旧清单不能借同版本号通过门禁。
 - 产物根目录同时生成 `package_integrity_v<X.Y.Z>.json`，记录 Setup 的文件名、大小、SHA256 和本次 exact `app\` 的逐文件指纹；`Publish-Releases.ps1` 会校验 Setup 未被替换，并要求 Setup 与 Store MSIX 指向同一份 exact 应用负载。

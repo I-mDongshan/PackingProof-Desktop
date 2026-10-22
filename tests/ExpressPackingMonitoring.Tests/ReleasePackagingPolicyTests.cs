@@ -576,10 +576,17 @@ public sealed class ReleasePackagingPolicyTests
         string checklist = File.ReadAllText(
             Path.Combine(repositoryRoot, "docs", "development", "RELEASE_CHECKLIST.md"),
             Encoding.UTF8);
+        string incrementalPackageScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "打包脚本-增量.bat"),
+            Encoding.UTF8);
 
         Assert.Contains("0.0.86 及以后正式版的补丁基线不得低于 0.0.84", publishScript, StringComparison.Ordinal);
+        Assert.Contains("[string]$PatchBaselineVersion = \"0.0.84\"", publishScript, StringComparison.Ordinal);
+        Assert.Contains("set \"BASELINE_VERSION=0.0.84\"", incrementalPackageScript, StringComparison.Ordinal);
         Assert.Contains("0.0.84 之后的下一个正式版（本次 0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", runtimeDocument, StringComparison.Ordinal);
         Assert.Contains("0.0.84 之后的下一个正式版（0.0.86）起统一使用 `-PatchBaselineVersion 0.0.84`", checklist, StringComparison.Ordinal);
+        Assert.Contains("默认补丁基线都必须是 `0.0.84`", runtimeDocument, StringComparison.Ordinal);
+        Assert.Contains("默认补丁基线都必须是 `0.0.84`", checklist, StringComparison.Ordinal);
         Assert.Contains("0.0.85 从未正式发布", runtimeDocument, StringComparison.Ordinal);
         Assert.Contains("会沿 baseline 链查找 0.0.84", runtimeDocument, StringComparison.Ordinal);
         Assert.Contains("0.0.84 的 Release", runtimeDocument, StringComparison.Ordinal);

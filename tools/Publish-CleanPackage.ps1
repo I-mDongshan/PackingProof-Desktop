@@ -16,7 +16,7 @@ param(
     [string]$ZipCompressionLevel = "Optimal",
     [ValidateSet("lzma2/normal", "lzma2/max", "lzma2/ultra64")]
     [string]$InstallerCompression = "lzma2/ultra64",
-    [string]$PatchBaselineVersion = "0.0.18",
+    [string]$PatchBaselineVersion = "0.0.84",
     [ValidateSet("gitee", "github", "auto")]
     [string]$DownloadSource = "gitee",
     [switch]$IncludeFullZip,

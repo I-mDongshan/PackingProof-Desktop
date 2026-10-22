@@ -4,7 +4,7 @@ setlocal
 chcp 65001 >nul
 cd /d "%~dp0.."
 
-set "BASELINE_VERSION=0.0.18"
+set "BASELINE_VERSION=0.0.84"
 if not "%~2"=="" set "BASELINE_VERSION=%~2"
 set "BASELINE_TAG=v%BASELINE_VERSION%"
 set "BASELINE_PACKAGE_DIR=package\PackingProof+%BASELINE_TAG%"
