@@ -2,6 +2,7 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Services;
+using ExpressPackingMonitoring.Services.LensControl;
 using ExpressPackingMonitoring.Services.MediaFoundation;
 using System;
 using System.Windows.Input;
@@ -25,7 +26,7 @@ namespace ExpressPackingMonitoring.ViewModels
     {
         private const int LensApplyDebounceMilliseconds = 250;
 
-        private MfLensController _lensController;
+        private ILensController _lensController;
         private string _lensConfigKey = "";
         private CameraLensSettings _lensStored;
         private DispatcherTimer _lensZoomApplyTimer;
@@ -42,6 +43,8 @@ namespace ExpressPackingMonitoring.ViewModels
         private bool _lensFocusAuto = true;
         private bool _lensControlAvailable;
         private bool _lensPanelOpen;
+        /// <summary>挂接代数：停止/换设备时递增，作废仍在途的异步挂接（网络探测是秒级往返）</summary>
+        private int _lensAttachGeneration;
 
         private ICommand _toggleLensPanelCommand;
 
@@ -183,19 +186,73 @@ namespace ExpressPackingMonitoring.ViewModels
         {
             // 重复挂接（重连后没先走 StopCamera 的路径）时先清一次旧状态。
             DetachCameraLens();
+            Interlocked.Increment(ref _lensAttachGeneration);
+            PublishLensController(source?.LensController, moniker ?? "", ReadLensStoredState(moniker ?? ""));
+        }
 
-            MfLensController controller = source?.LensController;
-            string configKey = moniker ?? "";
-            CameraLensSettings stored = null;
+        /// <summary>
+        /// 网络摄像头启动后异步挂接 ONVIF 镜头控制：探测是几个 HTTP 往返（秒级），
+        /// 不能堵住拉流启动；探测期间不显示入口，完成后统一公布。
+        /// </summary>
+        internal void AttachNetworkCameraLens()
+        {
+            DetachCameraLens();
+            AppConfig config = Config;
+            string streamUrl = config?.NetworkCameraUrl;
+            if (config == null || string.IsNullOrWhiteSpace(streamUrl))
+                return;
+
+            string configKey = AppConfig.GetCameraConfigKey("network", streamUrl);
+            int generation = Interlocked.Increment(ref _lensAttachGeneration);
+            _ = Task.Run(async () =>
+            {
+                OnvifLensController controller = await OnvifLensController.TryAttachAsync(streamUrl).ConfigureAwait(false);
+
+                // 探测期间相机被停止/切换：丢弃这一轮结果（控制器自己释放，不发布）
+                if (controller == null || Volatile.Read(ref _lensAttachGeneration) != generation)
+                {
+                    controller?.Dispose();
+                    return;
+                }
+
+                PublishLensController(controller, configKey, ReadLensStoredState(configKey));
+            });
+        }
+
+        /// <summary>采集源停止/被清理时回收镜头状态；重连后会重新 Attach 并恢复记忆。</summary>
+        internal void DetachCameraLens()
+        {
+            // 递增代数让在途的网络探测作废，探测完成后不会把旧相机的状态发布出来
+            Interlocked.Increment(ref _lensAttachGeneration);
+            if (_lensController == null && !IsLensControlAvailable)
+                return;
+
+            if (_lensController is IDisposable disposable)
+                disposable.Dispose();
+            _lensController = null;
+            _lensStored = null;
+            IsLensControlAvailable = false;
+            IsLensPanelOpen = false;
+        }
+
+        private CameraLensSettings ReadLensStoredState(string configKey)
+        {
             try
             {
-                Config?.CameraLensStates?.TryGetValue(configKey, out stored);
+                return Config?.CameraLensStates?.TryGetValue(configKey, out CameraLensSettings stored) == true
+                    ? stored
+                    : null;
             }
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"读镜头记忆失败：{ex.Message}");
+                return null;
             }
+        }
 
+        /// <summary>挂接收尾公共路径：恢复记忆中的镜头状态，再公布界面可见性与初值。</summary>
+        private void PublishLensController(ILensController controller, string configKey, CameraLensSettings stored)
+        {
             bool available = controller != null
                 && CameraLensPolicy.ShouldShowControls(controller.ZoomRange, controller.FocusRange);
             if (available)
@@ -214,18 +271,6 @@ namespace ExpressPackingMonitoring.ViewModels
                 $"镜头控制挂接：available={available}, key={configKey}, storedZoom={_lensStored.Zoom}, focusAuto={_lensStored.FocusAuto}, focus={_lensStored.Focus}");
         }
 
-        /// <summary>采集源停止/被清理时回收镜头状态；重连后会重新 Attach 并恢复记忆。</summary>
-        internal void DetachCameraLens()
-        {
-            if (_lensController == null && !IsLensControlAvailable)
-                return;
-
-            _lensController = null;
-            _lensStored = null;
-            IsLensControlAvailable = false;
-            IsLensPanelOpen = false;
-        }
-
         /// <summary>面板开合入口（主画面按钮）。</summary>
         public void ToggleLensPanel()
         {
@@ -235,7 +280,7 @@ namespace ExpressPackingMonitoring.ViewModels
             IsLensPanelOpen = !IsLensPanelOpen;
         }
 
-        private void ApplyLensStartupPlan(MfLensController controller, CameraLensSettings stored)
+        private void ApplyLensStartupPlan(ILensController controller, CameraLensSettings stored)
         {
             CameraLensApplyPlan plan = CameraLensPolicy.BuildStartupPlan(
                 controller.ZoomRange,
@@ -268,9 +313,9 @@ namespace ExpressPackingMonitoring.ViewModels
             _lensUpdatingUiState = true;
             try
             {
-                MfLensController controller = _lensController;
-                MfLensRange zoomRange = controller?.ZoomRange;
-                MfLensRange focusRange = controller?.FocusRange;
+                ILensController controller = _lensController;
+                LensRange zoomRange = controller?.ZoomRange;
+                LensRange focusRange = controller?.FocusRange;
 
                 HasLensZoom = zoomRange is { IsValid: true, SupportsManual: true };
                 HasLensFocus = CameraLensPolicy.SupportsManualFocus(focusRange);
@@ -356,67 +401,80 @@ namespace ExpressPackingMonitoring.ViewModels
             _lensFocusApplyTimer.Tick += (_, _) => ApplyLensFocusNow();
         }
 
+        /// <summary>
+        /// 控制调用一律放线程池：UVC 是毫秒级 KS 属性，ONVIF 是几十到几百毫秒的 HTTP 往返，
+        /// 都不能在防抖计时器（UI 线程）上同步等。
+        /// </summary>
         private void ApplyLensZoomNow()
         {
             _lensZoomApplyTimer?.Stop();
-            MfLensController controller = _lensController;
-            MfLensRange zoomRange = controller?.ZoomRange;
+            ILensController controller = _lensController;
+            LensRange zoomRange = controller?.ZoomRange;
             if (controller == null || zoomRange == null)
                 return;
 
             int target = zoomRange.Clamp((int)Math.Round(_lensZoomValue));
-            if (controller.TrySetZoom(target))
-                PersistLensState(zoom: target);
-            else
-                RuntimeLog.Warn("Camera", $"设置变焦失败：value={target}");
+            _ = Task.Run(() =>
+            {
+                if (controller.TrySetZoom(target))
+                    PersistLensState(zoom: target);
+                else
+                    RuntimeLog.Warn("Camera", $"设置变焦失败：value={target}");
+            });
         }
 
         private void ApplyLensFocusNow()
         {
             _lensFocusApplyTimer?.Stop();
-            MfLensController controller = _lensController;
-            MfLensRange focusRange = controller?.FocusRange;
+            ILensController controller = _lensController;
+            LensRange focusRange = controller?.FocusRange;
             if (controller == null || focusRange == null || LensFocusAuto)
                 return;
 
             int target = focusRange.Clamp((int)Math.Round(_lensFocusValue));
-            if (controller.TrySetFocusManual(target))
-                PersistLensState(focus: target);
-            else
-                RuntimeLog.Warn("Camera", $"设置手动对焦失败：value={target}");
+            _ = Task.Run(() =>
+            {
+                if (controller.TrySetFocusManual(target))
+                    PersistLensState(focus: target);
+                else
+                    RuntimeLog.Warn("Camera", $"设置手动对焦失败：value={target}");
+            });
         }
 
         private void ApplyLensFocusMode()
         {
-            MfLensController controller = _lensController;
-            if (controller?.FocusRange == null)
+            ILensController controller = _lensController;
+            LensRange focusRange = controller?.FocusRange;
+            if (controller == null || focusRange == null)
                 return;
 
-            if (LensFocusAuto)
+            bool auto = LensFocusAuto;
+            _ = Task.Run(() =>
             {
-                if (controller.TrySetFocusAuto())
-                    PersistLensState(focusAuto: true);
+                if (auto)
+                {
+                    if (controller.TrySetFocusAuto())
+                        PersistLensState(focusAuto: true);
+                    else
+                        RuntimeLog.Warn("Camera", "切回自动对焦失败");
+                    return;
+                }
+
+                // 切手动：以设备当前对焦位置起步（读不到用范围中点），不指定位置直接切会跳到驱动默认焦。
+                int startValue = controller.TryReadFocusState()?.Value ?? focusRange.Default;
+                if (controller.TrySetFocusManual(startValue))
+                {
+                    _lensUpdatingUiState = true;
+                    _lensFocusValue = startValue;
+                    OnPropertyChanged(nameof(LensFocusValue));
+                    _lensUpdatingUiState = false;
+                    PersistLensState(focusAuto: false, focus: startValue);
+                }
                 else
-                    RuntimeLog.Warn("Camera", "切回自动对焦失败");
-                return;
-            }
-
-            // 切手动：以设备当前对焦位置起步（读不到用设备默认），不指定位置直接切会跳到驱动默认焦。
-            int startValue = controller.TryReadFocusState()?.Value
-                ?? controller.FocusRange?.Default
-                ?? 0;
-            if (controller.TrySetFocusManual(startValue))
-            {
-                _lensUpdatingUiState = true;
-                _lensFocusValue = startValue;
-                OnPropertyChanged(nameof(LensFocusValue));
-                _lensUpdatingUiState = false;
-                PersistLensState(focusAuto: false, focus: startValue);
-            }
-            else
-            {
-                RuntimeLog.Warn("Camera", "切手动对焦失败");
-            }
+                {
+                    RuntimeLog.Warn("Camera", "切手动对焦失败");
+                }
+            });
         }
 
         /// <summary>把镜头状态记到当前摄像头的名下并落盘；传 null 的项保持原值。</summary>

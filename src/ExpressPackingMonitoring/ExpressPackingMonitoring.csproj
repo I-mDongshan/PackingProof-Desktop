@@ -139,6 +139,10 @@
     <Compile Include="Services\CameraDeviceSelectionPolicy.cs" />
     <Compile Include="Services\ZoomCropPolicy.cs" />
     <Compile Include="Services\CameraLensPolicy.cs" />
+    <Compile Include="Services\LensControl\ILensController.cs" />
+    <Compile Include="Services\LensControl\OnvifSoap.cs" />
+    <Compile Include="Services\LensControl\OnvifClient.cs" />
+    <Compile Include="Services\LensControl\OnvifLensController.cs" />
     <Compile Include="Services\CameraFrameOrientation.cs" />
     <Compile Include="Services\ClipboardHelper.cs" />
     <Compile Include="Services\PastedTextNormalizer.cs" />

@@ -1,3 +1,4 @@
+using ExpressPackingMonitoring.Services.LensControl;
 using ExpressPackingMonitoring.Services.MediaFoundation;
 using Xunit;
 
@@ -51,8 +52,8 @@ public sealed class LocalMfLensProbeTests
                     continue;
                 }
 
-                MfLensRange? zoom = lens.ZoomRange;
-                MfLensRange? focus = lens.FocusRange;
+                LensRange? zoom = lens.ZoomRange;
+                LensRange? focus = lens.FocusRange;
                 _output.WriteLine(
                     $"  usable={lens.IsUsable} zoom={(zoom == null ? "无" : $"{zoom.Min}~{zoom.Max} step={zoom.Step} def={zoom.Default} flags=0x{zoom.Flags:X}")}"
                     + $" focus={(focus == null ? "无" : $"{focus.Min}~{focus.Max} step={focus.Step} def={focus.Default} flags=0x{focus.Flags:X}")}"

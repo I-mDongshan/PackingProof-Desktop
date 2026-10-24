@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Services;
+using ExpressPackingMonitoring.Services.LensControl;
 using ExpressPackingMonitoring.Services.MediaFoundation;
 using Xunit;
 
@@ -13,17 +14,17 @@ namespace ExpressPackingMonitoring.Tests;
 public sealed class CameraLensPolicyTests
 {
     /// <summary>汇博士 W7 一类带马达镜头的机位：变焦 + 全模式对焦。</summary>
-    private static readonly MfLensRange ZoomRange = new(100, 400, 10, 100, MfLensInterop.CameraControlFlagsManual);
+    private static readonly LensRange ZoomRange = new(100, 400, 10, 100, LensControlFlags.Manual);
 
-    private static readonly MfLensRange FocusRange = new(
+    private static readonly LensRange FocusRange = new(
         0,
         65000,
         65,
         32500,
-        MfLensInterop.CameraControlFlagsAuto | MfLensInterop.CameraControlFlagsManual);
+        LensControlFlags.Auto | LensControlFlags.Manual);
 
     /// <summary>普通定焦摄像头：对焦只有自动，没有变焦 —— 不该出现镜头面板。</summary>
-    private static readonly MfLensRange AutoOnlyFocusRange = new(0, 65000, 65, 32500, MfLensInterop.CameraControlFlagsAuto);
+    private static readonly LensRange AutoOnlyFocusRange = new(0, 65000, 65, 32500, LensControlFlags.Auto);
 
     [Fact]
     public void PanelRequiresManualZoomOrManualFocus()
@@ -38,7 +39,7 @@ public sealed class CameraLensPolicyTests
     [Fact]
     public void DegenerateRangesDoNotShowPanel()
     {
-        var invertedZoom = new MfLensRange(400, 100, 10, 100, MfLensInterop.CameraControlFlagsManual);
+        var invertedZoom = new LensRange(400, 100, 10, 100, LensControlFlags.Manual);
         Assert.False(CameraLensPolicy.ShouldShowControls(invertedZoom, null));
     }
 

@@ -22,30 +22,6 @@ internal static class MfLensInterop
 
     /// <summary>strmif.h CameraControl_Focus = 6：镜头对焦。</summary>
     internal const int CameraControlFocus = 6;
-
-    /// <summary>该属性支持自动模式（属性集 flags 的 bit 0）。</summary>
-    internal const int CameraControlFlagsAuto = 0x1;
-
-    /// <summary>该属性支持手动模式（属性集 flags 的 bit 1）。</summary>
-    internal const int CameraControlFlagsManual = 0x2;
-}
-
-/// <summary>
-/// 镜头属性（变焦/对焦）的取值范围与支持的模式。
-/// min/max/step/default 都是设备原生单位，不同摄像头之间不可直接比较。
-/// </summary>
-internal sealed record MfLensRange(int Min, int Max, int Step, int Default, int Flags)
-{
-    /// <summary>驱动声明该属性可手动设置；变焦/对焦面板只对支持手动的属性开放。</summary>
-    internal bool SupportsManual => (Flags & MfLensInterop.CameraControlFlagsManual) != 0;
-
-    /// <summary>驱动声明该属性支持自动模式（对焦的 AF/MF 切换依据）。</summary>
-    internal bool SupportsAuto => (Flags & MfLensInterop.CameraControlFlagsAuto) != 0;
-
-    internal bool IsValid => Max > Min;
-
-    /// <summary>把任意值夹进设备范围；UVC 的 step 有的摄像头乱报，这里只夹不吸附。</summary>
-    internal int Clamp(int value) => Math.Clamp(value, Min, Max);
 }
 
 /// <summary>

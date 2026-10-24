@@ -774,6 +774,8 @@ namespace ExpressPackingMonitoring.ViewModels
 
             _networkCameraSource = source;
             _networkCameraStartedAt = DateTime.Now;
+            // 拉流之外异步探测 ONVIF 镜头控制（秒级往返），可用才显示镜头面板入口
+            AttachNetworkCameraLens();
             _lastFrameTime = DateTime.Now;
             _lastPreviewPublishedAt = DateTime.Now;
             long networkCameraReadyTicks = DateTime.UtcNow.Ticks;

@@ -1,5 +1,5 @@
 using ExpressPackingMonitoring.Config;
-using ExpressPackingMonitoring.Services.MediaFoundation;
+using ExpressPackingMonitoring.Services.LensControl;
 
 namespace ExpressPackingMonitoring.Services;
 
@@ -13,7 +13,7 @@ internal sealed record CameraLensApplyPlan(int? Zoom, bool? FocusAuto, int? Focu
 
 /// <summary>
 /// 镜头控制的纯策略：能力可见性、取值夹紧、启动恢复计划。
-/// 设备交互在 <see cref="MfLensController"/>，界面状态在 ViewModel，
+/// 设备交互在 ILensController 的各实现（UVC/ONVIF），界面状态在 ViewModel，
 /// 这里只放两边都要遵守的判定规则，方便单测。
 /// </summary>
 internal static class CameraLensPolicy
@@ -22,12 +22,12 @@ internal static class CameraLensPolicy
     /// 是否给镜头控制入口：有手动变焦、或有手动对焦才显示。
     /// 只支持自动对焦的普通定焦摄像头没有可调的东西，不显示。
     /// </summary>
-    internal static bool ShouldShowControls(MfLensRange? zoomRange, MfLensRange? focusRange) =>
+    internal static bool ShouldShowControls(LensRange? zoomRange, LensRange? focusRange) =>
         zoomRange is { IsValid: true, SupportsManual: true }
         || focusRange is { IsValid: true, SupportsManual: true };
 
     /// <summary>手动对焦是否可切：只有"能手动"的对焦才提供 AF/MF 开关。</summary>
-    internal static bool SupportsManualFocus(MfLensRange? focusRange) =>
+    internal static bool SupportsManualFocus(LensRange? focusRange) =>
         focusRange is { IsValid: true, SupportsManual: true };
 
     /// <summary>
@@ -37,8 +37,8 @@ internal static class CameraLensPolicy
     /// - 对焦保持自动 → 不写任何属性（自动是设备出厂默认，多余写入反而可能打断自检）。
     /// </summary>
     internal static CameraLensApplyPlan BuildStartupPlan(
-        MfLensRange? zoomRange,
-        MfLensRange? focusRange,
+        LensRange? zoomRange,
+        LensRange? focusRange,
         CameraLensSettings? stored)
     {
         if (stored == null)
@@ -69,7 +69,7 @@ internal static class CameraLensPolicy
     /// 读不到时退记忆值，再退设备默认。
     /// </summary>
     internal static int ResolveZoomDisplayValue(
-        MfLensRange zoomRange,
+        LensRange zoomRange,
         int? deviceValue,
         int storedZoom)
     {
@@ -82,7 +82,7 @@ internal static class CameraLensPolicy
 
     /// <summary>界面上对焦滑条该用的位置：设备当前值优先，其次记忆值，最后设备默认。</summary>
     internal static int ResolveFocusDisplayValue(
-        MfLensRange focusRange,
+        LensRange focusRange,
         int? deviceValue,
         int storedFocus)
     {
