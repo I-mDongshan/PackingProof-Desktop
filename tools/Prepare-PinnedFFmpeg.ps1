@@ -40,7 +40,8 @@ Resolve-FFmpegBaselineExecutable `
     -Baseline $baseline `
     -CacheDirectory $cacheDirectory `
     -DestinationPath $dependencyOutput `
-    -SevenZipExecutable $sevenZip
+    -SevenZipExecutable $sevenZip `
+    -RepositoryRoot $repoRoot
 Copy-Item -LiteralPath $dependencyOutput -Destination $destinationPath -Force
 Assert-FFmpegExecutable -ExecutablePath $destinationPath -Baseline $baseline
 Write-Host "Pinned FFmpeg prepared: $destinationPath"

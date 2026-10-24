@@ -21,11 +21,12 @@
 
 ## FFmpeg 兼容基线
 
-- 正式基线固定为 FFmpeg 4.4.1 Essentials，以兼容 Win7 老显卡的 NVENC API 11.1。AV1 不作为产品能力，选择 AV1 时回退 H.265；暂不实施 8.0.1 + 4.4.1 双基线。
+- 正式基线固定为 FFmpeg 4.4.1，以兼容 Win7 老显卡的 NVENC API 11.1（自建精简构建用 nv-codec-headers 11.1.5.2 钉住该 API）。AV1 不作为产品能力，选择 AV1 时回退 H.265；暂不实施 8.0.1 + 4.4.1 双基线。
+- 随包二进制切换为本仓库自建的**精简构建**（`third_party/ffmpeg`，配方含 `build.sh`、`configure-flags.txt`、`versions.env`）：保留硬件/软件 H.264、H.265、AAC、mp4/mkv、RTSP/RTMP/HTTP、TLS 与常用滤镜，移除 libass、vmaf、webp、srt 等未用依赖。产物 `package/ffmpeg-build/ffmpeg.exe` 由 `tools/ffmpeg-baseline.json` 的 `local_build` 钉住（脚本 + 产物路径 + 尺寸 + SHA256），打包与开发构建经同一 `Resolve-FFmpegBaselineExecutable` 校验后钉入 `package\dependency-cache\ffmpeg\4.4.1-minimal\`。解析优先级：精简身份缓存 → 本地构建产物 → 上游包（`package` 段，Gyan essentials，按哈希下载校验，服务远程 CI 与未构建的贡献者机器）。**发布打包传 `-RequireLocalBuild`**：没有精简产物宁可失败，也绝不把上游包打进 Setup；出包机产物或缓存缺失时先跑 `bash third_party/ffmpeg/build.sh`，或把其他构建机产出的同名哈希 `ffmpeg.exe` 复制进缓存目录（哈希校验把关，来源不限）。普通开发与 `dotnet build` / `dotnet test` 完全不碰钉住链路：开发构建在基线缓存缺失时回退项目根 `ffmpeg.exe`，运行时再回退系统 PATH，贡献者不需要编译 FFmpeg。二进制带 `--extra-version=packingproof-ffmpeg-minimal-V01` 版本戳，诊断日志第一行据此识别构建来源；同版本重出包递增 V 号并同步 baseline 哈希。老用户机器上由历史安装包留下的 Gyan 4.4.1 Essentials 等版本仍登记在 `app_patch_compatible_executables`（AppPatch 从不携带 FFmpeg），保持被识别为兼容环境。
 - 高级用户可在 Win8+ 自行替换 `app\tools\ffmpeg.exe`，官方不保证该自定义环境。
 - 禁止假设 CLI 参数跨版本通用：FFmpeg 8.x 已移除 RTSP `-stimeout`；4.4.x 的 RTSP `-timeout` 会挂起，因此网络摄像头不传 socket 超时参数，由应用层 15 秒连接超时和断流看门狗兜底。`-fps_mode` 仅 5.1+ 可用，旧版回退 `-vsync passthrough`。参数策略集中在 `NetworkCameraSource.BuildArguments`。
 - 网页转码的编码器不能写死：`h264_nvenc` 只在 NVIDIA 机器上存在，AMD/Intel 显卡和 macOS 每次播放都要先失败一次再回退 CPU，Mac 上更是永远拿不到硬件编码。平台候选与参数集中在 `WebTranscodeEncoderPolicy`，用 `ffmpeg -encoders` 探测一次并缓存，探不到就直接走 `libx264`；硬件参数按编码器分别给（NVENC `-preset p1 -cq 30`、QSV `-global_quality`、AMF `-rc cqp`、VideoToolbox `-q:v 45 -realtime true`），不能跨编码器照搬。
-- 修改任何 FFmpeg 调用前，必须使用 `tools/ffmpeg-baseline.json` 锁定的 4.4.1 和至少一个其他受支持主版本（如 8.0.1）验证受影响流程；同步更新 `NetworkCameraSourceTests` 参数断言和随包 FFmpeg 参数识别测试。
+- 修改任何 FFmpeg 调用前，必须使用 `tools/ffmpeg-baseline.json` 锁定的 4.4.1（自建精简构建）和至少一个其他受支持主版本（如 8.0.1）验证受影响流程；同步更新 `NetworkCameraSourceTests` 参数断言和随包 FFmpeg 参数识别测试。切换随包二进制或重建精简版时，先对产物跑一遍能力矩阵核对（编码器/协议/滤镜），确认应用实际用到的能力都在。
 - macOS 不自带 FFmpeg（`avconvert`、`qlmanage`、`sips` 都不是 ffmpeg CLI 的替代品），因此 Mac 主机必须随包携带二进制：基线锁在 `tools/ffmpeg-macos-baseline.json`，用 `tools/Prepare-PinnedFFmpegMac.sh` 下载校验到 `package/dependency-cache/ffmpeg-macos/<版本>/`，`tools/Publish-MacHost.sh` 再拷进 `Contents/MacOS/Host/tools/ffmpeg`。缺这个文件时缩略图、预览和网页转码会全部失败，网页会显示"编码未知"并回退直接播放原片。
 - macOS 基线固定为 Martin Riedl Build Server 的 arm64 9.0.2 静态 GPL 构建：原生 arm64、只依赖系统框架、上游已用 Developer ID 与加固运行时签名，且未启用 `--enable-nonfree`（可随包分发）。版本 ≥5.1，因此 Mac 主机始终走 `-fps_mode passthrough` 分支。
 

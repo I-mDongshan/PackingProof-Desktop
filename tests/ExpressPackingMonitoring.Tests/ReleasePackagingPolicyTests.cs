@@ -195,13 +195,19 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("Read-FFmpegBaselineManifest", publishScript);
         Assert.Contains("Resolve-FFmpegBaselineExecutable", publishScript);
         Assert.Contains("tools\\ffmpeg.exe", publishScript);
+        Assert.Contains("-RepositoryRoot $repoRoot", publishScript);
+        // 发布打包必须强制精简构建：没有产物宁可失败，也不把上游包打进 Setup
+        Assert.Contains("-RequireLocalBuild", publishScript);
         Assert.Contains("Assert-FFmpegPackage", commonScript);
         Assert.Contains("Assert-FFmpegExecutable", commonScript);
         Assert.Contains("unsafe path", commonScript);
         Assert.Contains("trying next source", commonScript);
-        Assert.Contains("ffmpeg-4.4.1-essentials_build.7z", manifest);
-        Assert.Contains("GyanD/codexffmpeg/releases/download/4.4.1", manifest);
-        Assert.Contains("78c5b75623a0ac03c0fb9b047474685127f453bc6cef00b9af7d80e9eaf50c96", manifest);
+        // 基线已切到自建精简构建（third_party/ffmpeg），产物由本仓库构建脚本产出后钉入缓存
+        Assert.Contains("\"local_build\"", manifest);
+        Assert.Contains("third_party/ffmpeg/build.sh", manifest);
+        Assert.Contains("package/ffmpeg-build/ffmpeg.exe", manifest);
+        Assert.Contains("\"4.4.1-minimal\"", manifest);
+        // 老用户机器上长期保留的历史随包版本（AppPatch 不携带 FFmpeg）必须继续被登记为兼容
         Assert.Contains("8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac", manifest);
         Assert.Equal(2, ffmpegContent.Length);
         Assert.All(ffmpegContent, item =>

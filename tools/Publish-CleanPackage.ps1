@@ -1319,7 +1319,9 @@ Resolve-FFmpegBaselineExecutable `
     -Baseline $ffmpegBaseline `
     -CacheDirectory $ffmpegCacheDirectory `
     -DestinationPath (Join-Path $appPublishDir "tools\ffmpeg.exe") `
-    -SevenZipExecutable $sevenZipExecutable
+    -SevenZipExecutable $sevenZipExecutable `
+    -RepositoryRoot $repoRoot `
+    -RequireLocalBuild
 
 $launcherExe = Join-Path $outputFullPath "ExpressPackingMonitoring.exe"
 $baselineReleaseTag = [string]$launcherBaseline.release_tag

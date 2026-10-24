@@ -39,7 +39,8 @@ catch {
         -Baseline $baseline `
         -CacheDirectory $cacheDirectory `
         -DestinationPath $dependencyOutput `
-        -SevenZipExecutable $sevenZip
+        -SevenZipExecutable $sevenZip `
+        -RepositoryRoot $repoRoot
     $ffmpegPath = $dependencyOutput
 }
 

@@ -38,10 +38,23 @@ pacman -S --needed make diffutils \
 C:\msys64\usr\bin\bash.exe -lc "cd /d/OpenSourceProject/PackingProof-Desktop && bash third_party/ffmpeg/build.sh"
 ```
 
-产物：
+产物（文件名固定不带版本，身份信息在二进制内的版本戳里，方便直接复用与打包管线钉住）：
 
-- `package/ffmpeg-build/ffmpeg-4.4.1-minimal.exe`
+- `package/ffmpeg-build/ffmpeg.exe`
 - 同名 `.sha256` 文件
+
+只有出正式包（Publish-CleanPackage.ps1，带 -RequireLocalBuild）需要这份产物：本机构建一次，
+或把其他构建机产出的同名哈希 ffmpeg.exe 复制进 `package/dependency-cache/ffmpeg/4.4.1-minimal/`（哈希校验把关），
+缺失时发布打包直接失败、绝不回退。远程 CI 与未构建的贡献者机器不走精简版：基线解析回退到
+清单 `package` 段的上游 Gyan essentials（同样按哈希校验下载），只用于构建与测试，不进发布产物。
+普通开发与 `dotnet build` / `dotnet test` 不需要构建 FFmpeg（开发构建回退项目根 ffmpeg.exe，运行时再回退系统 PATH）。
+构建带 `--extra-version=packingproof-ffmpeg-minimal-V01` 版本戳：`ffmpeg -version` 第一行显示
+`ffmpeg version 4.4.1-packingproof-ffmpeg-minimal-V01 ...`，诊断日志据此识别构建来源。
+同版本 FFmpeg 重新出包时递增 V 号（V01 到 V02），`tools/ffmpeg-baseline.json` 的
+`local_build` 哈希与 `app_patch_compatible_executables` 条目同步更新。
+构建机无关性：configure 的 `--prefix` 使用中性路径（避免把构建机绝对路径嵌进版本信息），
+读取 `configure-flags.txt` 时剥掉 CR（工作区行尾随 git autocrlf 变化，残留 CR 会让
+pkg-config 收到带 CR 的 --static，现场症状是 pkgconf: unknown option -- static）。
 
 ## 精简范围
 

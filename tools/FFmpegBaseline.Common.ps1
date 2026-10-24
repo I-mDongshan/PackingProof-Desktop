@@ -6,6 +6,56 @@ function Get-Sha256Lower {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function Get-FFmpegBaselineProperty {
+    param($Object, [Parameter(Mandatory = $true)][string]$Name)
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
+}
+
+function Get-FFmpegBaselineExecutableIdentity {
+    param([Parameter(Mandatory = $true)]$Baseline)
+
+    # 首选身份：local_build（自建精简构建）优先，其次 package（上游包）。
+    # 出包路径与缓存钉入都以首选身份为准；CI 回退到 package 时按 package 身份核对。
+    $localBuild = Get-FFmpegBaselineProperty $Baseline 'local_build'
+    if ($null -ne $localBuild) {
+        return @{
+            Size   = [long]$localBuild.executable_size
+            Sha256 = [string]$localBuild.executable_sha256
+        }
+    }
+
+    return @{
+        Size   = [long]$Baseline.package.executable_size
+        Sha256 = [string]$Baseline.package.executable_sha256
+    }
+}
+
+function Get-FFmpegRegisteredIdentities {
+    param([Parameter(Mandatory = $true)]$Baseline)
+
+    # 已登记的全部可执行文件身份：local_build、package 与 app_patch_compatible_executables
+    # （后两者覆盖远程 CI 回退用的上游包、以及老用户机器上历史随包版本）。
+    # Assert-FFmpegExecutable 按"命中任一登记身份"放行——我们放置的每一个二进制都必须在这里有登记。
+    $identities = New-Object "System.Collections.Generic.List[object]"
+    $localBuild = Get-FFmpegBaselineProperty $Baseline 'local_build'
+    if ($null -ne $localBuild) {
+        $identities.Add(@{ Size = [long]$localBuild.executable_size; Sha256 = [string]$localBuild.executable_sha256 })
+    }
+    $package = Get-FFmpegBaselineProperty $Baseline 'package'
+    if ($null -ne $package) {
+        $identities.Add(@{ Size = [long]$package.executable_size; Sha256 = [string]$package.executable_sha256 })
+    }
+    foreach ($compatible in @($Baseline.app_patch_compatible_executables)) {
+        $identities.Add(@{ Size = [long]$compatible.size; Sha256 = [string]$compatible.sha256 })
+    }
+    return $identities
+}
+
 function Read-FFmpegBaselineManifest {
     param([Parameter(Mandatory = $true)][string]$ManifestPath)
 
@@ -17,16 +67,45 @@ function Read-FFmpegBaselineManifest {
     if ($baseline.schema_version -ne 1 -or
         [string]::IsNullOrWhiteSpace([string]$baseline.version) -or
         -not [string]::Equals([string]$baseline.runtime, "win-x64", [StringComparison]::OrdinalIgnoreCase) -or
-        $null -eq $baseline.package -or
-        [string]::IsNullOrWhiteSpace([string]$baseline.package.file) -or
-        [string]::IsNullOrWhiteSpace([string]$baseline.package.entry) -or
-        [long]$baseline.package.size -le 0 -or
-        [long]$baseline.package.executable_size -le 0 -or
-        [string]$baseline.package.sha256 -notmatch '^[0-9a-fA-F]{64}$' -or
-        [string]$baseline.package.executable_sha256 -notmatch '^[0-9a-fA-F]{64}$' -or
-        @($baseline.package.urls).Count -lt 1 -or
         @($baseline.app_patch_compatible_executables).Count -lt 1) {
         throw "FFmpeg baseline manifest is incomplete or unsupported: $ManifestPath"
+    }
+
+    # 基线二选一：local_build（仓库 third_party/ffmpeg 的自建产物）或 package（上游可下载压缩包）
+    $localBuild = Get-FFmpegBaselineProperty $baseline 'local_build'
+    $package = Get-FFmpegBaselineProperty $baseline 'package'
+    if ($null -eq $localBuild -and $null -eq $package) {
+        throw "FFmpeg baseline manifest must declare either local_build or package: $ManifestPath"
+    }
+
+    if ($null -ne $package) {
+        if ([string]::IsNullOrWhiteSpace([string]$package.file) -or
+            [string]::IsNullOrWhiteSpace([string]$package.entry) -or
+            [long]$package.size -le 0 -or
+            [long]$package.executable_size -le 0 -or
+            [string]$package.sha256 -notmatch '^[0-9a-fA-F]{64}$' -or
+            [string]$package.executable_sha256 -notmatch '^[0-9a-fA-F]{64}$' -or
+            @($package.urls).Count -lt 1) {
+            throw "FFmpeg baseline manifest is incomplete or unsupported: $ManifestPath"
+        }
+    }
+
+    if ($null -ne $localBuild) {
+        if ([string]::IsNullOrWhiteSpace([string]$localBuild.script) -or
+            [string]::IsNullOrWhiteSpace([string]$localBuild.artifact) -or
+            [long]$localBuild.executable_size -le 0 -or
+            [string]$localBuild.executable_sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+            throw "FFmpeg baseline local_build entry is invalid: $ManifestPath"
+        }
+
+        foreach ($relativePath in @([string]$localBuild.script, [string]$localBuild.artifact)) {
+            $normalized = $relativePath.Replace('/', [IO.Path]::DirectorySeparatorChar)
+            if ([IO.Path]::IsPathRooted($normalized) -or
+                $normalized.IndexOfAny([IO.Path]::GetInvalidPathChars()) -ge 0 -or
+                $normalized.Split([IO.Path]::DirectorySeparatorChar) -contains '..') {
+                throw "FFmpeg baseline local_build path must be relative to the repository root: $relativePath"
+            }
+        }
     }
 
     foreach ($compatibleExecutable in @($baseline.app_patch_compatible_executables)) {
@@ -37,18 +116,21 @@ function Read-FFmpegBaselineManifest {
         }
     }
 
-    $packageFile = [string]$baseline.package.file
-    if (-not [string]::Equals($packageFile, [IO.Path]::GetFileName($packageFile), [StringComparison]::Ordinal) -or
-        $packageFile.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-        throw "FFmpeg baseline package file name is unsafe: $packageFile"
-    }
+    # 文件名与来源白名单只对 package（上游下载）基线有意义；local_build 的路径安全性在上面已按仓库相对路径校验
+    if ($null -ne $package) {
+        $packageFile = [string]$package.file
+        if (-not [string]::Equals($packageFile, [IO.Path]::GetFileName($packageFile), [StringComparison]::Ordinal) -or
+            $packageFile.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+            throw "FFmpeg baseline package file name is unsafe: $packageFile"
+        }
 
-    foreach ($urlText in @($baseline.package.urls)) {
-        $url = $null
-        if (-not [Uri]::TryCreate([string]$urlText, [UriKind]::Absolute, [ref]$url) -or
-            -not [string]::Equals($url.Scheme, 'https', [StringComparison]::OrdinalIgnoreCase) -or
-            @('www.gyan.dev', 'github.com') -notcontains $url.Host.ToLowerInvariant()) {
-            throw "FFmpeg baseline URL is not an approved HTTPS source: $urlText"
+        foreach ($urlText in @($package.urls)) {
+            $url = $null
+            if (-not [Uri]::TryCreate([string]$urlText, [UriKind]::Absolute, [ref]$url) -or
+                -not [string]::Equals($url.Scheme, 'https', [StringComparison]::OrdinalIgnoreCase) -or
+                @('www.gyan.dev', 'github.com') -notcontains $url.Host.ToLowerInvariant()) {
+                throw "FFmpeg baseline URL is not an approved HTTPS source: $urlText"
+            }
         }
     }
 
@@ -66,17 +148,15 @@ function Assert-FFmpegExecutable {
     }
 
     $file = Get-Item -LiteralPath $ExecutablePath
-    if ($file.Length -ne [long]$Baseline.package.executable_size) {
-        throw "FFmpeg executable size mismatch: $ExecutablePath"
+    $actualHash = Get-Sha256Lower -Path $ExecutablePath
+    foreach ($identity in (Get-FFmpegRegisteredIdentities -Baseline $Baseline)) {
+        if ($file.Length -eq $identity.Size -and
+            [string]::Equals($actualHash, [string]$identity.Sha256, [StringComparison]::OrdinalIgnoreCase)) {
+            return
+        }
     }
 
-    $actualHash = Get-Sha256Lower -Path $ExecutablePath
-    if (-not [string]::Equals(
-            $actualHash,
-            [string]$Baseline.package.executable_sha256,
-            [StringComparison]::OrdinalIgnoreCase)) {
-        throw "FFmpeg executable SHA256 mismatch: $ExecutablePath"
-    }
+    throw "FFmpeg executable size/SHA256 mismatch: $ExecutablePath"
 }
 
 function Get-SafeArchiveEntries {
@@ -193,6 +273,8 @@ function Resolve-FFmpegBaselineExecutable {
         [Parameter(Mandatory = $true)][string]$CacheDirectory,
         [Parameter(Mandatory = $true)][string]$DestinationPath,
         [Parameter(Mandatory = $true)][string]$SevenZipExecutable,
+        [string]$RepositoryRoot = '',
+        [switch]$RequireLocalBuild,
         [scriptblock]$DownloadFile,
         [int]$MaxAttemptsPerUrl = 3,
         [int]$RetryDelaySeconds = 2
@@ -201,18 +283,55 @@ function Resolve-FFmpegBaselineExecutable {
     $cacheFullPath = [IO.Path]::GetFullPath($CacheDirectory)
     New-Item -ItemType Directory -Force -Path $cacheFullPath | Out-Null
     $cachedExecutable = Join-Path $cacheFullPath 'ffmpeg.exe'
+    $primaryIdentity = Get-FFmpegBaselineExecutableIdentity -Baseline $Baseline
+    $cacheHoldsPrimary = $false
     try {
         Assert-FFmpegExecutable -ExecutablePath $cachedExecutable -Baseline $Baseline
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationPath) | Out-Null
-        Copy-Item -LiteralPath $cachedExecutable -Destination $DestinationPath -Force
-        Assert-FFmpegExecutable -ExecutablePath $DestinationPath -Baseline $Baseline
-        Write-Host "Pinned FFmpeg reused from verified cache: $cachedExecutable"
-        return
+        $cacheHoldsPrimary = ($null -ne $primaryIdentity) -and
+            ((Get-Item -LiteralPath $cachedExecutable).Length -eq $primaryIdentity.Size) -and
+            [string]::Equals((Get-Sha256Lower -Path $cachedExecutable), [string]$primaryIdentity.Sha256, [StringComparison]::OrdinalIgnoreCase)
+        if (-not $RequireLocalBuild -or $cacheHoldsPrimary) {
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationPath) | Out-Null
+            Copy-Item -LiteralPath $cachedExecutable -Destination $DestinationPath -Force
+            Assert-FFmpegExecutable -ExecutablePath $DestinationPath -Baseline $Baseline
+            Write-Host "Pinned FFmpeg reused from verified cache: $cachedExecutable"
+            return
+        }
     }
     catch {
         if (Test-Path -LiteralPath $cachedExecutable -PathType Leaf) {
             Remove-Item -LiteralPath $cachedExecutable -Force
         }
+    }
+
+    # 自建精简构建：优先用仓库构建产物（third_party/ffmpeg/build.sh 的输出）钉入缓存。
+    # 产物缺失（典型：远程 CI、未构建的贡献者机器）时落到下面的 package（上游包）回退——
+    # 出包脚本会用 -RequireLocalBuild 拒绝这种回退，保证发布 Setup 里的始终是精简构建。
+    $localBuild = Get-FFmpegBaselineProperty $Baseline 'local_build'
+    if ($null -ne $localBuild) {
+        if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+            throw "Resolving a local_build FFmpeg baseline requires -RepositoryRoot"
+        }
+
+        $identity = Get-FFmpegBaselineExecutableIdentity -Baseline $Baseline
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationPath) | Out-Null
+        $artifactPath = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot ([string]$localBuild.artifact).Replace('/', [IO.Path]::DirectorySeparatorChar)))
+        if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+            if ((Get-Item -LiteralPath $artifactPath).Length -ne $identity.Size) {
+                throw "PackingProof minimal FFmpeg artifact size mismatch: $artifactPath"
+            }
+            if (-not [string]::Equals((Get-Sha256Lower -Path $artifactPath), $identity.Sha256, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "PackingProof minimal FFmpeg artifact SHA256 mismatch: $artifactPath"
+            }
+
+            Copy-Item -LiteralPath $artifactPath -Destination $cachedExecutable -Force
+            Assert-FFmpegExecutable -ExecutablePath $cachedExecutable -Baseline $Baseline
+            Copy-Item -LiteralPath $cachedExecutable -Destination $DestinationPath -Force
+            Assert-FFmpegExecutable -ExecutablePath $DestinationPath -Baseline $Baseline
+            Write-Host "Pinned FFmpeg prepared from local build: $artifactPath"
+            return
+        }
+
     }
 
     $cachedPackage = Join-Path $cacheFullPath ([string]$Baseline.package.file)
@@ -229,7 +348,7 @@ function Resolve-FFmpegBaselineExecutable {
 
     if (-not $packageReady) {
         if ($null -eq $DownloadFile) {
-            $DownloadFile = { param($Url, $Path) Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing }
+            $DownloadFile = { param($Url, $Path) Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing -TimeoutSec 120 }
         }
         $lastError = $null
         foreach ($url in @($Baseline.package.urls)) {
@@ -277,6 +396,13 @@ function Resolve-FFmpegBaselineExecutable {
         -DestinationPath $cachedExecutable `
         -Baseline $Baseline `
         -SevenZipExecutable $SevenZipExecutable
+
+    # 发布打包（-RequireLocalBuild）不允许回退：在把上游包放到目的地之前就失败，
+    # 保证任何发布产物里的都只能是精简构建
+    if ($RequireLocalBuild) {
+        throw "发布打包必须使用精简构建产物（third_party/ffmpeg/build.sh），本机既没有产物也没有含精简身份的缓存，拒绝回退到上游包: $cachedExecutable"
+    }
+
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationPath) | Out-Null
     Copy-Item -LiteralPath $cachedExecutable -Destination $DestinationPath -Force
     Assert-FFmpegExecutable -ExecutablePath $DestinationPath -Baseline $Baseline

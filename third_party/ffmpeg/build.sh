@@ -9,8 +9,8 @@ BUILD_ROOT="$REPO_ROOT/package/ffmpeg-build"
 VERSION="4.4.1"
 TARBALL="$BUILD_ROOT/ffmpeg-$VERSION.tar.xz"
 SOURCE_DIR="$BUILD_ROOT/ffmpeg-$VERSION"
-PREFIX="$BUILD_ROOT/install"
-OUTPUT="$BUILD_ROOT/ffmpeg-$VERSION-minimal.exe"
+PREFIX="/packingproof-ffmpeg-minimal"
+OUTPUT="$BUILD_ROOT/ffmpeg.exe"
 NVCODEC_VERSION="11.1.5.2"
 NVCODEC_ROOT="$BUILD_ROOT/nvcodec"
 
@@ -46,18 +46,19 @@ if [ ! -f "$NVCODEC_ROOT/include/ffnvcodec/nvEncodeAPI.h" ]; then
 fi
 export PKG_CONFIG_PATH="$NVCODEC_ROOT/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
-mapfile -t CONFIGURE_FLAGS < "$SCRIPT_DIR/configure-flags.txt"
+mapfile -t CONFIGURE_FLAGS < <(tr -d '\r' < "$SCRIPT_DIR/configure-flags.txt")
 
 cd "$SOURCE_DIR"
 ./configure \
   --prefix="$PREFIX" \
+  --extra-version=packingproof-ffmpeg-minimal-V01 \
   "${CONFIGURE_FLAGS[@]}"
 
 make -j"$(nproc)"
 make install
 
 cp "$PREFIX/bin/ffmpeg.exe" "$OUTPUT"
-(cd "$BUILD_ROOT" && sha256sum "ffmpeg-$VERSION-minimal.exe" > "ffmpeg-$VERSION-minimal.exe.sha256")
+(cd "$BUILD_ROOT" && sha256sum "ffmpeg.exe" > "ffmpeg.exe.sha256")
 
 echo
 echo "Built: $OUTPUT"

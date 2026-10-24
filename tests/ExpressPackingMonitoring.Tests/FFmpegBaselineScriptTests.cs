@@ -113,6 +113,94 @@ public sealed class FFmpegBaselineScriptTests
         Assert.False(File.Exists(fixture.DestinationPath));
     }
 
+    [Fact]
+    public void LocalBuild_ArtifactIsPinnedIntoCacheWithoutDownload()
+    {
+        using var fixture = new Fixture(localBuild: true);
+
+        ProcessResult result = fixture.RunLocalResolve(
+            "param($url, $path) throw 'download must not run'",
+            "-RequireLocalBuild");
+
+        Assert.True(result.ExitCode == 0, $"{result.Output}\n{result.Error}");
+        Assert.Equal(fixture.ExecutableBytes, File.ReadAllBytes(fixture.DestinationPath));
+        Assert.Equal(
+            fixture.ExecutableBytes,
+            File.ReadAllBytes(Path.Combine(fixture.CacheDirectory, "ffmpeg.exe")));
+    }
+
+    [Fact]
+    public void LocalBuild_MissingArtifact_FallsBackToPackageDownload()
+    {
+        // 远程 CI 场景：本机没有精简构建产物，回退到上游包（同一清单按哈希校验）完成解析
+        using var fixture = new Fixture(localBuild: true);
+        File.Delete(fixture.LocalArtifactPath);
+        string package = EscapePowerShell(fixture.PackagePath);
+        string downloader = $$"""
+                param($url, $path)
+                Copy-Item -LiteralPath '{{package}}' -Destination $path -Force
+            """;
+
+        ProcessResult result = fixture.RunLocalResolve(downloader);
+
+        Assert.True(result.ExitCode == 0, $"{result.Output}\n{result.Error}");
+        Assert.Equal(fixture.ExecutableBytes, File.ReadAllBytes(fixture.DestinationPath));
+    }
+
+    [Fact]
+    public void LocalBuild_RequireLocalBuild_RejectsPackageFallback()
+    {
+        // 发布打包（-RequireLocalBuild）不允许回退到上游包：宁可失败也不把 Gyan 版打进 Setup
+        using var fixture = new Fixture(localBuild: true);
+        File.Delete(fixture.LocalArtifactPath);
+        string package = EscapePowerShell(fixture.PackagePath);
+        string downloader = $$"""
+                param($url, $path)
+                Copy-Item -LiteralPath '{{package}}' -Destination $path -Force
+            """;
+
+        ProcessResult result = fixture.RunLocalResolve(downloader, "-RequireLocalBuild -MaxAttemptsPerUrl 1");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(File.Exists(fixture.DestinationPath));
+        // 中文报错经 pwsh CLIXML 错误流会转码，断言改用稳定的 ASCII 片段
+        Assert.Contains("third_party/ffmpeg/build.sh", result.Output + result.Error);
+    }
+
+    [Fact]
+    public void LocalBuild_TamperedArtifactIsRejected()
+    {
+        using var fixture = new Fixture(localBuild: true);
+        File.AppendAllText(fixture.LocalArtifactPath, "tampered", Encoding.UTF8);
+
+        ProcessResult result = fixture.RunLocalResolve();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(File.Exists(fixture.DestinationPath));
+    }
+
+    [Fact]
+    public void LocalBuild_UnsafeArtifactPathIsRejected()
+    {
+        using var fixture = new Fixture(localBuild: true, unsafeArtifactPath: true);
+
+        ProcessResult result = fixture.RunLocalResolve();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(File.Exists(fixture.DestinationPath));
+    }
+
+    [Fact]
+    public void LocalBuild_WithoutRepositoryRootFails()
+    {
+        using var fixture = new Fixture(localBuild: true);
+
+        ProcessResult result = fixture.RunLocalResolve(passRepositoryRoot: false);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(File.Exists(fixture.DestinationPath));
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly string _root;
@@ -122,7 +210,10 @@ public sealed class FFmpegBaselineScriptTests
 
         public Fixture(
             IReadOnlyList<(string Name, byte[] Content)>? extraEntries = null,
-            bool duplicateExecutable = false)
+            bool duplicateExecutable = false,
+            bool localBuild = false,
+            bool unsafeArtifactPath = false,
+            bool localBuildUrls = false)
         {
             _repositoryRoot = FindRepositoryRoot();
             _sevenZipPath = FindSevenZip();
@@ -132,15 +223,51 @@ public sealed class FFmpegBaselineScriptTests
             PackagePath = Path.Combine(_root, "ffmpeg-test.zip");
             DestinationPath = Path.Combine(_root, "output", "ffmpeg.exe");
             CacheDirectory = Path.Combine(_root, "cache");
+            LocalRepositoryRoot = Path.Combine(_root, "repo");
+            LocalArtifactPath = Path.Combine(LocalRepositoryRoot, "package", "ffmpeg-build", "ffmpeg.exe");
             _manifestPath = Path.Combine(_root, "ffmpeg-baseline.json");
             CreatePackage(extraEntries, duplicateExecutable);
-            CreateManifest();
+            CreateManifest(localBuild, unsafeArtifactPath, localBuildUrls);
+            if (localBuild && !unsafeArtifactPath)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LocalArtifactPath)!);
+                File.WriteAllBytes(LocalArtifactPath, ExecutableBytes);
+            }
         }
 
         public byte[] ExecutableBytes { get; }
         public string PackagePath { get; }
         public string DestinationPath { get; }
         public string CacheDirectory { get; }
+        public string LocalRepositoryRoot { get; }
+        public string LocalArtifactPath { get; }
+
+        public ProcessResult RunLocalResolve(
+            string? downloaderScript = null,
+            string? resolveArguments = null,
+            bool passRepositoryRoot = true)
+        {
+            string commonScript = Path.Combine(_repositoryRoot, "tools", "FFmpegBaseline.Common.ps1");
+            string repositoryRootArgument = passRepositoryRoot
+                ? $" -RepositoryRoot '{EscapePowerShell(LocalRepositoryRoot)}'"
+                : "";
+            // downloaderScript 只给函数体（不带大括号），这里统一包一层 scriptblock
+            string downloadAssignment = string.IsNullOrWhiteSpace(downloaderScript)
+                ? ""
+                : $"$download = {{ {downloaderScript} }}";
+            string downloadArgument = string.IsNullOrWhiteSpace(downloaderScript)
+                ? ""
+                : " -DownloadFile $download";
+            string arguments = string.IsNullOrWhiteSpace(resolveArguments) ? "" : " " + resolveArguments;;
+            string command = $$"""
+                $ErrorActionPreference = 'Stop'
+                . '{{EscapePowerShell(commonScript)}}'
+                $baseline = Read-FFmpegBaselineManifest -ManifestPath '{{EscapePowerShell(_manifestPath)}}'
+                {{downloadAssignment}}
+                Resolve-FFmpegBaselineExecutable -Baseline $baseline -CacheDirectory '{{EscapePowerShell(CacheDirectory)}}' -DestinationPath '{{EscapePowerShell(DestinationPath)}}' -SevenZipExecutable '{{EscapePowerShell(_sevenZipPath)}}'{{repositoryRootArgument}}{{downloadArgument}}{{arguments}}
+                """;
+            return RunPowerShell(command, _repositoryRoot);
+        }
 
         public ProcessResult RunExpand()
         {
@@ -180,14 +307,15 @@ public sealed class FFmpegBaselineScriptTests
                 WriteEntry(archive, name, content);
         }
 
-        private void CreateManifest()
+        private void CreateManifest(bool localBuild, bool unsafeArtifactPath, bool localBuildUrls)
         {
+            string executableHash = Convert.ToHexString(SHA256.HashData(ExecutableBytes)).ToLowerInvariant();
             var manifest = new
             {
                 schema_version = 1,
                 version = "test",
                 runtime = "win-x64",
-                provider = "test",
+                provider = localBuild ? "test local build" : "test",
                 app_patch_compatible_executables = new[]
                 {
                     new
@@ -195,9 +323,21 @@ public sealed class FFmpegBaselineScriptTests
                         version = "test",
                         variant = "test",
                         size = ExecutableBytes.Length,
-                        sha256 = Convert.ToHexString(SHA256.HashData(ExecutableBytes)).ToLowerInvariant()
+                        sha256 = executableHash
                     }
                 },
+                local_build = localBuild
+                    ? new
+                    {
+                        script = "third_party/ffmpeg/build.sh",
+                        artifact = unsafeArtifactPath ? "../outside/ffmpeg.exe" : "package/ffmpeg-build/ffmpeg.exe",
+                        executable_size = ExecutableBytes.Length,
+                        executable_sha256 = executableHash,
+                        urls = localBuildUrls
+                            ? new[] { "https://github.com/PackingProof/ffmpeg-fixtures/releases/download/test/ffmpeg.exe" }
+                            : null
+                    }
+                    : null,
                 package = new
                 {
                     file = Path.GetFileName(PackagePath),
@@ -205,7 +345,7 @@ public sealed class FFmpegBaselineScriptTests
                     sha256 = ComputeSha256(PackagePath),
                     entry = "ffmpeg-test\\bin\\ffmpeg.exe",
                     executable_size = ExecutableBytes.Length,
-                    executable_sha256 = Convert.ToHexString(SHA256.HashData(ExecutableBytes)).ToLowerInvariant(),
+                    executable_sha256 = executableHash,
                     urls = new[]
                     {
                         "https://www.gyan.dev/first.7z",

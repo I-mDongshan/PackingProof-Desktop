@@ -1,9 +1,32 @@
 {
   "schema_version": 1,
-  "version": "4.4.1",
+  "version": "4.4.1-minimal",
   "runtime": "win-x64",
-  "provider": "Gyan FFmpeg Essentials",
+  "provider": "PackingProof minimal build",
+  "local_build": {
+    "script": "third_party/ffmpeg/build.sh",
+    "artifact": "package/ffmpeg-build/ffmpeg.exe",
+    "executable_size": 54016000,
+    "executable_sha256": "4ad88039a575960758a4ccf9029c7f7ea44fa75931d16b72ab2f5b8351f14fab"
+  },
+  "package": {
+    "file": "ffmpeg-4.4.1-essentials_build.7z",
+    "size": 23812897,
+    "sha256": "064f6d9900139eec6d2ab9df7b005bdd97cc210711654c2712caf46ec85efec3",
+    "entry": "ffmpeg-4.4.1-essentials_build\bin\ffmpeg.exe",
+    "executable_size": 77399040,
+    "executable_sha256": "8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac",
+    "urls": [
+      "https://github.com/GyanD/codexffmpeg/releases/download/4.4.1/ffmpeg-4.4.1-essentials_build.7z"
+    ]
+  },
   "app_patch_compatible_executables": [
+    {
+      "version": "4.4.1",
+      "variant": "packingproof_minimal_V01",
+      "size": 54016000,
+      "sha256": "4ad88039a575960758a4ccf9029c7f7ea44fa75931d16b72ab2f5b8351f14fab"
+    },
     {
       "version": "4.4.1",
       "variant": "full_build",
@@ -28,16 +51,5 @@
       "size": 99264000,
       "sha256": "5af82a0d4fe2b9eae211b967332ea97edfc51c6b328ca35b827e73eac560dc0d"
     }
-  ],
-  "package": {
-    "file": "ffmpeg-4.4.1-essentials_build.7z",
-    "size": 23812897,
-    "sha256": "064f6d9900139eec6d2ab9df7b005bdd97cc210711654c2712caf46ec85efec3",
-    "entry": "ffmpeg-4.4.1-essentials_build\\bin\\ffmpeg.exe",
-    "executable_size": 77399040,
-    "executable_sha256": "8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac",
-    "urls": [
-      "https://github.com/GyanD/codexffmpeg/releases/download/4.4.1/ffmpeg-4.4.1-essentials_build.7z"
-    ]
-  }
+  ]
 }
