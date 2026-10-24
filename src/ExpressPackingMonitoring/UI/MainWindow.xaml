@@ -622,6 +622,136 @@
                             </StackPanel>
                         </Grid>
 
+                        <!-- 镜头焦距：只有驱动声明手动变焦/手动对焦的摄像头（带马达镜头的机位）才显示，
+                             状态与持久化都在 MainViewModel.Lens.cs；取景编辑那一屏让位，避免盖住拖框。 -->
+                        <StackPanel HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="16"
+                                    Panel.ZIndex="40">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLensControlAvailable, Mode=OneWay}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsPreviewGuideEditing, Mode=OneWay}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <Button x:Name="BtnLensControl"
+                                    Width="34"
+                                    Height="34"
+                                    Command="{Binding ToggleLensPanelCommand}"
+                                    Focusable="False"
+                                    Cursor="Hand"
+                                    ToolTip="镜头焦距"
+                                    AutomationProperties.Name="镜头焦距">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="{StaticResource OverlayStrong}"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="LensButtonBorder"
+                                                            Background="{TemplateBinding Background}"
+                                                            CornerRadius="17">
+                                                        <Path Data="{StaticResource FluentCameraIcon}"
+                                                              Width="17"
+                                                              Height="17"
+                                                              Stretch="Uniform"
+                                                              Fill="{StaticResource TextOnAccent}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="LensButtonBorder" Property="Opacity" Value="0.85"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLensPanelOpen, Mode=OneWay}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Border x:Name="LensControlPanel"
+                                    Margin="0,10,0,0"
+                                    Width="272"
+                                    Padding="16,14"
+                                    CornerRadius="10"
+                                    Background="{StaticResource OverlayStrong}"
+                                    Visibility="{Binding IsLensPanelOpen, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Text="镜头焦距"
+                                               Foreground="{StaticResource TextOnAccent}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,12"/>
+
+                                    <!-- 变焦：马达镜头的光学变焦，值域是设备原生单位，旁边给百分比反馈 -->
+                                    <StackPanel Margin="0,0,0,12"
+                                                Visibility="{Binding HasLensZoom, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid Margin="0,0,0,6">
+                                            <TextBlock Text="变焦"
+                                                       Foreground="{StaticResource TextOnAccent}"
+                                                       FontSize="13"/>
+                                            <TextBlock Text="{Binding LensZoomPercentText, Mode=OneWay}"
+                                                       Foreground="{StaticResource OverlayTextSecondary}"
+                                                       FontSize="13"
+                                                       HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Slider Style="{StaticResource AccentSliderStyle}"
+                                                Minimum="{Binding LensZoomMinimum, Mode=OneWay}"
+                                                Maximum="{Binding LensZoomMaximum, Mode=OneWay}"
+                                                TickFrequency="{Binding LensZoomTick, Mode=OneWay}"
+                                                IsMoveToPointEnabled="True"
+                                                Value="{Binding LensZoomValue, Mode=TwoWay}"/>
+                                    </StackPanel>
+
+                                    <!-- 对焦：默认自动；关掉自动后才能拖手动对焦 -->
+                                    <StackPanel Visibility="{Binding HasLensFocus, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid>
+                                            <TextBlock Text="对焦"
+                                                       Foreground="{StaticResource TextOnAccent}"
+                                                       FontSize="13"/>
+                                            <CheckBox Content="自动对焦"
+                                                      IsChecked="{Binding LensFocusAuto, Mode=TwoWay}"
+                                                      Foreground="{StaticResource TextOnAccent}"
+                                                      FontSize="13"
+                                                      Cursor="Hand"
+                                                      HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Grid Margin="0,8,0,2">
+                                            <TextBlock Text="近"
+                                                       Foreground="{StaticResource OverlayTextSecondary}"
+                                                       FontSize="12"
+                                                       HorizontalAlignment="Left"/>
+                                            <TextBlock Text="远"
+                                                       Foreground="{StaticResource OverlayTextSecondary}"
+                                                       FontSize="12"
+                                                       HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Slider Style="{StaticResource AccentSliderStyle}"
+                                                Minimum="{Binding LensFocusMinimum, Mode=OneWay}"
+                                                Maximum="{Binding LensFocusMaximum, Mode=OneWay}"
+                                                TickFrequency="{Binding LensFocusTick, Mode=OneWay}"
+                                                IsMoveToPointEnabled="True"
+                                                IsEnabled="{Binding IsLensFocusManual, Mode=OneWay}"
+                                                Value="{Binding LensFocusValue, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+
                         <!--
                             画中画拖动框：每一路接了设备的副画面各一个，代码按通道生成。
                             副画面是直接画进帧里的、没有可拖的控件，这里用透明 Thumb 代表它的位置，

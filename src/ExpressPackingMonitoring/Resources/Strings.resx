@@ -1620,6 +1620,12 @@
   <data name="已清理（{0}）" xml:space="preserve"><value>Cleaned up ({0})</value></data>
   <data name="按当前筛选导出单号" xml:space="preserve"><value>Export order numbers with the current filters</value></data>
   <data name="当前筛选没有匹配的录像，没有可导出的单号" xml:space="preserve"><value>No recordings match the current filters; nothing to export</value></data>
+  <data name="镜头焦距" xml:space="preserve"><value>Lens focal control</value></data>
+  <data name="对焦" xml:space="preserve"><value>Focus</value></data>
+  <data name="变焦" xml:space="preserve"><value>Zoom</value></data>
+  <data name="自动对焦" xml:space="preserve"><value>Autofocus</value></data>
+  <data name="近" xml:space="preserve"><value>Near</value></data>
+  <data name="远" xml:space="preserve"><value>Far</value></data>
   <data name="手动" xml:space="preserve"><value>Manual</value></data>
   <data name="程序退出" xml:space="preserve"><value>App exit</value></data>
   <data name="时长超时" xml:space="preserve"><value>Duration limit</value></data>

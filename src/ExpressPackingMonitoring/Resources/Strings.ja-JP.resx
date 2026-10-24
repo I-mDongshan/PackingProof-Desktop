@@ -1620,6 +1620,12 @@
   <data name="已清理（{0}）" xml:space="preserve"><value>削除済み（{0}）</value></data>
   <data name="按当前筛选导出单号" xml:space="preserve"><value>現在の絞り込みで送り状番号をエクスポート</value></data>
   <data name="当前筛选没有匹配的录像，没有可导出的单号" xml:space="preserve"><value>現在の絞り込みに一致する録画がなく、エクスポートできる番号もありません</value></data>
+  <data name="镜头焦距" xml:space="preserve"><value>レンズフォーカス</value></data>
+  <data name="对焦" xml:space="preserve"><value>フォーカス</value></data>
+  <data name="变焦" xml:space="preserve"><value>ズーム</value></data>
+  <data name="自动对焦" xml:space="preserve"><value>オートフォーカス</value></data>
+  <data name="近" xml:space="preserve"><value>近</value></data>
+  <data name="远" xml:space="preserve"><value>遠</value></data>
   <data name="手动" xml:space="preserve"><value>手動</value></data>
   <data name="程序退出" xml:space="preserve"><value>アプリ終了</value></data>
   <data name="时长超时" xml:space="preserve"><value>最大録画時間に到達</value></data>

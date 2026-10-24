@@ -136,7 +136,8 @@ namespace ExpressPackingMonitoring.Config
         public string Detail { get; set; } = "";
     }
 
-    public class AppConfig
+    // 镜头焦距等新增字段在 AppConfig.Lens.cs 这个分部里，本文件已贴近规模预算不再增长。
+    public partial class AppConfig
     {
         public const int HighestQualityVideoCqp = 18;
 

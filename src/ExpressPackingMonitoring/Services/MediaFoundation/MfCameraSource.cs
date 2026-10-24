@@ -61,6 +61,7 @@ public sealed partial class MfCameraSource : IDisposable
     private MfPlatform? _platform;
     private IMFMediaSource? _mediaSource;
     private IMFSourceReader? _reader;
+    private MfLensController? _lensController;
     private Thread? _readThread;
     private Mat? _conversionBuffer;
 
@@ -108,6 +109,12 @@ public sealed partial class MfCameraSource : IDisposable
 
     /// <summary>是否按 BT.709 解码。现场排查发灰问题时先看这一项。</summary>
     internal bool UsesBt709 => _useBt709;
+
+    /// <summary>
+    /// 镜头控制（变焦/对焦）。设备不支持时为 null。
+    /// 引用与媒体源同生命周期，只随 <see cref="ReleaseCore"/> 一起失效。
+    /// </summary>
+    internal MfLensController? LensController => _lensController;
 
     internal bool IsRunning
     {
@@ -356,6 +363,8 @@ public sealed partial class MfCameraSource : IDisposable
         }
 
         _reader = reader;
+        // 镜头控制挂在与采集同一个媒体源上：不额外打开设备，失败也不影响出帧。
+        _lensController = MfLensController.TryAttach(_mediaSource);
         return TryNegotiateFormat();
     }
 
@@ -770,6 +779,10 @@ public sealed partial class MfCameraSource : IDisposable
     /// <summary>释放原生资源。必须在持有 <see cref="_sync"/> 时调用。</summary>
     private void ReleaseCore()
     {
+        // 引用来自媒体源 RCW 的接口转换，不能 ReleaseComObject（见 MfLensController 的说明），
+        // 置 null 即可：媒体源 Shutdown 后这个引用自然失效。
+        _lensController = null;
+
         if (_reader != null)
         {
             try { Marshal.ReleaseComObject(_reader); } catch { }

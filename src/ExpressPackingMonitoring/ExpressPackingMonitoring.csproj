@@ -138,6 +138,7 @@
     <Compile Include="Services\CameraDeviceChoice.cs" />
     <Compile Include="Services\CameraDeviceSelectionPolicy.cs" />
     <Compile Include="Services\ZoomCropPolicy.cs" />
+    <Compile Include="Services\CameraLensPolicy.cs" />
     <Compile Include="Services\CameraFrameOrientation.cs" />
     <Compile Include="Services\ClipboardHelper.cs" />
     <Compile Include="Services\PastedTextNormalizer.cs" />
@@ -157,6 +158,8 @@
     <Compile Include="Services\MediaFoundation\MfCaptureProbeCache.cs" />
     <Compile Include="Services\MediaFoundation\CameraBackendPolicy.cs" />
     <Compile Include="Services\MediaFoundation\MfDeviceMatcher.cs" />
+    <Compile Include="Services\MediaFoundation\MfLensInterop.cs" />
+    <Compile Include="Services\MediaFoundation\MfLensController.cs" />
     <Compile Include="Services\Gpu\GpuConversionShaders.cs" />
     <Compile Include="Services\Gpu\GpuPreviewResizeShader.cs" />
     <Compile Include="Services\Gpu\GpuPreviewResizer.cs" />
@@ -193,6 +196,7 @@
     <Compile Include="ViewModels\MainViewModel.CameraRotation.cs" />
     <Compile Include="ViewModels\MainViewModel.CameraGuide.cs" />
     <Compile Include="ViewModels\MainViewModel.Zoom.cs" />
+    <Compile Include="ViewModels\MainViewModel.Lens.cs" />
     <Compile Include="ViewModels\MainViewModel.FloatingPreview.cs" />
     <Compile Include="ViewModels\MainViewModel.OverlayChannels.cs" />
     <Compile Include="ViewModels\MainViewModel.Scanner.cs" />

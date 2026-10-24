@@ -664,6 +664,8 @@ namespace ExpressPackingMonitoring.ViewModels
                 }
 
                 _mfCameraSource = source;
+                // 镜头控制挂在已打开的媒体源上：有变焦/手动对焦能力的机位恢复记忆中的镜头状态。
+                AttachCameraLens(source, monikerString);
                 // MF 在采集层就完成了旋转（GPU 着色器或它的 CPU 回退），
                 // Actual* 已经是旋转后的尺寸，不能再按角度换算一次。
                 _actualCameraWidth = source.ActualWidth;
@@ -812,6 +814,8 @@ namespace ExpressPackingMonitoring.ViewModels
         private bool StopCamera()
         {
             LogResourceHealthIfDue("camera-stop", force: true);
+            // 镜头控制在媒体源失效前回收入口；重连成功后 AttachCameraLens 会重新恢复。
+            DetachCameraLens();
             if (!_isDisposed)
                 ResetCameraBarcodeRecognition();
 

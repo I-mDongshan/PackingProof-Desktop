@@ -1622,6 +1622,12 @@
   <data name="已清理（{0}）" xml:space="preserve"><value>已清理（{0}）</value></data>
   <data name="按当前筛选导出单号" xml:space="preserve"><value>按当前筛选导出单号</value></data>
   <data name="当前筛选没有匹配的录像，没有可导出的单号" xml:space="preserve"><value>当前筛选没有匹配的录像，没有可导出的单号</value></data>
+  <data name="镜头焦距" xml:space="preserve"><value>镜头焦距</value></data>
+  <data name="对焦" xml:space="preserve"><value>对焦</value></data>
+  <data name="变焦" xml:space="preserve"><value>变焦</value></data>
+  <data name="自动对焦" xml:space="preserve"><value>自动对焦</value></data>
+  <data name="近" xml:space="preserve"><value>近</value></data>
+  <data name="远" xml:space="preserve"><value>远</value></data>
   <data name="手动" xml:space="preserve"><value>手动</value></data>
   <data name="程序退出" xml:space="preserve"><value>程序退出</value></data>
   <data name="时长超时" xml:space="preserve"><value>时长超时</value></data>
