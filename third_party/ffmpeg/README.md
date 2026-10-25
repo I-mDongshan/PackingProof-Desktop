@@ -55,6 +55,13 @@ C:\msys64\usr\bin\bash.exe -lc "cd /d/OpenSourceProject/PackingProof-Desktop && 
 构建机无关性：configure 的 `--prefix` 使用中性路径（避免把构建机绝对路径嵌进版本信息），
 读取 `configure-flags.txt` 时剥掉 CR（工作区行尾随 git autocrlf 变化，残留 CR 会让
 pkg-config 收到带 CR 的 --static，现场症状是 pkgconf: unknown option -- static）。
+MSYS2 的 `x265.pc` 会把 `-lgcc_s` 写进 `Libs.private`，仅传 `-static-libgcc`
+仍会让成品依赖 `libgcc_s_seh-1.dll` 和 `libwinpthread-1.dll`。构建脚本会在
+`package/ffmpeg-build/pkgconfig/` 生成本机构建专用覆盖，移除这两个动态运行库参数。
+
+产物验收不能只跑 `ffmpeg -version`：开发机的 Qt/MSYS2 PATH 可能替它找到运行库。
+`tools/ffmpeg-capability-check.ps1` 会先清空 PATH，只保留 Windows 系统目录启动一次，
+再跑编码器、协议、封装和滤镜矩阵。
 
 ## 精简范围
 

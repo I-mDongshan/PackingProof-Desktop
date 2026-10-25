@@ -6,8 +6,8 @@
   "local_build": {
     "script": "third_party/ffmpeg/build.sh",
     "artifact": "package/ffmpeg-build/ffmpeg.exe",
-    "executable_size": 54016000,
-    "executable_sha256": "4ad88039a575960758a4ccf9029c7f7ea44fa75931d16b72ab2f5b8351f14fab"
+    "executable_size": 54018048,
+    "executable_sha256": "8613101fda14b1b0dce86f13177afee888d0bd64bdd228a73914519cd8653665"
   },
   "package": {
     "file": "ffmpeg-4.4.1-essentials_build.7z",
@@ -24,8 +24,8 @@
     {
       "version": "4.4.1",
       "variant": "packingproof_minimal_V01",
-      "size": 54016000,
-      "sha256": "4ad88039a575960758a4ccf9029c7f7ea44fa75931d16b72ab2f5b8351f14fab"
+      "size": 54018048,
+      "sha256": "8613101fda14b1b0dce86f13177afee888d0bd64bdd228a73914519cd8653665"
     },
     {
       "version": "4.4.1",

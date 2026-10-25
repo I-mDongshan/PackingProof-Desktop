@@ -37,6 +37,48 @@ $requiredDemuxers = @("h264", "hevc", "s16le", "mp4", "matroska", "image2", "lav
 # AV1 硬件编码按能力探测可选提供；libsvtav1 与上游 Gyan essentials 一样不随包，CPU AV1 由应用隐藏
 $optionalEncoders = @("av1_nvenc", "av1_amf", "av1_qsv")
 
+function Invoke-FFmpegWithCleanPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [Parameter(Mandatory = $true)][string[]]$FFmpegArguments
+    )
+
+    # 开发机的 Qt/MSYS2 PATH 经常带着 libgcc_s_seh-1.dll 和 libwinpthread-1.dll，
+    # 会掩盖发布包缺少 MinGW 运行库的问题。这里只保留 Windows 系统目录，
+    # 模拟用户机器上从安装目录直接启动 ffmpeg.exe 的加载环境。
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    $startInfo.Environment["PATH"] = "$env:SystemRoot\System32;$env:SystemRoot"
+    foreach ($argument in $FFmpegArguments) {
+        $startInfo.ArgumentList.Add($argument)
+    }
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    try {
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit(30000)) {
+            $process.Kill($true)
+            throw "FFmpeg clean-PATH smoke test timed out: $Executable"
+        }
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        $exitCode = $process.ExitCode
+    }
+    finally {
+        $process.Dispose()
+    }
+
+    if ($exitCode -ne 0) {
+        throw "FFmpeg cannot start with only Windows system directories on PATH. ExitCode=$exitCode`n$stderr"
+    }
+    return $stdout
+}
+
 function Invoke-FFmpegList {
     param([string[]]$FFmpegArguments)
     $output = & $FFmpegPath -hide_banner @FFmpegArguments 2>&1 | Out-String
@@ -108,6 +150,10 @@ function Test-Set {
 }
 
 Write-Host "FFmpeg 能力矩阵核对：$FFmpegPath"
+Write-Host "检查干净 PATH 下的可启动性（排除开发机 MinGW/Qt 运行库）..."
+$cleanPathVersion = Invoke-FFmpegWithCleanPath -Executable $FFmpegPath -FFmpegArguments @("-hide_banner", "-version")
+$cleanPathVersion -split "`r?`n" | Select-Object -First 2 | ForEach-Object { Write-Host "  $_" }
+Write-Host ""
 & $FFmpegPath -hide_banner -version | Select-Object -First 2 | ForEach-Object { Write-Host "  $_" }
 Write-Host ""
 

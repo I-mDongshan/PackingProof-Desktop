@@ -183,6 +183,18 @@ public sealed class ReleasePackagingPolicyTests
         string manifest = File.ReadAllText(
             Path.Combine(repositoryRoot, "tools", "ffmpeg-baseline.json"),
             Encoding.UTF8);
+        string buildScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "third_party", "ffmpeg", "build.sh"),
+            Encoding.UTF8);
+        string capabilityScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "ffmpeg-capability-check.ps1"),
+            Encoding.UTF8);
+        string releaseWorkflow = File.ReadAllText(
+            Path.Combine(repositoryRoot, ".github", "workflows", "release-package.yml"),
+            Encoding.UTF8);
+        string prepareScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Prepare-PinnedFFmpeg.ps1"),
+            Encoding.UTF8);
         XDocument project = XDocument.Load(
             Path.Combine(repositoryRoot, "src", "ExpressPackingMonitoring", "ExpressPackingMonitoring.csproj"));
         XElement[] ffmpegContent = project.Descendants("Content")
@@ -207,6 +219,14 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("third_party/ffmpeg/build.sh", manifest);
         Assert.Contains("package/ffmpeg-build/ffmpeg.exe", manifest);
         Assert.Contains("\"4.4.1-minimal\"", manifest);
+        // MSYS2 x265.pc 会重新带入 -lgcc_s；必须覆盖该 pkg-config，且验收要在干净 PATH 下启动
+        Assert.Contains("LOCAL_PKGCONFIG", buildScript);
+        Assert.Contains("Libs.private: -lstdc++", buildScript);
+        Assert.Contains("Invoke-FFmpegWithCleanPath", capabilityScript);
+        Assert.Contains("$startInfo.Environment[\"PATH\"]", capabilityScript);
+        Assert.Contains("[switch]$RequireLocalBuild", prepareScript);
+        Assert.Contains("FFMPEG_MINIMAL_URL", releaseWorkflow);
+        Assert.Contains("Prepare-PinnedFFmpeg.ps1 -RequireLocalBuild", releaseWorkflow);
         // 老用户机器上长期保留的历史随包版本（AppPatch 不携带 FFmpeg）必须继续被登记为兼容
         Assert.Contains("8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac", manifest);
         Assert.Equal(2, ffmpegContent.Length);

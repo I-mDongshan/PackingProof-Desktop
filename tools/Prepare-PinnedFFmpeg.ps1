@@ -1,4 +1,6 @@
-param()
+param(
+    [switch]$RequireLocalBuild
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -12,11 +14,20 @@ $destinationPath = Join-Path $cacheDirectory "ffmpeg.exe"
 if (Test-Path -LiteralPath $destinationPath -PathType Leaf) {
     try {
         Assert-FFmpegExecutable -ExecutablePath $destinationPath -Baseline $baseline
-        Write-Host "Pinned FFmpeg already prepared: $destinationPath"
-        if ($env:GITHUB_PATH) {
-            $cacheDirectory | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+        $primary = Get-FFmpegBaselineExecutableIdentity -Baseline $baseline
+        $isPrimary = (Get-Item -LiteralPath $destinationPath).Length -eq $primary.Size -and
+            [string]::Equals(
+                (Get-Sha256Lower -Path $destinationPath),
+                [string]$primary.Sha256,
+                [StringComparison]::OrdinalIgnoreCase)
+        if (-not $RequireLocalBuild -or $isPrimary) {
+            Write-Host "Pinned FFmpeg already prepared: $destinationPath"
+            if ($env:GITHUB_PATH) {
+                $cacheDirectory | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+            }
+            return
         }
-        return
+        Remove-Item -LiteralPath $destinationPath -Force
     }
     catch {
         Remove-Item -LiteralPath $destinationPath -Force
@@ -41,7 +52,8 @@ Resolve-FFmpegBaselineExecutable `
     -CacheDirectory $cacheDirectory `
     -DestinationPath $dependencyOutput `
     -SevenZipExecutable $sevenZip `
-    -RepositoryRoot $repoRoot
+    -RepositoryRoot $repoRoot `
+    -RequireLocalBuild:$RequireLocalBuild
 Copy-Item -LiteralPath $dependencyOutput -Destination $destinationPath -Force
 Assert-FFmpegExecutable -ExecutablePath $destinationPath -Baseline $baseline
 Write-Host "Pinned FFmpeg prepared: $destinationPath"

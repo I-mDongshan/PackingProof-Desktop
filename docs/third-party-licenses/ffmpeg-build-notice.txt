@@ -1,62 +1,21 @@
-FFmpeg 64-bit static Windows build from www.gyan.dev
+PackingProof minimal FFmpeg build for Windows x64
 
-Version: 4.4.1-essentials_build-www.gyan.dev
+FFmpeg version: 4.4.1-packingproof-ffmpeg-minimal-V01
+Source archive: https://ffmpeg.org/releases/ffmpeg-4.4.1.tar.xz
+Source SHA256: eadbad9e9ab30b25f5520fbfde99fae4a92a1ae3c0257a8d68569a4651e30e02
+License: GPL version 3 or later
+Build recipe: third_party/ffmpeg/build.sh
+Configure flags: third_party/ffmpeg/configure-flags.txt
+Build dependencies: third_party/ffmpeg/versions.env
+Pinned binary identity: tools/ffmpeg-baseline.json
 
-License: GPL v3
+The build enables GPL components and statically links FFmpeg with zlib, GnuTLS,
+libx264, libx265, ffnvcodec/NVENC, AMF and Intel Media SDK/libmfx. It does not
+enable libass, vmaf, webp, srt, SSH, AV1 software encoders or other unused
+external libraries.
 
-Source Code: https://github.com/FFmpeg/FFmpeg/commit/7e0d640edf
-
-release-essentials build configuration: 
-
-    --enable-gpl
-    --enable-version3
-    --enable-static
-    --disable-w32threads
-    --disable-autodetect
-    --enable-fontconfig
-    --enable-iconv
-    --enable-gnutls
-    --enable-libxml2
-    --enable-gmp
-    --enable-lzma
-    --enable-zlib
-    --enable-libsrt
-    --enable-libssh
-    --enable-libzmq
-    --enable-avisynth
-    --enable-sdl2
-    --enable-libwebp
-    --enable-libx264
-    --enable-libx265
-    --enable-libxvid
-    --enable-libaom
-    --enable-libopenjpeg
-    --enable-libvpx
-    --enable-libass
-    --enable-libfreetype
-    --enable-libfribidi
-    --enable-libvidstab
-    --enable-libvmaf
-    --enable-libzimg
-    --enable-amf
-    --enable-cuda-llvm
-    --enable-cuvid
-    --enable-ffnvcodec
-    --enable-nvdec
-    --enable-nvenc
-    --enable-d3d11va
-    --enable-dxva2
-    --enable-libmfx
-    --enable-libgme
-    --enable-libopenmpt
-    --enable-libopencore-amrwb
-    --enable-libmp3lame
-    --enable-libtheora
-    --enable-libvo-amrwbenc
-    --enable-libgsm
-    --enable-libopencore-amrnb
-    --enable-libopus
-    --enable-libspeex
-    --enable-libvorbis
-    --enable-librubberband
+The corresponding FFmpeg source, build recipe, exact configure flags and direct
+MSYS2 package versions are published in the PackingProof-Desktop repository.
+Upstream source for the linked libraries is available from the MSYS2 package
+archive referenced by those pinned package versions.
 

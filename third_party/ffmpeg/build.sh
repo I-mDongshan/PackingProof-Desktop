@@ -13,6 +13,7 @@ PREFIX="/packingproof-ffmpeg-minimal"
 OUTPUT="$BUILD_ROOT/ffmpeg.exe"
 NVCODEC_VERSION="11.1.5.2"
 NVCODEC_ROOT="$BUILD_ROOT/nvcodec"
+LOCAL_PKGCONFIG="$BUILD_ROOT/pkgconfig"
 
 mkdir -p "$BUILD_ROOT"
 
@@ -44,7 +45,15 @@ if [ ! -f "$NVCODEC_ROOT/include/ffnvcodec/nvEncodeAPI.h" ]; then
   tar -xf "$NVCODEC_TARBALL" -C "$BUILD_ROOT"
   make -C "$NVCODEC_DIR" install PREFIX="$NVCODEC_ROOT"
 fi
-export PKG_CONFIG_PATH="$NVCODEC_ROOT/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+# MSYS2 的 x265.pc 在 Libs.private 里显式写了 -lgcc_s -lgcc。显式库名会绕过
+# gcc 的 -static-libgcc，最终让 ffmpeg.exe 仍然依赖 libgcc_s_seh-1.dll
+# （该 DLL 又依赖 libwinpthread-1.dll）。这里只覆盖本机构建用的 x265.pc，
+# 保留编译参数并去掉动态运行库，交给 gcc 的 -static-libgcc 处理。
+rm -rf "$LOCAL_PKGCONFIG"
+mkdir -p "$LOCAL_PKGCONFIG"
+sed -E 's/^Libs\.private:.*/Libs.private: -lstdc++/' \
+  /mingw64/lib/pkgconfig/x265.pc > "$LOCAL_PKGCONFIG/x265.pc"
+export PKG_CONFIG_PATH="$NVCODEC_ROOT/lib/pkgconfig:$LOCAL_PKGCONFIG:${PKG_CONFIG_PATH:-}"
 
 mapfile -t CONFIGURE_FLAGS < <(tr -d '\r' < "$SCRIPT_DIR/configure-flags.txt")
 

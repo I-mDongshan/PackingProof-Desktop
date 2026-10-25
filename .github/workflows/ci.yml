@@ -25,10 +25,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: 安装 .NET SDK（9.0，与本机发布工具链一致）
+      - name: 安装 .NET SDK（10.0，与本机发布工具链一致）
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.400
 
       - name: 选择大空间临时目录
         shell: pwsh
