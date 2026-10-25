@@ -51,12 +51,15 @@ function Test-AppPatchRuntimeCompatibility {
     }
     $currentFFmpegFile = Get-Item -LiteralPath $currentFFmpeg
     $currentFFmpegHash = Get-AppPatchFileSha256 -Path $currentFFmpeg
-    if ($currentFFmpegFile.Length -ne [long]$FFmpegBaseline.package.executable_size -or
-        -not [string]::Equals(
+    $acceptedCurrentFFmpeg = @($FFmpegBaseline.app_patch_compatible_executables | Where-Object {
+        [long]$_.size -eq $currentFFmpegFile.Length -and
+        [string]::Equals(
+            [string]$_.sha256,
             $currentFFmpegHash,
-            [string]$FFmpegBaseline.package.executable_sha256,
-            [StringComparison]::OrdinalIgnoreCase)) {
-        return [pscustomobject]@{ Compatible = $false; Reason = '当前发布目录中的 FFmpeg 与锁定基线不一致'; Warnings = $warnings }
+            [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($acceptedCurrentFFmpeg.Count -ne 1) {
+        return [pscustomobject]@{ Compatible = $false; Reason = '当前发布目录中的 FFmpeg 版本或哈希不在兼容白名单中'; Warnings = $warnings }
     }
 
     if (-not (Test-Path -LiteralPath $baselineFFmpeg -PathType Leaf)) {

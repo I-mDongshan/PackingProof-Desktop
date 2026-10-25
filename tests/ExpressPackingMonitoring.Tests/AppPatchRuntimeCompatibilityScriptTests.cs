@@ -24,6 +24,18 @@ public sealed class AppPatchRuntimeCompatibilityScriptTests
     }
 
     [Fact]
+    public void CurrentLocalBuildFfmpeg_IsCompatibleWhenRegistered()
+    {
+        using var fixture = new Fixture();
+        fixture.ReplaceCurrentFfmpegWithCompatible("4.4.1", "packingproof_minimal", "current-minimal");
+        fixture.AddVlcFile("plugins\\codec.dll", "codec");
+
+        CompatibilityResult result = fixture.Check();
+
+        Assert.True(result.Compatible, result.Reason);
+    }
+
+    [Fact]
     public void UnknownFfmpegHash_IsRejected()
     {
         using var fixture = new Fixture();
@@ -209,6 +221,13 @@ public sealed class AppPatchRuntimeCompatibilityScriptTests
 
         public void ReplaceBaselineFfmpeg(string content)
             => File.WriteAllText(BaselineFfmpegPath, content, Encoding.UTF8);
+
+        public void ReplaceCurrentFfmpegWithCompatible(string version, string variant, string content)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(content);
+            File.WriteAllBytes(CurrentFfmpegPath, bytes);
+            _compatibleExecutables.Add(CreateCompatible(version, variant, bytes));
+        }
 
         public void AddVlcFile(string relativePath, string content)
         {
