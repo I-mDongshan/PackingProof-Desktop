@@ -19,3 +19,18 @@ MSYS2 package versions are published in the PackingProof-Desktop repository.
 Upstream source for the linked libraries is available from the MSYS2 package
 archive referenced by those pinned package versions.
 
+Optional upstream fallback
+
+When `ffmpeg -version` reports `4.4.1-essentials_build-www.gyan.dev`, the
+package uses the Gyan FFmpeg Essentials binary instead of the PackingProof
+minimal build. The two variants differ only in optional bundled capabilities
+and package size; both are FFmpeg 4.4.1 under GPL version 3 or later.
+
+Binary source: https://www.gyan.dev/ffmpeg/builds/
+Source Code: https://github.com/FFmpeg/FFmpeg/commit/7e0d640edf
+Pinned archive and executable hashes: tools/ffmpeg-baseline.json
+
+Only one of the two listed Windows binaries is shipped in a release package.
+Use the version stamp and the registered size/SHA256 entries to identify the
+variant actually present.
+

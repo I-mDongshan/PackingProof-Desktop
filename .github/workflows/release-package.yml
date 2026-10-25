@@ -12,10 +12,6 @@ name: 发布包构建
         required: false
         default: false
         type: boolean
-      ffmpeg_artifact_url:
-        description: 可选的 PackingProof 精简 FFmpeg 直链；留空时使用 FFMPEG_MINIMAL_URL Secret
-        required: false
-        type: string
   push:
     tags:
       - 'v*.*.*'
@@ -90,43 +86,6 @@ jobs:
           path: package/dependency-cache/ffmpeg
           key: ffmpeg-${{ hashFiles('tools/ffmpeg-baseline.json') }}
 
-      - name: 获取并校验自建精简 FFmpeg
-        env:
-          FFMPEG_MINIMAL_URL: ${{ inputs.ffmpeg_artifact_url || secrets.FFMPEG_MINIMAL_URL }}
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          . .\tools\FFmpegBaseline.Common.ps1
-          $baseline = Read-FFmpegBaselineManifest -ManifestPath .\tools\ffmpeg-baseline.json
-          $cacheDirectory = Join-Path $PWD "package\dependency-cache\ffmpeg\$($baseline.version)"
-          $destination = Join-Path $cacheDirectory "ffmpeg.exe"
-          if (Test-Path -LiteralPath $destination -PathType Leaf) {
-            try {
-              Assert-FFmpegExecutable -ExecutablePath $destination -Baseline $baseline
-              Write-Host "Using verified cached minimal FFmpeg."
-              exit 0
-            }
-            catch {
-              Remove-Item -LiteralPath $destination -Force
-            }
-          }
-          if ([string]::IsNullOrWhiteSpace($env:FFMPEG_MINIMAL_URL)) {
-            throw "发布包必须使用自建精简 FFmpeg。请在 workflow_dispatch 填写 ffmpeg_artifact_url，或配置 FFMPEG_MINIMAL_URL Secret。"
-          }
-          New-Item -ItemType Directory -Force -Path $cacheDirectory | Out-Null
-          $temporary = "$destination.download"
-          try {
-            Invoke-WebRequest -Uri $env:FFMPEG_MINIMAL_URL -OutFile $temporary -UseBasicParsing -TimeoutSec 300
-            Assert-FFmpegExecutable -ExecutablePath $temporary -Baseline $baseline
-            Move-Item -LiteralPath $temporary -Destination $destination -Force
-          }
-          finally {
-            if (Test-Path -LiteralPath $temporary) {
-              Remove-Item -LiteralPath $temporary -Force
-            }
-          }
-          Write-Host "Downloaded and verified pinned minimal FFmpeg."
-
       - name: 缓存 NuGet 包
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
@@ -146,7 +105,7 @@ jobs:
 
       - name: 准备钉死的 FFmpeg 依赖
         shell: pwsh
-        run: pwsh -NoProfile -File tools\Prepare-PinnedFFmpeg.ps1 -RequireLocalBuild
+        run: pwsh -NoProfile -File tools\Prepare-PinnedFFmpeg.ps1
 
       - name: 运行发布自动验收（Release 构建、全量测试、WPF 启停、Web 端到端）
         shell: pwsh

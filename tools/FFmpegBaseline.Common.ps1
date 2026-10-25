@@ -305,8 +305,8 @@ function Resolve-FFmpegBaselineExecutable {
     }
 
     # 自建精简构建：优先用仓库构建产物（third_party/ffmpeg/build.sh 的输出）钉入缓存。
-    # 产物缺失（典型：远程 CI、未构建的贡献者机器）时落到下面的 package（上游包）回退——
-    # 出包脚本会用 -RequireLocalBuild 拒绝这种回退，保证发布 Setup 里的始终是精简构建。
+    # 产物缺失（典型：远程 CI、未构建的第三方开发者）时落到下面的 package 回退。
+    # 只有显式传 -RequireLocalBuild 时才禁止回退；正常发布允许使用按哈希校验的上游包。
     $localBuild = Get-FFmpegBaselineProperty $Baseline 'local_build'
     if ($null -ne $localBuild) {
         if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
@@ -397,10 +397,9 @@ function Resolve-FFmpegBaselineExecutable {
         -Baseline $Baseline `
         -SevenZipExecutable $SevenZipExecutable
 
-    # 发布打包（-RequireLocalBuild）不允许回退：在把上游包放到目的地之前就失败，
-    # 保证任何发布产物里的都只能是精简构建
+    # 可选的严格体积优化模式：只有调用方显式要求时才拒绝上游包回退。
     if ($RequireLocalBuild) {
-        throw "发布打包必须使用精简构建产物（third_party/ffmpeg/build.sh），本机既没有产物也没有含精简身份的缓存，拒绝回退到上游包: $cachedExecutable"
+        throw "已启用 -RequireLocalBuild，但本机既没有精简构建产物也没有含精简身份的缓存；请运行 third_party/ffmpeg/build.sh 或去掉该可选门禁: $cachedExecutable"
     }
 
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DestinationPath) | Out-Null

@@ -17,11 +17,12 @@
 | `ffmpeg-build-notice.txt` | FFmpeg Windows 构建说明：版本、上游 commit、构建参数 | — |
 | `THIRD_PARTY_NOTICES.md` | 本文件 | — |
 
-全文来源：Windows 的 `ffmpeg-build-notice.txt` 与 `GPL-3.0.txt` 对应 FFmpeg 4.4.1 源码和本项目 `third_party/ffmpeg` 中的自建配方；`LGPL-2.1.txt` 与 `GPL-2.0.txt` 取自 VideoLAN 上游 `vlc` 仓库 `3.0.21` 标签的 `COPYING.LIB` 与 `COPYING`。仓库内的副本保存在 `docs/third-party-licenses/`，打包时原样复制进安装包。
+全文来源：Windows 的 `ffmpeg-build-notice.txt` 同时说明可随包使用的自建精简构建与 Gyan essentials 回退构建，具体实际使用哪一份可依据 `ffmpeg -version` 和基线哈希确认；`GPL-3.0.txt` 对应 FFmpeg 4.4.1 源码。`LGPL-2.1.txt` 与 `GPL-2.0.txt` 取自 VideoLAN 上游 `vlc` 仓库 `3.0.21` 标签的 `COPYING.LIB` 与 `COPYING`。仓库内的副本保存在 `docs/third-party-licenses/`，打包时原样复制进安装包。
 
 ## FFmpeg
 
-- Windows 二进制来源：本项目基于 [FFmpeg 4.4.1 源码](https://ffmpeg.org/releases/ffmpeg-4.4.1.tar.xz) 自建的 PackingProof minimal V01 构建
+- Windows 二进制优先使用本项目基于 [FFmpeg 4.4.1 源码](https://ffmpeg.org/releases/ffmpeg-4.4.1.tar.xz) 自建的 PackingProof minimal V01 构建，以减小包体积
+- 没有自建产物时允许使用 [Gyan FFmpeg 4.4.1 Essentials](https://www.gyan.dev/ffmpeg/builds/)；两种来源都必须在 `tools/ffmpeg-baseline.json` 中登记并通过大小与 SHA256 校验
 - 发布变体与构建说明：`third_party/ffmpeg/README.md`
 - 许可证：GPLv3
 - 对应版本、下载地址、文件大小和 SHA256：`tools/ffmpeg-baseline.json`

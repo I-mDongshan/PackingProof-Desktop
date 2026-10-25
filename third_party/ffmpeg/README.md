@@ -43,10 +43,12 @@ C:\msys64\usr\bin\bash.exe -lc "cd /d/OpenSourceProject/PackingProof-Desktop && 
 - `package/ffmpeg-build/ffmpeg.exe`
 - 同名 `.sha256` 文件
 
-只有出正式包（Publish-CleanPackage.ps1，带 -RequireLocalBuild）需要这份产物：本机构建一次，
-或把其他构建机产出的同名哈希 ffmpeg.exe 复制进 `package/dependency-cache/ffmpeg/4.4.1-minimal/`（哈希校验把关），
-缺失时发布打包直接失败、绝不回退。远程 CI 与未构建的贡献者机器不走精简版：基线解析回退到
-清单 `package` 段的上游 Gyan essentials（同样按哈希校验下载），只用于构建与测试，不进发布产物。
+本地产物是可选的体积优化：有产物时优先用于开发和发布；没有时第三方开发者无需安装 MSYS2，
+解析器会自动下载清单 `package` 段登记的 Gyan essentials，并先校验 SHA256 再使用。
+把其他构建机产出的同名哈希 ffmpeg.exe 复制进
+`package/dependency-cache/ffmpeg/4.4.1-minimal/` 也可以复用精简版。
+如需强制验证“必须使用本地精简构建”，可显式给 Prepare 或 Resolve 脚本传 `-RequireLocalBuild`；
+正常发布不启用该门禁。
 普通开发与 `dotnet build` / `dotnet test` 不需要构建 FFmpeg（开发构建回退项目根 ffmpeg.exe，运行时再回退系统 PATH）。
 构建带 `--extra-version=packingproof-ffmpeg-minimal-V01` 版本戳：`ffmpeg -version` 第一行显示
 `ffmpeg version 4.4.1-packingproof-ffmpeg-minimal-V01 ...`，诊断日志据此识别构建来源。

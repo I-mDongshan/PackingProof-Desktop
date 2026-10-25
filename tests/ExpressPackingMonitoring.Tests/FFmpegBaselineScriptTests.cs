@@ -132,7 +132,7 @@ public sealed class FFmpegBaselineScriptTests
     [Fact]
     public void LocalBuild_MissingArtifact_FallsBackToPackageDownload()
     {
-        // 远程 CI 场景：本机没有精简构建产物，回退到上游包（同一清单按哈希校验）完成解析
+        // 第三方开发者场景：本机没有精简构建产物，回退到上游包（同一清单按哈希校验）完成解析
         using var fixture = new Fixture(localBuild: true);
         File.Delete(fixture.LocalArtifactPath);
         string package = EscapePowerShell(fixture.PackagePath);
@@ -150,7 +150,7 @@ public sealed class FFmpegBaselineScriptTests
     [Fact]
     public void LocalBuild_RequireLocalBuild_RejectsPackageFallback()
     {
-        // 发布打包（-RequireLocalBuild）不允许回退到上游包：宁可失败也不把 Gyan 版打进 Setup
+        // 显式启用严格体积优化模式时不允许回退到上游包
         using var fixture = new Fixture(localBuild: true);
         File.Delete(fixture.LocalArtifactPath);
         string package = EscapePowerShell(fixture.PackagePath);
