@@ -278,6 +278,123 @@ public sealed class OnvifLensControlTests
         Assert.Equal(500, OnvifLensController.MapToVirtual(60.0, realSpace));
     }
 
+    [Fact]
+    public async Task Probe_RoutesMediaQueriesToMediaServiceAndControlQueriesToTheirOwnServices()
+    {
+        const string media = "http://192.168.1.64/onvif/Media";
+        const string ptz = "http://192.168.1.64/onvif/PTZ";
+        const string imaging = "http://192.168.1.64/onvif/Imaging";
+        var transport = new RoutingTransport(media, ptz, imaging);
+        var endpoint = new OnvifEndpoint(
+            "http://192.168.1.64/onvif/device_service",
+            "admin",
+            "secret");
+
+        OnvifLensController.OnvifProbeState state =
+            await OnvifLensController.ProbeAsync(transport, endpoint);
+
+        Assert.Equal("profile-1", state.ProfileToken);
+        Assert.Equal("source-1", state.VideoSourceToken);
+        Assert.True(state.ZoomSpace?.IsValid);
+        Assert.True(state.AbsoluteFocusRange?.IsValid);
+
+        AssertRequest(transport, media, "GetProfiles");
+        AssertRequest(transport, media, "GetVideoSources");
+        AssertRequest(transport, ptz, "GetConfigurationOptions");
+        AssertRequest(transport, imaging, "GetMoveOptions");
+    }
+
+    private static void AssertRequest(RoutingTransport transport, string uri, string operation)
+    {
+        Assert.Contains(
+            transport.Requests,
+            request => request.Uri == uri && request.Body.Contains($"<t", StringComparison.Ordinal)
+                && request.Body.Contains(operation, StringComparison.Ordinal));
+    }
+
+    /// <summary>按 ONVIF 服务契约返回固定响应，并记录每个操作实际发往的 XAddr。</summary>
+    private sealed class RoutingTransport : IOnvifTransport
+    {
+        private readonly string _media;
+        private readonly string _ptz;
+        private readonly string _imaging;
+
+        public RoutingTransport(string media, string ptz, string imaging)
+        {
+            _media = media;
+            _ptz = ptz;
+            _imaging = imaging;
+        }
+
+        public List<(string Uri, string Body)> Requests { get; } = new();
+
+        public Task<string> PostAsync(string serviceUri, string bodyXml)
+        {
+            Requests.Add((serviceUri, bodyXml));
+            string response;
+            if (bodyXml.Contains("GetCapabilities", StringComparison.Ordinal))
+            {
+                response = EnvelopePrefix + $"""
+                    <td:GetCapabilitiesResponse xmlns:td="http://www.onvif.org/ver10/device/wsdl">
+                      <td:Capabilities>
+                        <tt:Media XAddr="{_media}"/>
+                        <tt:PTZ XAddr="{_ptz}"/>
+                        <tt:Imaging XAddr="{_imaging}"/>
+                      </td:Capabilities>
+                    </td:GetCapabilitiesResponse>
+                    """ + EnvelopeSuffix;
+            }
+            else if (bodyXml.Contains("GetProfiles", StringComparison.Ordinal))
+            {
+                response = EnvelopePrefix + """
+                    <trt:GetProfilesResponse xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
+                      <trt:Profiles token="profile-1">
+                        <tt:PTZConfiguration token="ptz-config-1"/>
+                      </trt:Profiles>
+                    </trt:GetProfilesResponse>
+                    """ + EnvelopeSuffix;
+            }
+            else if (bodyXml.Contains("GetConfigurationOptions", StringComparison.Ordinal))
+            {
+                response = EnvelopePrefix + """
+                    <tptz:GetConfigurationOptionsResponse xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl">
+                      <tt:Spaces>
+                        <tt:AbsoluteZoomPositionSpace>
+                          <tt:XRange><tt:Min>0</tt:Min><tt:Max>1</tt:Max></tt:XRange>
+                        </tt:AbsoluteZoomPositionSpace>
+                      </tt:Spaces>
+                    </tptz:GetConfigurationOptionsResponse>
+                    """ + EnvelopeSuffix;
+            }
+            else if (bodyXml.Contains("GetVideoSources", StringComparison.Ordinal))
+            {
+                response = EnvelopePrefix + """
+                    <trt:GetVideoSourcesResponse xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
+                      <trt:VideoSources token="source-1"/>
+                    </trt:GetVideoSourcesResponse>
+                    """ + EnvelopeSuffix;
+            }
+            else if (bodyXml.Contains("GetMoveOptions", StringComparison.Ordinal))
+            {
+                response = EnvelopePrefix + """
+                    <timg:GetMoveOptionsResponse xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl">
+                      <timg:MoveOptions>
+                        <tt:Absolute>
+                          <tt:Position><tt:Min>0</tt:Min><tt:Max>1</tt:Max></tt:Position>
+                        </tt:Absolute>
+                      </timg:MoveOptions>
+                    </timg:GetMoveOptionsResponse>
+                    """ + EnvelopeSuffix;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unexpected ONVIF request: {bodyXml}");
+            }
+
+            return Task.FromResult(response);
+        }
+    }
+
     /// <summary>可注入的 HTTP 桩：记录请求体，回放固定响应。</summary>
     private sealed class StubHandler : HttpMessageHandler
     {

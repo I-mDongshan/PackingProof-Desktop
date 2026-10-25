@@ -44,7 +44,7 @@ internal sealed class OnvifLensController : ILensController, IDisposable
     }
 
     /// <summary>设备侧 PTZ/Imaging 探测的产物：变焦与（绝对）对焦的浮点区间，可能各自为空。</summary>
-    private sealed record OnvifProbeState(
+    internal sealed record OnvifProbeState(
         string? PtzXAddr,
         string? ImagingXAddr,
         string? ProfileToken,
@@ -63,9 +63,10 @@ internal sealed class OnvifLensController : ILensController, IDisposable
         if (endpoint == null)
             return null;
 
+        OnvifClient? client = null;
         try
         {
-            OnvifClient client = new(endpoint.Username, endpoint.Password);
+            client = new OnvifClient(endpoint.Username, endpoint.Password);
             OnvifProbeState state = await ProbeAsync(client, endpoint).ConfigureAwait(false);
             if (state.ZoomSpace == null && state.AbsoluteFocusRange == null)
             {
@@ -81,6 +82,8 @@ internal sealed class OnvifLensController : ILensController, IDisposable
                 state.VideoSourceToken,
                 state.ZoomSpace,
                 state.AbsoluteFocusRange);
+            // 控制器接管客户端生命周期。
+            client = null;
             RuntimeLog.Info(
                 "Camera",
                 $"ONVIF 镜头控制可用：zoom={(state.ZoomSpace == null ? "无" : $"{state.ZoomSpace.Value.Min}~{state.ZoomSpace.Value.Max}")}"
@@ -92,9 +95,13 @@ internal sealed class OnvifLensController : ILensController, IDisposable
             RuntimeLog.Info("Camera", $"ONVIF 镜头控制挂接失败（按无镜头处理）：{ex.Message}");
             return null;
         }
+        finally
+        {
+            client?.Dispose();
+        }
     }
 
-    private static async Task<OnvifProbeState> ProbeAsync(OnvifClient client, OnvifEndpoint endpoint)
+    internal static async Task<OnvifProbeState> ProbeAsync(IOnvifTransport client, OnvifEndpoint endpoint)
     {
         string capabilitiesXml = await client.PostAsync(
             endpoint.DeviceServiceUri,
@@ -112,8 +119,12 @@ internal sealed class OnvifLensController : ILensController, IDisposable
         {
             try
             {
+                if (capabilities.MediaXAddr == null)
+                    throw new InvalidOperationException("相机未提供 Media 服务地址");
+
+                // GetProfiles 属于 Media 服务；PTZ 服务只提供配置选项和移动操作。
                 string profilesXml = await client.PostAsync(
-                    capabilities.PtzXAddr,
+                    capabilities.MediaXAddr,
                     OnvifSoap.GetProfilesBody()).ConfigureAwait(false);
                 SelectPtzProfile(profilesXml, out profileToken, out string? ptzConfigurationToken);
 
@@ -137,8 +148,12 @@ internal sealed class OnvifLensController : ILensController, IDisposable
         {
             try
             {
+                if (capabilities.MediaXAddr == null)
+                    throw new InvalidOperationException("相机未提供 Media 服务地址");
+
+                // GetVideoSources 属于 Media 服务；Imaging 服务只接收 token 做成像控制。
                 string sourcesXml = await client.PostAsync(
-                    capabilities.ImagingXAddr,
+                    capabilities.MediaXAddr,
                     OnvifSoap.GetVideoSourcesBody()).ConfigureAwait(false);
                 videoSourceToken = OnvifSoap.ParseFirstVideoSourceToken(sourcesXml);
 

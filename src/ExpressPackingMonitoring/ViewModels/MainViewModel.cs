@@ -888,6 +888,7 @@ namespace ExpressPackingMonitoring.ViewModels
             _shutdownRequested = true;
             _isDisposed = true;
             UnhookApplicationFocusTracking();
+            try { DisposeCameraLens(); } catch { }
             try { _playbackWindow?.Close(); } catch { }
             try { _statisticsWindow?.Close(); } catch { }
             _cts?.Cancel();

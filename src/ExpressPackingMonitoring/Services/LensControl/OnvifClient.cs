@@ -1,8 +1,18 @@
+using System.Globalization;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace ExpressPackingMonitoring.Services.LensControl;
+
+/// <summary>
+/// ONVIF SOAP 传输的最小接口：生产实现是 <see cref="OnvifClient"/>，
+/// 测试可注入记录请求地址的桩，验证每类操作发往正确服务。
+/// </summary>
+internal interface IOnvifTransport
+{
+    Task<string> PostAsync(string serviceUri, string bodyXml);
+}
 
 /// <summary>从拉流地址解析出的 ONVIF 访问要素：设备服务地址 + 可选凭据。</summary>
 internal sealed record OnvifEndpoint(string DeviceServiceUri, string? Username, string? Password)
@@ -41,7 +51,7 @@ internal sealed record OnvifEndpoint(string DeviceServiceUri, string? Username, 
 /// 走局域网专用 HttpClient（不走系统代理）。只包这一层的 IO，
 /// 报文构造与解析在 <see cref="OnvifSoap"/>（纯函数、可单测）。
 /// </summary>
-internal sealed class OnvifClient : IDisposable
+internal sealed class OnvifClient : IOnvifTransport, IDisposable
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(4);
 
@@ -61,10 +71,12 @@ internal sealed class OnvifClient : IDisposable
     }
 
     /// <summary>POST 一个 SOAP 请求并返回响应正文。网络故障、非 2xx、SOAP Fault 都抛异常（由镜头层吞掉记日志）。</summary>
-    internal async Task<string> PostAsync(string serviceUri, string bodyXml)
+    public async Task<string> PostAsync(string serviceUri, string bodyXml)
     {
         byte[] nonce = RandomNumberGenerator.GetBytes(16);
-        string created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        string created = DateTime.UtcNow.ToString(
+            "yyyy-MM-ddTHH:mm:ss.fffZ",
+            CultureInfo.InvariantCulture);
         string envelope = OnvifSoap.BuildEnvelope(bodyXml, _username, _password, nonce, created);
 
         using var content = new StringContent(envelope, Encoding.UTF8, "application/soap+xml");

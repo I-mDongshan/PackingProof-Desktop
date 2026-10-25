@@ -647,8 +647,8 @@
                                     Command="{Binding ToggleLensPanelCommand}"
                                     Focusable="False"
                                     Cursor="Hand"
-                                    ToolTip="镜头焦距"
-                                    AutomationProperties.Name="镜头焦距">
+                                    ToolTip="{loc:Localized 镜头焦距}"
+                                    AutomationProperties.Name="{loc:Localized 镜头焦距}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Background" Value="{StaticResource OverlayStrong}"/>
@@ -690,7 +690,7 @@
                                     Background="{StaticResource OverlayStrong}"
                                     Visibility="{Binding IsLensPanelOpen, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="镜头焦距"
+                                    <TextBlock Text="{loc:Localized 镜头焦距}"
                                                Foreground="{StaticResource TextOnAccent}"
                                                FontSize="14"
                                                FontWeight="SemiBold"
@@ -700,7 +700,7 @@
                                     <StackPanel Margin="0,0,0,12"
                                                 Visibility="{Binding HasLensZoom, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                         <Grid Margin="0,0,0,6">
-                                            <TextBlock Text="变焦"
+                                            <TextBlock Text="{loc:Localized 变焦}"
                                                        Foreground="{StaticResource TextOnAccent}"
                                                        FontSize="13"/>
                                             <TextBlock Text="{Binding LensZoomPercentText, Mode=OneWay}"
@@ -719,10 +719,10 @@
                                     <!-- 对焦：默认自动；关掉自动后才能拖手动对焦 -->
                                     <StackPanel Visibility="{Binding HasLensFocus, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                         <Grid>
-                                            <TextBlock Text="对焦"
+                                            <TextBlock Text="{loc:Localized 对焦}"
                                                        Foreground="{StaticResource TextOnAccent}"
                                                        FontSize="13"/>
-                                            <CheckBox Content="自动对焦"
+                                            <CheckBox Content="{loc:Localized 自动对焦}"
                                                       IsChecked="{Binding LensFocusAuto, Mode=TwoWay}"
                                                       Foreground="{StaticResource TextOnAccent}"
                                                       FontSize="13"
@@ -730,11 +730,11 @@
                                                       HorizontalAlignment="Right"/>
                                         </Grid>
                                         <Grid Margin="0,8,0,2">
-                                            <TextBlock Text="近"
+                                            <TextBlock Text="{loc:Localized 近}"
                                                        Foreground="{StaticResource OverlayTextSecondary}"
                                                        FontSize="12"
                                                        HorizontalAlignment="Left"/>
-                                            <TextBlock Text="远"
+                                            <TextBlock Text="{loc:Localized 远}"
                                                        Foreground="{StaticResource OverlayTextSecondary}"
                                                        FontSize="12"
                                                        HorizontalAlignment="Right"/>
