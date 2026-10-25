@@ -12,6 +12,8 @@ internal sealed class InstalledExtensionRecord
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public string Description { get; set; } = "";
     public string Version { get; set; } = "";
     public string Type { get; set; } = "";
     public string ManagedItemId { get; set; } = "";
@@ -142,7 +144,11 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             var record = new InstalledExtensionRecord
             {
                 Id = inspection.Manifest.Id,
-                Name = displayName.Length > 0 ? displayName : imported.Name,
+                Name = displayName.Length > 0
+                    ? displayName
+                    : inspection.Manifest.Name.Length > 0 ? inspection.Manifest.Name : imported.Name,
+                Summary = inspection.Manifest.Summary,
+                Description = inspection.Manifest.Description,
                 Version = inspection.Manifest.Version,
                 Type = inspection.Manifest.Type,
                 ManagedItemId = imported.Id,
@@ -174,7 +180,11 @@ internal sealed class ExtensionInstallationService : IExtensionInstallationTarge
             var record = new InstalledExtensionRecord
             {
                 Id = inspection.Manifest.Id,
-                Name = displayName.Length > 0 ? displayName : inspection.Manifest.Id,
+                Name = displayName.Length > 0
+                    ? displayName
+                    : inspection.Manifest.Name.Length > 0 ? inspection.Manifest.Name : inspection.Manifest.Id,
+                Summary = inspection.Manifest.Summary,
+                Description = inspection.Manifest.Description,
                 Version = inspection.Manifest.Version,
                 Type = inspection.Manifest.Type,
                 InstallDirectory = targetDirectory,

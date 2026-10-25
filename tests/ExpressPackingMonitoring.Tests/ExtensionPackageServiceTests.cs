@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Services.Extensions;
+using ExpressPackingMonitoring.UI;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
@@ -83,6 +84,39 @@ public sealed class ExtensionPackageServiceTests
             }
             Assert.Throws<InvalidDataException>(() => new ExtensionPackageService().Inspect(package));
             Assert.False(File.Exists(Path.Combine(root, "outside.txt")));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void InstalledLocalExternalAdapterCanBeDisplayedWithoutMarketCatalog()
+    {
+        string root = CreateTemporaryDirectory();
+        try
+        {
+            string package = Path.Combine(root, "local-adapter.ppext");
+            using (ZipArchive archive = ZipFile.Open(package, ZipArchiveMode.Create))
+            {
+                WriteEntry(archive, "manifest.json", Manifest("sample.adapter", "external-adapter", "payload/adapter.cmd"));
+                WriteEntry(archive, "payload/adapter.cmd", "@echo off\r\n");
+                WriteEntry(archive, "README.md", "Sample adapter");
+            }
+            var installation = new ExtensionInstallationService(
+                Path.Combine(root, "extensions"),
+                new UserscriptCatalog(Path.Combine(root, "userscripts")),
+                new ExtensionPackageService());
+
+            ExtensionInstallResult result = installation.Install(package, "Sample Demo");
+            ExtensionMarketDisplayItem local = Assert.Single(
+                ExtensionMarketWindow.BuildDisplayItems([], [result.Record]));
+
+            Assert.True(local.IsLocalOnly);
+            Assert.Equal("Sample Demo", local.Name);
+            Assert.Equal("Sample extension summary", local.Summary);
+            Assert.Equal("已安装", local.StatusText);
         }
         finally
         {
@@ -224,6 +258,9 @@ public sealed class ExtensionPackageServiceTests
             ExtensionInstallResult result = installation.Install(package, "Sample Demo");
             Assert.Equal("userscript", result.Record.Type);
             Assert.Equal("1.0", result.Record.Version);
+            Assert.Equal("Sample Demo", result.Record.Name);
+            Assert.Equal("Sample extension summary", result.Record.Summary);
+            Assert.Equal("Sample extension description", result.Record.Description);
             Assert.Single(catalog.GetCustomScripts());
             string installedPath = installation.GetInstalledLocationPath(result.Record);
             Assert.Equal(catalog.GetSourcePath(result.Record.ManagedItemId), installedPath);
@@ -310,6 +347,9 @@ public sealed class ExtensionPackageServiceTests
         format = "packingproof-extension",
         packageFormatVersion = 1,
         id,
+        name = "Sample Demo",
+        summary = "Sample extension summary",
+        description = "Sample extension description",
         version = version ?? (type == "userscript" ? "1.0" : "1.0.0"),
         type,
         installation = type == "userscript"

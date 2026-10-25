@@ -88,6 +88,54 @@ public sealed class ExtensionMarketWindowTests
         Assert.Equal(expectedType, item.TypeLabel);
     }
 
+    [Fact]
+    public void BuildDisplayItemsMergesLocalOnlyEntriesWithoutDuplicates()
+    {
+        var catalog = new[]
+        {
+            new ExtensionMarketCatalogItem
+            {
+                Id = "market.one",
+                Name = "Market One",
+                Type = "external-adapter"
+            }
+        };
+        var installed = new[]
+        {
+            new InstalledExtensionRecord
+            {
+                Id = "market.one",
+                Name = "Installed Market One",
+                Version = "1.0.0",
+                Type = "external-adapter"
+            },
+            new InstalledExtensionRecord
+            {
+                Id = "local.one",
+                Name = "Local One",
+                Summary = "Installed from a local file",
+                Version = "2.0.0",
+                Type = "external-adapter",
+                LauncherPath = "payload/launcher.cmd"
+            }
+        };
+
+        IReadOnlyList<ExtensionMarketDisplayItem> items = ExtensionMarketWindow.BuildDisplayItems(catalog, installed);
+
+        Assert.Equal(2, items.Count);
+        Assert.Single(items, item => item.Item.Id == "market.one" && !item.IsLocalOnly);
+        ExtensionMarketDisplayItem local = Assert.Single(items, item => item.Item.Id == "local.one");
+        Assert.True(local.IsLocalOnly);
+        Assert.Equal("Local One", local.Name);
+        Assert.Equal("Installed from a local file", local.Summary);
+        Assert.Equal("已安装", local.StatusText);
+
+        IReadOnlyList<ExtensionMarketDisplayItem> offlineItems =
+            ExtensionMarketWindow.BuildDisplayItems([], installed);
+        Assert.Equal(2, offlineItems.Count);
+        Assert.All(offlineItems, item => Assert.True(item.IsLocalOnly));
+    }
+
     [Theory]
     [InlineData("https://example.com/project", true)]
     [InlineData("http://example.com/author", true)]
@@ -167,6 +215,22 @@ public sealed class ExtensionMarketWindowTests
         Assert.DoesNotContain("InstallLocalButton.IsEnabled", source[start..end], StringComparison.Ordinal);
         Assert.Contains(
             "Loaded += async (_, _) => await RefreshMarketAsync(showErrorDialog: false);",
+            source,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LocalInstallAddsTheInstalledExtensionToTheVisibleItems()
+    {
+        string source = ReadRepositoryFile(
+            "src", "ExpressPackingMonitoring", "UI", "ExtensionMarketWindow.xaml.cs");
+
+        Assert.Contains(
+            "RefreshInstalledState(result.Record.Id, selectInstalledItem: true);",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "item = ExtensionMarketDisplayItem.CreateLocal(installed);",
             source,
             StringComparison.Ordinal);
     }

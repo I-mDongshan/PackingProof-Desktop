@@ -1750,4 +1750,11 @@
   <data name="磁盘已存在" xml:space="preserve"><value>ディスクはすでに追加されています</value></data>
   <data name="网络位置已存在" xml:space="preserve"><value>ネットワークの場所はすでに追加されています</value></data>
   <data name="本次选择会保存为以后默认用途" xml:space="preserve"><value>この選択は今後の既定の用途として保存されます</value></data>
+  <data name="本地" xml:space="preserve"><value>ローカル</value></data>
+  <data name="本地安装" xml:space="preserve"><value>ローカル インストール</value></data>
+  <data name="本地安装的扩展" xml:space="preserve"><value>ローカルにインストールされた拡張</value></data>
+  <data name="本地版本：{0}" xml:space="preserve"><value>ローカル バージョン: {0}</value></data>
+  <data name="该扩展从本地 PPEXT 安装，未提供简介" xml:space="preserve"><value>この拡張はローカル PPEXT からインストールされ、説明はありません</value></data>
+  <data name="该扩展从本地 PPEXT 安装，不会从市场自动更新" xml:space="preserve"><value>この拡張はローカル PPEXT からインストールされたため、マーケットから自動更新されません</value></data>
+  <data name="本地扩展未经市场审核。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>ローカル拡張はマーケット審査を受けていません。PackingProof は内部動作を審査できず、ネットワーク、ファイル、その他のシステム リソースへのアクセスも制限できません</value></data>
 </root>

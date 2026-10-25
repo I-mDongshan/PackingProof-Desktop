@@ -11,6 +11,9 @@ internal sealed class ExtensionPackageManifest
     public string Format { get; set; } = "";
     public int PackageFormatVersion { get; set; }
     public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Summary { get; set; } = "";
+    public string Description { get; set; } = "";
     public string Version { get; set; } = "";
     public string Type { get; set; } = "";
     public ExtensionPackageInstallation Installation { get; set; } = new();
@@ -160,6 +163,10 @@ internal sealed class ExtensionPackageService
             throw new InvalidDataException("PPEXT 最低 PackingProof 版本格式无效");
         if (manifest.Type is not ("userscript" or "external-adapter"))
             throw new InvalidDataException("PPEXT 扩展类型不受支持");
+        if (manifest.Name.Length > 100
+            || manifest.Summary.Length > 160
+            || manifest.Description.Length > 4000)
+            throw new InvalidDataException("PPEXT 展示信息超过长度限制");
         string payloadPath = NormalizeEntryPath(manifest.PayloadPath);
         if (!payloadPath.StartsWith("payload/", StringComparison.Ordinal) || !entries.ContainsKey(payloadPath))
             throw new InvalidDataException("PPEXT payload 不存在或不在 payload/ 目录");

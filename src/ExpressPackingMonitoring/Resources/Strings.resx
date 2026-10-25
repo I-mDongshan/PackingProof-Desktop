@@ -1750,4 +1750,11 @@
   <data name="磁盘已存在" xml:space="preserve"><value>Disk already added</value></data>
   <data name="网络位置已存在" xml:space="preserve"><value>Network location already added</value></data>
   <data name="本次选择会保存为以后默认用途" xml:space="preserve"><value>This choice will be saved as the default purpose</value></data>
+  <data name="本地" xml:space="preserve"><value>Local</value></data>
+  <data name="本地安装" xml:space="preserve"><value>Local install</value></data>
+  <data name="本地安装的扩展" xml:space="preserve"><value>Locally installed extension</value></data>
+  <data name="本地版本：{0}" xml:space="preserve"><value>Local version: {0}</value></data>
+  <data name="该扩展从本地 PPEXT 安装，未提供简介" xml:space="preserve"><value>This extension was installed from a local PPEXT and has no description</value></data>
+  <data name="该扩展从本地 PPEXT 安装，不会从市场自动更新" xml:space="preserve"><value>This extension was installed from a local PPEXT and will not update automatically from the marketplace</value></data>
+  <data name="本地扩展未经市场审核。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源" xml:space="preserve"><value>Local extensions are not reviewed by the marketplace. PackingProof cannot inspect their behavior or restrict their access to network, files, or other system resources</value></data>
 </root>

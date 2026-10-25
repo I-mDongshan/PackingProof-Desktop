@@ -71,23 +71,13 @@ public partial class ExtensionMarketWindow : Window
             _operationCancellation = new CancellationTokenSource();
             _screenshotCancellation?.Cancel();
             _screenshots.Clear();
+            _selectedDetails = null;
+            _selectedRelease = null;
+            _session = null;
+            PopulateDisplayItems([]);
             _session = await _marketClient.LoadCatalogAsync(_operationCancellation.Token);
-            IReadOnlyDictionary<string, InstalledExtensionRecord> installed = _installationService
-                .GetInstalled()
-                .ToDictionary(value => value.Id, StringComparer.Ordinal);
-            _items.Clear();
-            foreach (ExtensionMarketCatalogItem item in _session.Catalog.Extensions)
-            {
-                installed.TryGetValue(item.Id, out InstalledExtensionRecord? record);
-                _items.Add(new ExtensionMarketDisplayItem(item, record));
-            }
+            PopulateDisplayItems(_session.Catalog.Extensions);
             ShowMarketReadyStatus();
-            if (_items.Count > 0)
-            {
-                CatalogList.SelectedItem = _initialExtensionId == null
-                    ? _items[0]
-                    : _items.FirstOrDefault(value => value.Item.Id == _initialExtensionId) ?? _items[0];
-            }
         }
         catch (OperationCanceledException)
         {
@@ -97,6 +87,7 @@ public partial class ExtensionMarketWindow : Window
             SourceStatusText.Text = AppLanguage.Format(
                 "Extension.Market.OfflineLocalAvailable",
                 ex.Message);
+            PopulateDisplayItems([]);
             if (showErrorDialog)
                 AppDialog.Error(this, ex.Message, "扩展市场不可用");
         }
@@ -106,9 +97,56 @@ public partial class ExtensionMarketWindow : Window
         }
     }
 
+    private void PopulateDisplayItems(IReadOnlyCollection<ExtensionMarketCatalogItem> catalogItems)
+    {
+        string? selectedId = CatalogList.SelectedItem is ExtensionMarketDisplayItem selected
+            ? selected.Item.Id
+            : _initialExtensionId;
+        IReadOnlyList<ExtensionMarketDisplayItem> next = BuildDisplayItems(
+            catalogItems,
+            _installationService.GetInstalled());
+        _items.Clear();
+        foreach (ExtensionMarketDisplayItem item in next) _items.Add(item);
+        if (_items.Count == 0) return;
+        CatalogList.SelectedItem = selectedId == null
+            ? _items[0]
+            : _items.FirstOrDefault(value => value.Item.Id == selectedId) ?? _items[0];
+    }
+
+    internal static IReadOnlyList<ExtensionMarketDisplayItem> BuildDisplayItems(
+        IEnumerable<ExtensionMarketCatalogItem> catalogItems,
+        IReadOnlyCollection<InstalledExtensionRecord> installedRecords)
+    {
+        IReadOnlyDictionary<string, InstalledExtensionRecord> installed = installedRecords
+            .ToDictionary(value => value.Id, StringComparer.Ordinal);
+        var result = new List<ExtensionMarketDisplayItem>();
+        var catalogIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (ExtensionMarketCatalogItem item in catalogItems)
+        {
+            catalogIds.Add(item.Id);
+            installed.TryGetValue(item.Id, out InstalledExtensionRecord? record);
+            result.Add(new ExtensionMarketDisplayItem(item, record));
+        }
+        result.AddRange(installed.Values
+            .Where(record => !catalogIds.Contains(record.Id))
+            .OrderBy(record => record.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(ExtensionMarketDisplayItem.CreateLocal));
+        return result;
+    }
+
     private async void CatalogList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_session == null || CatalogList.SelectedItem is not ExtensionMarketDisplayItem selected) return;
+        if (CatalogList.SelectedItem is not ExtensionMarketDisplayItem selected) return;
+        if (selected.IsLocalOnly)
+        {
+            _selectedDetails = null;
+            _selectedRelease = null;
+            _screenshots.Clear();
+            _screenshotCancellation?.Cancel();
+            ShowDetails(selected);
+            return;
+        }
+        if (_session == null) return;
         bool restoreReadyStatus = false;
         SetBusy(true, "正在读取扩展详情");
         try
@@ -117,6 +155,7 @@ public partial class ExtensionMarketWindow : Window
                 _session,
                 selected.Item,
                 _operationCancellation?.Token ?? CancellationToken.None);
+            if (!ReferenceEquals(CatalogList.SelectedItem, selected)) return;
             _selectedRelease = ExtensionMarketVersionPolicy.SelectInstallableRelease(
                 _selectedDetails,
                 selected.Item.LatestVersion);
@@ -195,6 +234,11 @@ public partial class ExtensionMarketWindow : Window
 
     private void ShowDetails(ExtensionMarketDisplayItem selected)
     {
+        if (selected.IsLocalOnly)
+        {
+            ShowLocalDetails(selected);
+            return;
+        }
         ExtensionMarketDetails details = _selectedDetails!;
         ExtensionNameRun.Text = details.Extension.Name;
         ExtensionNameLink.NavigateUri = TryCreateExternalUri(details.Extension.Homepage);
@@ -215,22 +259,68 @@ public partial class ExtensionMarketWindow : Window
         UpdateActionState(selected);
     }
 
+    private void ShowLocalDetails(ExtensionMarketDisplayItem selected)
+    {
+        InstalledExtensionRecord? installed = _installationService.GetInstalled()
+            .FirstOrDefault(value => value.Id == selected.Item.Id);
+        ExtensionNameRun.Text = selected.Name;
+        ExtensionNameLink.NavigateUri = null;
+        ExtensionNameLink.IsEnabled = false;
+        PublisherNameRun.Text = AppLanguage.Get("本地安装");
+        PublisherLink.NavigateUri = null;
+        PublisherLink.IsEnabled = false;
+        LatestVersionText.Text = installed == null
+            ? AppLanguage.Get("最新版本：暂无")
+            : AppLanguage.Format("本地版本：{0}", installed.Version);
+        DescriptionText.Text = !string.IsNullOrWhiteSpace(installed?.Description)
+            ? installed.Description
+            : !string.IsNullOrWhiteSpace(installed?.Summary)
+                ? installed.Summary
+                : AppLanguage.Get("该扩展从本地 PPEXT 安装，未提供简介");
+        bool external = installed?.Type == "external-adapter";
+        RiskPanel.Visibility = external ? Visibility.Visible : Visibility.Collapsed;
+        RiskText.Text = AppLanguage.Get(
+            "本地扩展未经市场审核。PackingProof 无法审查其内部行为，也无法限制它访问网络、文件或其他系统资源");
+        UpdateActionState(selected);
+    }
+
     private void UpdateActionState(ExtensionMarketDisplayItem selected)
     {
         InstalledExtensionRecord? installed = _installationService.GetInstalled()
             .FirstOrDefault(value => value.Id == selected.Item.Id);
+        bool canLaunch = installed?.Type == "external-adapter" && !string.IsNullOrWhiteSpace(installed.LauncherPath);
+        if (selected.IsLocalOnly)
+        {
+            InstallButton.Visibility = Visibility.Collapsed;
+            InstallOtherVersionButton.Visibility = Visibility.Collapsed;
+            LaunchButton.Visibility = installed?.Type == "external-adapter"
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            LaunchButton.IsEnabled = canLaunch;
+            InstalledVersionText.Text = installed == null
+                ? AppLanguage.Get("尚未安装")
+                : AppLanguage.Format("已安装：{0}", installed.Version);
+            CompatibilityText.Text = AppLanguage.Get("该扩展从本地 PPEXT 安装，不会从市场自动更新");
+            SourceTagText.Text = selected.SourceLabel;
+            SourceTagText.Tag = selected.SourceLabel;
+            SourceTagBorder.Tag = selected.SourceLabel;
+            TypeTagText.Text = selected.TypeLabel;
+            OpenFolderButton.Visibility = installed != null ? Visibility.Visible : Visibility.Collapsed;
+            RemoveButton.Visibility = installed != null ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
         bool compatible = _selectedRelease != null
             && ExtensionMarketVersionPolicy.IsAppCompatible(
                 _selectedRelease.Compatibility.MinPackingProofVersion,
                 AppVersion.Current);
         InstallButton.IsEnabled = _selectedRelease != null && compatible;
-        bool canLaunch = installed?.Type == "external-adapter" && !string.IsNullOrWhiteSpace(installed.LauncherPath);
         InstallButton.Content = installed == null
             ? "安装"
             : installed.Version == _selectedRelease?.Version
                 ? "重新安装"
                 : "更新";
         InstallButton.Visibility = Visibility.Visible;
+        InstallOtherVersionButton.Visibility = Visibility.Visible;
         LaunchButton.Visibility = installed?.Type == "external-adapter"
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -423,11 +513,14 @@ public partial class ExtensionMarketWindow : Window
                     AppDialogSeverity.Warning,
                     "继续安装"))
                 return;
+            string displayName = string.IsNullOrWhiteSpace(inspection.Manifest.Name)
+                ? inspection.Manifest.Id
+                : inspection.Manifest.Name;
             ExtensionInstallResult result = await Task.Run(() =>
-                _installationService.Install(dialog.FileName, inspection.Manifest.Id));
+                _installationService.Install(dialog.FileName, displayName));
             ShowInstallResult(result);
             OpenInstalledExtensionDirectory(result.Record);
-            RefreshInstalledState(result.Record.Id);
+            RefreshInstalledState(result.Record.Id, selectInstalledItem: true);
         }
         catch (Exception ex)
         {
@@ -566,26 +659,40 @@ public partial class ExtensionMarketWindow : Window
             AppDialog.Error(this, "扩展已安装，但无法定位本地文件，请尝试重新安装", "无法打开目录");
     }
 
-    private void RefreshDisplayItems()
+    private void RefreshInstalledState(string extensionId, bool selectInstalledItem = false)
     {
-        IReadOnlyDictionary<string, InstalledExtensionRecord> installed = _installationService.GetInstalled()
-            .ToDictionary(value => value.Id, StringComparer.Ordinal);
-        foreach (ExtensionMarketDisplayItem item in _items)
+        InstalledExtensionRecord? installed = _installationService.GetInstalled()
+            .FirstOrDefault(value => value.Id == extensionId);
+        ExtensionMarketDisplayItem? item = _items.FirstOrDefault(value =>
+            string.Equals(value.Item.Id, extensionId, StringComparison.Ordinal));
+        if (installed == null)
         {
-            installed.TryGetValue(item.Item.Id, out InstalledExtensionRecord? record);
-            item.UpdateInstalled(record);
+            if (item?.IsLocalOnly == true)
+            {
+                bool wasSelected = ReferenceEquals(CatalogList.SelectedItem, item);
+                _items.Remove(item);
+                if (wasSelected) CatalogList.SelectedItem = _items.FirstOrDefault();
+            }
+            else
+            {
+                item?.UpdateInstalled(null);
+            }
+        }
+        else if (item != null)
+        {
+            item.UpdateInstalled(installed);
+        }
+        else
+        {
+            item = ExtensionMarketDisplayItem.CreateLocal(installed);
+            _items.Add(item);
         }
         CatalogList.Items.Refresh();
-    }
-
-    private void RefreshInstalledState(string extensionId)
-    {
-        RefreshDisplayItems();
-        if (_selectedDetails != null
-            && CatalogList.SelectedItem is ExtensionMarketDisplayItem selected
+        if (selectInstalledItem && item != null) CatalogList.SelectedItem = item;
+        if (CatalogList.SelectedItem is ExtensionMarketDisplayItem selected
             && string.Equals(selected.Item.Id, extensionId, StringComparison.Ordinal))
         {
-            UpdateActionState(selected);
+            ShowDetails(selected);
         }
     }
 
@@ -692,21 +799,51 @@ internal sealed class ExtensionMarketDisplayItem
     private InstalledExtensionRecord? _installed;
     private bool _isDownloading;
 
-    internal ExtensionMarketDisplayItem(ExtensionMarketCatalogItem item, InstalledExtensionRecord? installed)
+    internal ExtensionMarketDisplayItem(
+        ExtensionMarketCatalogItem item,
+        InstalledExtensionRecord? installed,
+        bool localOnly = false)
     {
         Item = item;
+        IsLocalOnly = localOnly;
         UpdateInstalled(installed);
     }
 
     internal ExtensionMarketCatalogItem Item { get; }
+    internal bool IsLocalOnly { get; }
     public string Name => Item.Name;
-    public string Summary => Item.Summary;
-    public string SourceLabel => Item.SourceAvailability == "closed-source" ? "闭源" : "开源";
+    public string Summary => string.IsNullOrWhiteSpace(Item.Summary)
+        ? AppLanguage.Get("本地安装的扩展")
+        : Item.Summary;
+    public string SourceLabel => IsLocalOnly
+        ? AppLanguage.Get("本地")
+        : Item.SourceAvailability == "closed-source" ? "闭源" : "开源";
     public string TypeLabel => Item.Type == "external-adapter" ? "适配器" : "脚本";
-    public string AuthorText => string.IsNullOrWhiteSpace(Item.Publisher.DisplayName)
+    public string AuthorText => IsLocalOnly
+        ? AppLanguage.Get("本地安装")
+        : string.IsNullOrWhiteSpace(Item.Publisher.DisplayName)
         ? Item.Publisher.Id
         : Item.Publisher.DisplayName;
     public string StatusText { get; private set; } = "未安装";
+
+    internal static ExtensionMarketDisplayItem CreateLocal(InstalledExtensionRecord record)
+    {
+        string name = string.IsNullOrWhiteSpace(record.Name) ? record.Id : record.Name;
+        var item = new ExtensionMarketCatalogItem
+        {
+            Id = record.Id,
+            Name = name,
+            Summary = record.Summary,
+            Type = record.Type,
+            SourceAvailability = "local",
+            Publisher = new ExtensionMarketPublisher
+            {
+                Id = "local",
+                DisplayName = AppLanguage.Get("本地安装")
+            }
+        };
+        return new ExtensionMarketDisplayItem(item, record, localOnly: true);
+    }
 
     internal void UpdateInstalled(InstalledExtensionRecord? installed)
     {
@@ -722,7 +859,9 @@ internal sealed class ExtensionMarketDisplayItem
 
     private void UpdateStatus()
     {
-        StatusText = _isDownloading
+        StatusText = IsLocalOnly
+            ? "已安装"
+            : _isDownloading
             ? "下载中"
             : _installed == null
             ? "未安装"
