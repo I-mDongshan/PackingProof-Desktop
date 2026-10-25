@@ -13,7 +13,7 @@
     "file": "ffmpeg-4.4.1-essentials_build.7z",
     "size": 23812897,
     "sha256": "064f6d9900139eec6d2ab9df7b005bdd97cc210711654c2712caf46ec85efec3",
-    "entry": "ffmpeg-4.4.1-essentials_build\bin\ffmpeg.exe",
+    "entry": "ffmpeg-4.4.1-essentials_build\\bin\\ffmpeg.exe",
     "executable_size": 77399040,
     "executable_sha256": "8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac",
     "urls": [

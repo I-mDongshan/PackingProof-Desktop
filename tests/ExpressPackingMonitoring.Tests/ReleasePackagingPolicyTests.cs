@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Xunit;
@@ -183,6 +184,11 @@ public sealed class ReleasePackagingPolicyTests
         string manifest = File.ReadAllText(
             Path.Combine(repositoryRoot, "tools", "ffmpeg-baseline.json"),
             Encoding.UTF8);
+        using JsonDocument manifestDocument = JsonDocument.Parse(manifest);
+        string packageEntry = manifestDocument.RootElement
+            .GetProperty("package")
+            .GetProperty("entry")
+            .GetString() ?? "";
         string buildScript = File.ReadAllText(
             Path.Combine(repositoryRoot, "third_party", "ffmpeg", "build.sh"),
             Encoding.UTF8);
@@ -228,6 +234,8 @@ public sealed class ReleasePackagingPolicyTests
         Assert.DoesNotContain("FFMPEG_MINIMAL_URL", releaseWorkflow);
         Assert.Contains("Prepare-PinnedFFmpeg.ps1", releaseWorkflow);
         Assert.Contains("GyanD/codexffmpeg/releases/download/4.4.1", manifest);
+        Assert.Equal(@"ffmpeg-4.4.1-essentials_build\bin\ffmpeg.exe", packageEntry);
+        Assert.DoesNotContain(packageEntry, char.IsControl);
         // 老用户机器上长期保留的历史随包版本（AppPatch 不携带 FFmpeg）必须继续被登记为兼容
         Assert.Contains("8436760af8f81c95eff92d854a7684e6d3cedb872888420359fc45c8eb2664ac", manifest);
         Assert.Equal(2, ffmpegContent.Length);
