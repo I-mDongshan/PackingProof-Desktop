@@ -63,6 +63,7 @@ namespace ExpressPackingMonitoring
             RuntimeLog.Info("App", "Application startup");
             RuntimeLog.LogSessionStart(e.Args);
             RuntimeLog.LogBuildInfo();
+            _ = Task.Run(OpenCvNativeRuntimeDiagnostics.Log);
             SeedSharedRuntimeLayout();
             RuntimeLog.Info(
                 "Rendering",

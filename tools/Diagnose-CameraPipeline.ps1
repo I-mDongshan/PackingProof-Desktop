@@ -1148,6 +1148,92 @@ try {
         Add-Line "程序目录：$appDirectory"
         $versionInfo = (Get-Item -LiteralPath (Join-Path $appDirectory "ExpressPackingMonitoring.dll")).VersionInfo
         Add-Line "程序版本：$($versionInfo.ProductVersion)｜文件版本：$($versionInfo.FileVersion)"
+
+        $openCvManaged = Join-Path $appDirectory "OpenCvSharp.dll"
+        if (Test-Path -LiteralPath $openCvManaged) {
+            try {
+                $openCvVersion = [Reflection.AssemblyName]::GetAssemblyName($openCvManaged).Version
+                Add-Line "OpenCV 托管包版本：$openCvVersion"
+            }
+            catch {
+                Add-Line "OpenCV 托管包版本：读取失败（$($_.Exception.Message)）"
+            }
+
+            $openCvNative = @(
+                (Join-Path $appDirectory "OpenCvSharpExtern.dll"),
+                (Join-Path $appDirectory "runtimes\win-x64\native\OpenCvSharpExtern.dll")
+            ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+            if ([string]::IsNullOrWhiteSpace($openCvNative)) {
+                Add-Line "OpenCV 原生运行库：未找到 OpenCvSharpExtern.dll"
+            }
+            else {
+                $openCvFile = Get-Item -LiteralPath $openCvNative
+                $openCvHash = (Get-FileHash -LiteralPath $openCvNative -Algorithm SHA256).Hash.ToLowerInvariant()
+
+                if (-not ("PackingProof.OpenCvNativeProbe" -as [type])) {
+                    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace PackingProof
+{
+    public static class OpenCvNativeProbe
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr LoadLibrary(string path);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern IntPtr GetProcAddress(IntPtr module, string name);
+
+        [DllImport("kernel32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool FreeLibrary(IntPtr module);
+    }
+}
+'@
+                }
+
+                $openCvHandle = [PackingProof.OpenCvNativeProbe]::LoadLibrary($openCvNative)
+                if ($openCvHandle -eq [IntPtr]::Zero) {
+                    Add-Line "OpenCV 原生运行库：$openCvNative｜大小=$($openCvFile.Length)｜SHA256=$openCvHash｜加载失败"
+                }
+                else {
+                    try {
+                        $hasCore = [PackingProof.OpenCvNativeProbe]::GetProcAddress($openCvHandle, "core_Mat_new1") -ne [IntPtr]::Zero
+                        $hasImgproc = [PackingProof.OpenCvNativeProbe]::GetProcAddress($openCvHandle, "imgproc_cvtColor") -ne [IntPtr]::Zero
+                        $hasImageCodecs = [PackingProof.OpenCvNativeProbe]::GetProcAddress($openCvHandle, "imgcodecs_imread") -ne [IntPtr]::Zero
+                        $hasDnn = [PackingProof.OpenCvNativeProbe]::GetProcAddress($openCvHandle, "dnn_Net_new") -ne [IntPtr]::Zero
+                        $hasVideoIo = [PackingProof.OpenCvNativeProbe]::GetProcAddress($openCvHandle, "videoio_VideoCapture_new1") -ne [IntPtr]::Zero
+
+                        $variant = if (-not $hasCore -or -not $hasImgproc) {
+                            "unsupported"
+                        }
+                        elseif ($hasDnn -and $hasVideoIo) {
+                            "official-full"
+                        }
+                        elseif ($hasImageCodecs -and -not $hasDnn -and -not $hasVideoIo) {
+                            "slim-with-image-codecs"
+                        }
+                        elseif (-not $hasImageCodecs -and -not $hasDnn -and -not $hasVideoIo) {
+                            "packingproof-core-imgproc"
+                        }
+                        else {
+                            "custom"
+                        }
+
+                        $modules = @("core", "imgproc")
+                        if ($hasImageCodecs) { $modules += "imgcodecs" }
+                        if ($hasDnn) { $modules += "dnn" }
+                        if ($hasVideoIo) { $modules += "videoio" }
+                        Add-Line ("OpenCV 原生运行库：variant={0}｜modules={1}｜size={2}｜SHA256={3}｜path={4}" -f `
+                            $variant, ($modules -join "+"), $openCvFile.Length, $openCvHash, $openCvNative)
+                    }
+                    finally {
+                        [void][PackingProof.OpenCvNativeProbe]::FreeLibrary($openCvHandle)
+                    }
+                }
+            }
+        }
     }
 
     $directShow = Get-DirectShowDeviceList $appDirectory
