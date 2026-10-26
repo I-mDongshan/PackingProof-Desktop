@@ -64,7 +64,7 @@ internal static class OpenCvNativeRuntimeDiagnostics
             RuntimeLog.Info(
                 "OpenCV",
                 $"Native runtime loaded: variant={variant}, opencvVersion={openCvVersion ?? "unknown"}, "
-                + $"managedVersion={managedVersion}, modules={modules}, size={size}, sha256={sha256}, "
+                + $"managedVersion={managedVersion}, probedModules={modules}, size={size}, sha256={sha256}, "
                 + $"path={module.FileName}");
         }
         catch (Exception ex)

@@ -1225,7 +1225,7 @@ namespace PackingProof
                         if ($hasImageCodecs) { $modules += "imgcodecs" }
                         if ($hasDnn) { $modules += "dnn" }
                         if ($hasVideoIo) { $modules += "videoio" }
-                        Add-Line ("OpenCV 原生运行库：variant={0}｜modules={1}｜size={2}｜SHA256={3}｜path={4}" -f `
+                        Add-Line ("OpenCV 原生运行库：variant={0}｜probedModules={1}｜size={2}｜SHA256={3}｜path={4}" -f `
                             $variant, ($modules -join "+"), $openCvFile.Length, $openCvHash, $openCvNative)
                     }
                     finally {
