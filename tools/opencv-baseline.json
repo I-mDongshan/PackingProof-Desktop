@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "version": "4.13.0",
+  "artifact_id": "core-imgproc-V01",
+  "runtime": "win-x64",
+  "provider": "PackingProof OpenCvSharpExtern core/imgproc build",
+  "modules": [
+    "core",
+    "imgproc"
+  ],
+  "app_patch_excluded": true,
+  "store_channel_allowed": false,
+  "opencvsharp": {
+    "repository": "https://github.com/shimat/opencvsharp.git",
+    "commit": "ecd814da8fa508f32490251751f607c666263abb",
+    "files_repository": "shimat/opencv_files",
+    "files_tag": "4.13.0.20260207",
+    "archive_file": "opencv_win_x64.zip",
+    "archive_size": 106553108,
+    "archive_sha256": "46fd6eb54264ccf9b5855f8d6b6500d1dcb094984902c38069df36a44234148c",
+    "archive_url": "https://github.com/shimat/opencv_files/releases/download/4.13.0.20260207/opencv_win_x64.zip"
+  },
+  "toolchain": {
+    "msvc_version": "14.44.35207",
+    "windows_sdk_version": "10.0.26100.0",
+    "linker_flags": [
+      "/Brepro"
+    ]
+  },
+  "native": {
+    "file": "OpenCvSharpExtern.dll",
+    "size": 40151040,
+    "sha256": "62e1cfc1c1fa043d65f203be28aeeda40b61e001589c418752d68fbc34c23223"
+  }
+}

@@ -247,6 +247,53 @@ public sealed class ReleasePackagingPolicyTests
     }
 
     [Fact]
+    public void Packaging_UsesPinnedMinimalOpenCvOnlyForFreshInstalls()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string publishScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
+            Encoding.UTF8);
+        string commonScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "OpenCvBaseline.Common.ps1"),
+            Encoding.UTF8);
+        string builderScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Build-MinimalOpenCv.ps1"),
+            Encoding.UTF8);
+        string manifest = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "opencv-baseline.json"),
+            Encoding.UTF8);
+        using JsonDocument manifestDocument = JsonDocument.Parse(manifest);
+
+        Assert.Contains("Read-OpenCvBaselineManifest", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Resolve-OpenCvBaselineNativeDll", publishScript, StringComparison.Ordinal);
+        Assert.Contains("-ExcludeRelativePaths $openCvAppPatchExcludeRelativePaths", publishScript, StringComparison.Ordinal);
+        Assert.Contains("OpenCvSharp.dll changed while OpenCvSharpExtern.dll is excluded", publishScript, StringComparison.Ordinal);
+        Assert.Contains("AppPatch delete list must not contain OpenCV native DLL", publishScript, StringComparison.Ordinal);
+        Assert.Contains("OpenCV native DLL must not be included", publishScript, StringComparison.Ordinal);
+        Assert.Contains("[switch]$AllowExperimentalOpenCvStore", publishScript, StringComparison.Ordinal);
+        Assert.Contains("当前 OpenCV 精简库尚未完成现场验证", publishScript, StringComparison.Ordinal);
+        Assert.Contains("Assert-OpenCvNativeDll", commonScript, StringComparison.Ordinal);
+        Assert.Contains("opencv_win_x64-$($baseline.opencvsharp.files_tag)", builderScript, StringComparison.Ordinal);
+        Assert.Contains("/p:VCToolsVersion=", builderScript, StringComparison.Ordinal);
+        Assert.Contains("/p:WindowsTargetPlatformVersion=", builderScript, StringComparison.Ordinal);
+        Assert.Contains("NO_VIDEOIO", builderScript, StringComparison.Ordinal);
+        Assert.Contains("HAVE_OPENCV_CORE", builderScript, StringComparison.Ordinal);
+        Assert.Contains("HAVE_OPENCV_IMGPROC", builderScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("HAVE_OPENCV_IMGCODECS", builderScript, StringComparison.Ordinal);
+        Assert.Equal(
+            "core",
+            manifestDocument.RootElement.GetProperty("modules")[0].GetString());
+        Assert.Equal(
+            "imgproc",
+            manifestDocument.RootElement.GetProperty("modules")[1].GetString());
+        Assert.True(manifestDocument.RootElement.GetProperty("app_patch_excluded").GetBoolean());
+        Assert.False(manifestDocument.RootElement.GetProperty("store_channel_allowed").GetBoolean());
+        Assert.Equal(
+            "62e1cfc1c1fa043d65f203be28aeeda40b61e001589c418752d68fbc34c23223",
+            manifestDocument.RootElement.GetProperty("native").GetProperty("sha256").GetString());
+    }
+
+    [Fact]
     public void ReleaseValidation_RequiresHardwareAwareEncoderRoundTrips()
     {
         string repositoryRoot = FindRepositoryRoot();

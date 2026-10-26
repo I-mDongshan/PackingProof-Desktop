@@ -26,7 +26,9 @@ param(
     [switch]$ReuseExistingLauncherBaseline,
     [switch]$DisablePatch,
     [switch]$SkipStorePackage,
+    [switch]$AllowExperimentalOpenCvStore,
     [string]$StoreIdentityConfigPath = "",
+    [string]$OpenCvNativeDllPath = "",
     # 只在“老装机升级到共享运行时布局”的那一版打开：增量包里额外带上整份 runtime\。
     [switch]$IncludeRuntimeInPatch
 )
@@ -38,6 +40,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "ReleaseNotes.Common.ps1")
 . (Join-Path $PSScriptRoot "LauncherBaseline.Common.ps1")
 . (Join-Path $PSScriptRoot "FFmpegBaseline.Common.ps1")
+. (Join-Path $PSScriptRoot "OpenCvBaseline.Common.ps1")
 . (Join-Path $PSScriptRoot "AppPatchRuntimeCompatibility.Common.ps1")
 . (Join-Path $PSScriptRoot "SharedRuntimeLayout.Common.ps1")
 $appProject = Join-Path $repoRoot "src\ExpressPackingMonitoring\ExpressPackingMonitoring.csproj"
@@ -56,6 +59,8 @@ $launcherPatchInstallerScriptName = "apply_launcher_patch.ps1"
 $launcherPatchManifestName = "launcher_patch_manifest.json"
 $launcherPatchNoticeName = "启动器更新说明.txt"
 $ffmpegBaselineManifestPath = Join-Path $PSScriptRoot "ffmpeg-baseline.json"
+$openCvBaselineManifestPath = Join-Path $PSScriptRoot "opencv-baseline.json"
+$openCvBuilderPath = Join-Path $PSScriptRoot "Build-MinimalOpenCv.ps1"
 
 function Invoke-CoreRegressionTests {
     if (-not (Test-Path $releaseValidationScript)) {
@@ -886,6 +891,7 @@ function New-AppPatchPackage {
         [string]$InstallerCmdPath,
         [string]$InstallerScriptPath,
         [switch]$ExcludeCompatibleRuntimes,
+        [string[]]$ExcludeRelativePaths = @(),
         # 过渡补丁专用：把共享运行时整份投递给老装机（它们没有 runtime\，只靠增量包升不上来）。
         [string]$RuntimeDir = "",
         # 累计退役清单的路径。测试夹具要指向临时文件，别让它把合成条目写回仓库里那份。
@@ -912,8 +918,45 @@ function New-AppPatchPackage {
     New-Item -ItemType Directory -Force -Path $patchFilesDir | Out-Null
 
     $changedFiles = @()
+    $excludedPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::OrdinalIgnoreCase)
+    foreach ($excludedPath in @($ExcludeRelativePaths)) {
+        if (-not [string]::IsNullOrWhiteSpace($excludedPath)) {
+            [void]$excludedPaths.Add($excludedPath.Replace('/', '\').TrimStart('\'))
+        }
+    }
+    $protectedOpenCvName = "OpenCvSharpExtern.dll"
+    $currentManagedOpenCv = Join-Path $CurrentAppDir "OpenCvSharp.dll"
+    $baselineManagedOpenCv = Join-Path $BaselineDir "OpenCvSharp.dll"
+    if ($excludedPaths.Contains($protectedOpenCvName)) {
+        $currentNativeOpenCv = Join-Path $CurrentAppDir $protectedOpenCvName
+        $baselineNativeOpenCv = Join-Path $BaselineDir $protectedOpenCvName
+        if (-not (Test-Path -LiteralPath $currentManagedOpenCv -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $baselineManagedOpenCv -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $currentNativeOpenCv -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $baselineNativeOpenCv -PathType Leaf)) {
+            throw "OpenCV native DLL is excluded from AppPatch, but managed or native OpenCV is missing from current or baseline payload."
+        }
+        $currentManagedHash = (Get-FileHash -LiteralPath $currentManagedOpenCv -Algorithm SHA256).Hash
+        $baselineManagedHash = (Get-FileHash -LiteralPath $baselineManagedOpenCv -Algorithm SHA256).Hash
+        if (-not [string]::Equals(
+                $currentManagedHash,
+                $baselineManagedHash,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "OpenCvSharp.dll changed while OpenCvSharpExtern.dll is excluded from AppPatch. Publish a full package or include a matching native DLL with an explicit migration plan."
+        }
+    }
     Get-ChildItem -LiteralPath $CurrentAppDir -File -Recurse | ForEach-Object {
         $relativePath = Get-RelativePath -BaseDir $CurrentAppDir -Path $_.FullName
+        if ([string]::Equals(
+                [IO.Path]::GetFileName($relativePath),
+                $protectedOpenCvName,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            return
+        }
+        if ($excludedPaths.Contains($relativePath)) {
+            return
+        }
         if ($relativePath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) {
             return
         }
@@ -964,6 +1007,12 @@ function New-AppPatchPackage {
     }
     foreach ($baselineFile in Get-ChildItem -LiteralPath $BaselineDir -File -Recurse) {
         $relativePath = Get-RelativePath -BaseDir $BaselineDir -Path $baselineFile.FullName
+        if ([string]::Equals(
+                [IO.Path]::GetFileName($relativePath),
+                $protectedOpenCvName,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
         if ($currentRelativePaths.ContainsKey($relativePath)) { continue }
         if ($relativePath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
         # runtime-seed 只能由落成器读取，补丁不得清理；旧装机里多出的 WinForms 种子
@@ -1029,6 +1078,12 @@ function New-AppPatchPackage {
 
     foreach ($relativePath in $orderedRetiredPaths) {
         $normalizedPath = $relativePath.Replace('/', '\')
+        if ([string]::Equals(
+                [IO.Path]::GetFileName($normalizedPath),
+                $protectedOpenCvName,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "AppPatch retire list must not contain OpenCV native DLL: $relativePath"
+        }
         if ($currentRelativePaths.ContainsKey($normalizedPath)) { continue }
         if ($normalizedPath.StartsWith("tts_cache\", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
         if (Test-IsAppPatchManagedRuntimePath -RelativePath $normalizedPath) { continue }
@@ -1041,6 +1096,12 @@ function New-AppPatchPackage {
     # 清理列表的生成期守卫：清单本身有冲突或越界时，客户端会在安装那一刻才报错（用户侧一次安装失败）。
     foreach ($deleted in $deletedFiles) {
         $relativePath = ([string]$deleted.path).Replace('/', '\')
+        if ([string]::Equals(
+                [IO.Path]::GetFileName($relativePath),
+                $protectedOpenCvName,
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "AppPatch delete list must not contain OpenCV native DLL: $relativePath"
+        }
         foreach ($written in $changedFiles) {
             if ([string]::Equals(
                     ([string]$written.path).Replace('/', '\'),
@@ -1118,6 +1179,7 @@ function New-AppPatchPackage {
         "Microsoft Store 版请使用 Microsoft Store 的「库」页面更新，不要运行本脚本。"
         ""
         "脚本会校验补丁文件、识别原安装位置并在失败时恢复原文件。"
+        "本补丁不会替换 OpenCV 原生运行库，老用户继续使用现有兼容版本。"
         "不要直接在压缩软件中运行，也不要单独移动 CMD、$appPatchInstallerScriptName、patch_manifest.json 或 files 文件夹。"
     ) -join [Environment]::NewLine
     Set-Content -LiteralPath (Join-Path $patchWorkDir $appPatchNoticeName) -Value $appPatchNotice -Encoding UTF8
@@ -1126,6 +1188,9 @@ function New-AppPatchPackage {
         -SourceDir $patchWorkDir `
         -DestinationZip $PatchZipPath `
         -CompressionLevel $ZipCompressionLevel
+    if (Test-ZipContainsEntry -ZipFile $PatchZipPath -EntryName "files/$protectedOpenCvName") {
+        throw "AppPatch package validation failed: OpenCV native DLL must not be included"
+    }
     Remove-Item -LiteralPath $patchWorkDir -Recurse -Force
 }
 
@@ -1321,6 +1386,22 @@ Resolve-FFmpegBaselineExecutable `
     -DestinationPath (Join-Path $appPublishDir "tools\ffmpeg.exe") `
     -SevenZipExecutable $sevenZipExecutable `
     -RepositoryRoot $repoRoot
+
+$openCvBaseline = Read-OpenCvBaselineManifest -ManifestPath $openCvBaselineManifestPath
+$openCvAppPatchExcludeRelativePaths = if ([bool]$openCvBaseline.app_patch_excluded) {
+    @("OpenCvSharpExtern.dll")
+}
+else {
+    @()
+}
+$openCvCacheDirectory = Join-Path $repoRoot "package\dependency-cache\opencv\$($openCvBaseline.version)-$($openCvBaseline.artifact_id)"
+Resolve-OpenCvBaselineNativeDll `
+    -Baseline $openCvBaseline `
+    -CacheDirectory $openCvCacheDirectory `
+    -DestinationPath (Join-Path $appPublishDir "OpenCvSharpExtern.dll") `
+    -RepositoryRoot $repoRoot `
+    -BuilderPath $openCvBuilderPath `
+    -SourcePath $OpenCvNativeDllPath
 
 $launcherExe = Join-Path $outputFullPath "ExpressPackingMonitoring.exe"
 $baselineReleaseTag = [string]$launcherBaseline.release_tag
@@ -1556,6 +1637,7 @@ else {
             -InstallerCmdPath $appPatchCmdSource `
             -InstallerScriptPath $appPatchScriptSource `
             -ExcludeCompatibleRuntimes `
+            -ExcludeRelativePaths $openCvAppPatchExcludeRelativePaths `
             -RuntimeDir $(if ($IncludeRuntimeInPatch) { $sharedRuntimeLayoutPath } else { "" })
 
         if (-not (Test-ZipContainsEntry -ZipFile $appPatchZipPath -EntryName "patch_manifest.json")) {
@@ -1573,6 +1655,9 @@ else {
             }
         }
         foreach ($runtimeFile in $requiredAppRuntimeFiles) {
+            if ([string]::Equals($runtimeFile, "OpenCvSharpExtern.dll", [StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
             $baselineRuntimeFile = Join-Path $baselineAppFullPath $runtimeFile
             $currentRuntimeFile = Join-Path $appPublishDir $runtimeFile
             $runtimeChanged = -not (Test-Path $baselineRuntimeFile)
@@ -1587,6 +1672,9 @@ else {
         }
         if (Test-ZipContainsEntry -ZipFile $appPatchZipPath -EntryName 'files/tools/ffmpeg.exe') {
             throw 'AppPatch package validation failed: compatible FFmpeg was included'
+        }
+        if (Test-ZipContainsEntry -ZipFile $appPatchZipPath -EntryName 'files/OpenCvSharpExtern.dll') {
+            throw 'AppPatch package validation failed: OpenCV native DLL must not be included'
         }
         if (Test-ZipContainsEntryPrefix -ZipFile $appPatchZipPath -EntryPrefix 'files/libvlc/') {
             throw 'AppPatch package validation failed: compatible LibVLC was included'
@@ -1617,7 +1705,15 @@ $storePackageSize = 0
 $storePackageVersion = ""
 $storePackageIdentity = ""
 if ($SkipStorePackage) {
-    Write-Warning "已跳过 Microsoft Store MSIX；该选项只用于本地验证，正式发布必须同时产出商店包。"
+    if (-not [bool]$openCvBaseline.store_channel_allowed) {
+        Write-Host "精简 OpenCV 尚未完成现场验证：本次按要求跳过 Microsoft Store MSIX，避免覆盖存量 Store 用户。"
+    }
+    else {
+        Write-Warning "已跳过 Microsoft Store MSIX；该选项只用于本地验证，正式发布必须同时产出商店包。"
+    }
+}
+elseif (-not [bool]$openCvBaseline.store_channel_allowed -and -not $AllowExperimentalOpenCvStore) {
+    throw "当前 OpenCV 精简库尚未完成现场验证，已禁止生成 Microsoft Store MSIX，避免整包更新覆盖存量 Store 用户。确认产品接受风险后使用 -AllowExperimentalOpenCvStore，或在验证前使用 -SkipStorePackage。"
 }
 else {
     $storePackageScript = Join-Path $PSScriptRoot "Publish-StorePackage.ps1"
@@ -1899,6 +1995,11 @@ else {
     $releaseInfoLines += ""
     $releaseInfoLines += "Microsoft Store MSIX: skipped for local verification only"
 }
+$releaseInfoLines += ""
+$releaseInfoLines += "OpenCV native variant: $($openCvBaseline.artifact_id)"
+$releaseInfoLines += "OpenCV native size: $($openCvBaseline.native.size) bytes"
+$releaseInfoLines += "OpenCV native SHA256:"
+$releaseInfoLines += [string]$openCvBaseline.native.sha256
 if ($IncludeFullZip) {
     $releaseInfoLines += ""
     $releaseInfoLines += "Optional local full ZIP SHA256:"
