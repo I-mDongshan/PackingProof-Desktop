@@ -288,6 +288,9 @@ internal sealed class OnvifLensController : ILensController, IDisposable
             try
             {
                 await _client.PostAsync(_ptzXAddr, OnvifSoap.AbsoluteZoomMoveBody(_profileToken, deviceValue)).ConfigureAwait(false);
+                RuntimeLog.Info(
+                    "Camera",
+                    $"ONVIF 变焦下发成功：virtual={ClampVirtual(virtualValue)}, device={deviceValue:0.###}");
                 return true;
             }
             finally
@@ -316,6 +319,9 @@ internal sealed class OnvifLensController : ILensController, IDisposable
                 // 先切手动再走位置：AUTO 模式下多数固件会忽略/覆写对焦移动指令
                 await _client.PostAsync(_imagingXAddr, OnvifSoap.SetFocusModeBody(_videoSourceToken, auto: false)).ConfigureAwait(false);
                 await _client.PostAsync(_imagingXAddr, OnvifSoap.AbsoluteFocusMoveBody(_videoSourceToken, deviceValue)).ConfigureAwait(false);
+                RuntimeLog.Info(
+                    "Camera",
+                    $"ONVIF 手动对焦下发成功：virtual={ClampVirtual(virtualValue)}, device={deviceValue:0.###}, auto=false");
                 return true;
             }
             finally
@@ -341,6 +347,7 @@ internal sealed class OnvifLensController : ILensController, IDisposable
             try
             {
                 await _client.PostAsync(_imagingXAddr, OnvifSoap.SetFocusModeBody(_videoSourceToken, auto)).ConfigureAwait(false);
+                RuntimeLog.Info("Camera", $"ONVIF 对焦模式下发成功：auto={auto}");
                 return true;
             }
             finally

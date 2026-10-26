@@ -150,6 +150,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 _lensFocusAuto = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsLensFocusManual));
+                RuntimeLog.Info("Camera", $"对焦模式切换请求：auto={value}");
                 ApplyLensFocusMode();
             }
         }
@@ -500,6 +501,9 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
 
             int target = zoomRange.Clamp((int)Math.Round(_lensZoomValue));
+            RuntimeLog.Info(
+                "Camera",
+                $"变焦下发：ui={_lensZoomValue:0.###}, target={target}, range={zoomRange.Min}~{zoomRange.Max}, step={zoomRange.Step}");
             long version = Interlocked.Increment(ref _lensZoomApplyVersion);
             _ = ApplyLensZoomAsync(controller, target, version);
         }
@@ -513,6 +517,9 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
 
             int target = focusRange.Clamp((int)Math.Round(_lensFocusValue));
+            RuntimeLog.Info(
+                "Camera",
+                $"手动对焦下发：ui={_lensFocusValue:0.###}, target={target}, range={focusRange.Min}~{focusRange.Max}, step={focusRange.Step}");
             long version = Interlocked.Increment(ref _lensFocusApplyVersion);
             _ = ApplyLensFocusAsync(controller, target, version);
         }
@@ -525,6 +532,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
 
             bool auto = LensFocusAuto;
+            RuntimeLog.Info("Camera", $"对焦模式下发：auto={auto}");
             long version = Interlocked.Increment(ref _lensFocusApplyVersion);
             _ = ApplyLensFocusModeAsync(controller, focusRange, auto, version);
         }
@@ -541,6 +549,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                RuntimeLog.Info("Camera", $"设置变焦成功：value={target}");
                 await RunOnUiThreadAsync(() =>
                 {
                     if (ReferenceEquals(_lensController, controller)
@@ -572,6 +581,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                RuntimeLog.Info("Camera", $"设置手动对焦成功：value={target}");
                 await RunOnUiThreadAsync(() =>
                 {
                     if (ReferenceEquals(_lensController, controller)
@@ -617,6 +627,11 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                RuntimeLog.Info(
+                    "Camera",
+                    auto
+                        ? "切回自动对焦成功"
+                        : $"切手动对焦成功：value={startValue}");
                 await RunOnUiThreadAsync(() =>
                 {
                     if (!ReferenceEquals(_lensController, controller)

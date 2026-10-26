@@ -77,8 +77,12 @@ internal sealed class MfLensController : ILensController
             return null;
 
         int value = 0;
-        int hr = LensControlThreading.RunOffSta(() => _control.Get(MfLensInterop.CameraControlZoom, out value, out _));
-        return hr < 0 ? null : range.Clamp(value);
+        int flags = 0;
+        int hr = LensControlThreading.RunOffSta(() => _control.Get(MfLensInterop.CameraControlZoom, out value, out flags));
+        if (hr < 0) { RuntimeLog.Warn("Camera", $"读取变焦失败：HRESULT=0x{hr:X8}"); return null; }
+
+        RuntimeLog.Info("Camera", $"读取变焦：value={value}, flags=0x{flags:X}");
+        return range.Clamp(value);
     }
 
     /// <summary>
@@ -94,8 +98,9 @@ internal sealed class MfLensController : ILensController
         int value = 0;
         int flags = 0;
         int hr = LensControlThreading.RunOffSta(() => _control.Get(MfLensInterop.CameraControlFocus, out value, out flags));
-        if (hr < 0)
-            return null;
+        if (hr < 0) { RuntimeLog.Warn("Camera", $"读取对焦状态失败：HRESULT=0x{hr:X8}"); return null; }
+
+        RuntimeLog.Info("Camera", $"读取对焦状态：value={value}, flags=0x{flags:X}");
 
         if ((flags & LensControlFlags.Auto) != 0)
             return (range.Clamp(value), true);
@@ -105,30 +110,50 @@ internal sealed class MfLensController : ILensController
     }
 
     /// <summary>设置变焦位置。值必须已由调用方按范围夹紧。</summary>
-    public bool TrySetZoom(int value) =>
-        ZoomRange != null
-        && LensControlThreading.RunOffSta(() => _control.Set(
-            MfLensInterop.CameraControlZoom,
-            value,
-            ZoomRange.SupportsManual
-                ? LensControlFlags.Manual
-                : 0)) >= 0;
+    public bool TrySetZoom(int value)
+    {
+        if (ZoomRange is not { } range)
+            return false;
+
+        int flags = range.SupportsManual ? LensControlFlags.Manual : 0;
+        return LensControlThreading.RunOffSta(() =>
+            SetAndVerify("变焦", MfLensInterop.CameraControlZoom, value, flags));
+    }
 
     /// <summary>切到手动对焦并把对焦位置设到指定值。</summary>
-    public bool TrySetFocusManual(int value) =>
-        FocusRange is { SupportsManual: true }
-        && LensControlThreading.RunOffSta(() => _control.Set(
-            MfLensInterop.CameraControlFocus,
-            value,
-            LensControlFlags.Manual)) >= 0;
+    public bool TrySetFocusManual(int value)
+    {
+        if (FocusRange is not { SupportsManual: true })
+            return false;
+
+        return LensControlThreading.RunOffSta(() =>
+            SetAndVerify("手动对焦", MfLensInterop.CameraControlFocus, value, LensControlFlags.Manual));
+    }
 
     /// <summary>切回自动对焦。UVC 约定自动模式下位置值被忽略，传默认值占位。</summary>
-    public bool TrySetFocusAuto() =>
-        FocusRange is { SupportsAuto: true }
-        && LensControlThreading.RunOffSta(() => _control.Set(
-            MfLensInterop.CameraControlFocus,
-            FocusRange.Default,
-            LensControlFlags.Auto)) >= 0;
+    public bool TrySetFocusAuto()
+    {
+        if (FocusRange is not { SupportsAuto: true } range)
+            return false;
+
+        return LensControlThreading.RunOffSta(() =>
+            SetAndVerify("自动对焦", MfLensInterop.CameraControlFocus, range.Default, LensControlFlags.Auto));
+    }
+
+    /// <summary>
+    /// 下发后立即回读，日志同时保留 Set/Get 的 HRESULT 和驱动返回的状态。
+    /// 有些 UVC 驱动会接受 Set 却仍保持原模式，只有把“请求值”和“回读值”都记下来才能定位。
+    /// </summary>
+    private bool SetAndVerify(string operation, int property, int value, int flags)
+    {
+        int setResult = _control.Set(property, value, flags);
+        int readValue = 0;
+        int readFlags = 0;
+        int readResult = _control.Get(property, out readValue, out readFlags);
+        RuntimeLog.Info("Camera", $"{operation}：request={value}, flags=0x{flags:X}, setHRESULT=0x{setResult:X8}, "
+            + $"readback={readValue}, readFlags=0x{readFlags:X}, getHRESULT=0x{readResult:X8}");
+        return setResult >= 0;
+    }
 
     private static LensRange? ReadRange(IAMCameraControl control, int property, string name)
     {
