@@ -285,6 +285,15 @@ internal static class NetworkCameraRecoveryPolicy
     /// <summary>解析出流信息后等第一帧的时间：正常摄像头几秒内必到，超过它就不是慢，而是零帧。</summary>
     internal static readonly TimeSpan FirstFrameGrace = TimeSpan.FromSeconds(10);
 
+    /// <summary>
+    /// 网络摄像头允许的断帧时间。夜间低照度下相机实测只有 19-20fps，
+    /// 拿 1.5 秒当断流门限会把一次网络小抖动放大成整路重启和十几秒黑屏。
+    /// </summary>
+    internal static readonly TimeSpan FrameStaleThreshold = TimeSpan.FromSeconds(3);
+
+    /// <summary>重连前等一会儿：给相机回收上一个没有 TEARDOWN 的 RTSP 会话，避免会话堆积后新会话不出帧。</summary>
+    internal static readonly TimeSpan ReconnectCooldown = TimeSpan.FromSeconds(2);
+
     /// <summary>连 SDP 都拿不到时的宽限上限：ffmpeg 卡在连接阶段也不能无限等。</summary>
     internal static readonly TimeSpan StreamInfoGrace = TimeSpan.FromSeconds(20);
 

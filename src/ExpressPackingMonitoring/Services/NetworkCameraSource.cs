@@ -193,7 +193,11 @@ internal sealed class NetworkCameraSource : IDisposable
     internal static string BuildArguments(string url, string transport, bool useFpsMode)
     {
         var builder = new StringBuilder();
-        builder.Append("-hide_banner -nostdin -loglevel info -fflags nobuffer -flags low_delay");
+        // 不传 -fflags nobuffer / -flags low_delay：它们只省几十毫秒启动延迟，
+        // 却会让部分 RTSP 相机在抖动后停在"会话正常、媒体不再送来"的状态，
+        // 而同一台相机用不带这两个参数的探测（自检、现场 ffmpeg）每次都能出帧。
+        // 打包取证对百毫秒级延迟不敏感，稳定性优先。
+        builder.Append("-hide_banner -nostdin -loglevel info");
 
         if (Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
         {

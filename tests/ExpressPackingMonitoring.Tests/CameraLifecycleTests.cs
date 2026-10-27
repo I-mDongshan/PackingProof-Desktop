@@ -265,6 +265,14 @@ public sealed class CameraLifecycleTests
         Assert.Equal(20, CameraWatchdogPolicy.ResolveRestartIntervalSeconds(3, 99));
     }
 
+    /// <summary>19-20fps 的网络相机要容忍小抖动；重连前留时间给相机回收上一个会话。</summary>
+    [Fact]
+    public void NetworkCameraRecoveryPolicy_UsesTolerantNetworkThresholds()
+    {
+        Assert.Equal(3, NetworkCameraRecoveryPolicy.FrameStaleThreshold.TotalSeconds);
+        Assert.Equal(2, NetworkCameraRecoveryPolicy.ReconnectCooldown.TotalSeconds);
+    }
+
     [Theory]
     [InlineData(false, 1.5)]
     [InlineData(true, 0.8)]

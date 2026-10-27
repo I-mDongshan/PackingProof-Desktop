@@ -82,6 +82,23 @@ public sealed class NetworkCameraSourceTests
         Assert.Contains("rtsp://admin:secret@10.0.0.8:554/stream", args);
     }
 
+    /// <summary>
+    /// 不再给 RTSP 输入加 nobuffer/low_delay：现场相机在抖动后会停在"会话正常、媒体不来"的状态，
+    /// 而同一台相机用不带这两个参数的探测（自检、现场 ffmpeg）每次都能出帧。
+    /// </summary>
+    [Fact]
+    public void BuildArguments_DoesNotUseLowLatencyInputFlags()
+    {
+        string args = NetworkCameraSource.BuildArguments(
+            "rtsp://admin:secret@10.0.0.8:554/stream",
+            "tcp",
+            useFpsMode: false);
+
+        Assert.DoesNotContain("-fflags", args);
+        Assert.DoesNotContain("nobuffer", args);
+        Assert.DoesNotContain("-flags low_delay", args);
+    }
+
     [Fact]
     public void BuildArguments_UsesFpsModeWhenSupported()
     {

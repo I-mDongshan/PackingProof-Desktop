@@ -99,6 +99,7 @@ namespace ExpressPackingMonitoring.ViewModels
                         ShowToast("摄像头停止失败，未继续重连", ToastSeverity.Error);
                         return;
                     }
+                    await WaitNetworkCameraReconnectCooldownAsync();
                     StartCamera();
                     _lastRestartAttempt = DateTime.Now;
 
@@ -141,6 +142,7 @@ namespace ExpressPackingMonitoring.ViewModels
                         ShowToast("摄像头停止失败，未继续重连", ToastSeverity.Error);
                         return;
                     }
+                    await WaitNetworkCameraReconnectCooldownAsync();
                     StartCamera();
                     _lastRestartAttempt = DateTime.Now;
 
@@ -1231,7 +1233,9 @@ namespace ExpressPackingMonitoring.ViewModels
                                 }
                                 else if (noFrameSeconds > CameraWatchdogPolicy
                                              .ResolveFrameStaleThreshold(
-                                                 CameraFrameStaleThreshold,
+                                                 IsNetworkCameraConfigured()
+                                                     ? NetworkCameraRecoveryPolicy.FrameStaleThreshold
+                                                     : CameraFrameStaleThreshold,
                                                  IsWithinCameraWakeGrace()).TotalSeconds)
                                 {
                                     // "一帧都没来过"和"最近一帧很久以前"是两种毛病：

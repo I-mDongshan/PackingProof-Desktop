@@ -61,6 +61,27 @@ namespace ExpressPackingMonitoring.ViewModels
         }
 
         /// <summary>
+        /// 网络摄像头重连前等一小会儿：旧 ffmpeg 是被直接终止的，没有 RTSP TEARDOWN，
+        /// 相机可能还占着上一个会话；立刻重连会叠会话，叠满后新会话只回 SDP 不送流。
+        /// </summary>
+        private async Task WaitNetworkCameraReconnectCooldownAsync()
+        {
+            if (!IsNetworkCameraConfigured())
+                return;
+
+            RuntimeLog.Info(
+                "Camera",
+                $"网络摄像头重连前等待 {NetworkCameraRecoveryPolicy.ReconnectCooldown.TotalSeconds:F0}s，让相机回收上一个会话");
+            try
+            {
+                await Task.Delay(NetworkCameraRecoveryPolicy.ReconnectCooldown);
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }
+
+        /// <summary>
         /// 本轮"连上但零帧"：下一轮换另一种 RTSP 传输方式。
         /// 摄像头只对其中一种方式送媒体的情况现场很常见，而同一种方式反复重连只会一直零帧。
         /// </summary>
