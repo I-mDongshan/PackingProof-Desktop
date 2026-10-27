@@ -64,6 +64,35 @@ public sealed class WindowConstructionTests
             "这些登记项已经不存在了，请从守卫名单里删掉: " + string.Join("、", staleCovered));
     }
 
+    /// <summary>
+    /// 品牌地址编辑器在真实控件树上走一遍：老地址回填、品牌路径重新拼、未知路径落到"其他"。
+    /// </summary>
+    [Fact]
+    public void NetworkCameraAddressEditor_ComposesAndFallsBackToManual()
+    {
+        RunOnStaThread(() =>
+        {
+            var editor = new NetworkCameraAddressEditor();
+
+            editor.Load("rtsp://admin:secret@192.168.110.108:554/cam/realmonitor?channel=1&subtype=0");
+            Assert.True(editor.TryGetUrl(out string composed, out string error), error);
+            Assert.Equal(
+                "rtsp://admin:secret@192.168.110.108:554/cam/realmonitor?channel=1&subtype=0",
+                composed);
+
+            var channel = (TextBox)editor.FindName("ChannelTextBox");
+            channel.Text = "2";
+            Assert.True(editor.TryGetUrl(out string withChannel, out error), error);
+            Assert.Equal(
+                "rtsp://admin:secret@192.168.110.108:554/cam/realmonitor?channel=2&subtype=0",
+                withChannel);
+
+            editor.Load("rtsp://admin:secret@192.168.110.108:554/custom/path");
+            Assert.True(editor.TryGetUrl(out string manual, out error), error);
+            Assert.Equal("rtsp://admin:secret@192.168.110.108:554/custom/path", manual);
+        });
+    }
+
     [Fact]
     public void RegisteredWindowsAndControls_ConstructAndLayout()
     {
@@ -202,6 +231,9 @@ public sealed class WindowConstructionTests
         yield return (
             "ExpressPackingMonitoring.UI.Controls.StatusCard",
             () => new StatusCard());
+        yield return (
+            "ExpressPackingMonitoring.UI.Controls.NetworkCameraAddressEditor",
+            () => new NetworkCameraAddressEditor());
         yield return (
             "ExpressPackingMonitoring.UI.TrayKeyboardListeningDialog",
             () => new TrayKeyboardListeningDialog());

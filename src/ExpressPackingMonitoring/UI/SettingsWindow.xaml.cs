@@ -707,8 +707,7 @@ namespace ExpressPackingMonitoring.UI
         private void ShowNetworkCameraPanelUi()
         {
             NetworkCameraPanel.Visibility = Visibility.Visible;
-            if (string.IsNullOrWhiteSpace(NetworkCameraUrlTextBox.Text))
-                NetworkCameraUrlTextBox.Text = Config.NetworkCameraUrl;
+            NetworkCameraAddressEditor.Load(Config.NetworkCameraUrl);
 
             string networkKey = AppConfig.GetCameraConfigKey("network", Config.NetworkCameraUrl);
             if (!string.IsNullOrWhiteSpace(Config.NetworkCameraUrl)
@@ -1744,12 +1743,9 @@ namespace ExpressPackingMonitoring.UI
             {
                 if (IsNetworkCamera(cam))
                 {
-                    if (!NetworkCameraUrlPolicy.TryNormalize(
-                            NetworkCameraUrlTextBox.Text,
-                            out string networkUrl,
-                            out string networkError))
+                    if (!NetworkCameraAddressEditor.TryGetUrl(out string networkUrl, out string networkError))
                     {
-                        Context.ShowToast?.Invoke($"网络摄像头地址无效：{networkError}", ToastSeverity.Error);
+                        Context.ShowToast?.Invoke(networkError, ToastSeverity.Error);
                         return false;
                     }
 
@@ -2094,12 +2090,9 @@ namespace ExpressPackingMonitoring.UI
                 IReadOnlyList<NativeCameraMode> nativeModes;
                 if (IsNetworkCamera(camera))
                 {
-                    if (!NetworkCameraUrlPolicy.TryNormalize(
-                            NetworkCameraUrlTextBox.Text,
-                            out string networkUrl,
-                            out string networkError))
+                    if (!NetworkCameraAddressEditor.TryGetUrl(out string networkUrl, out string networkError))
                     {
-                        Context.ShowToast?.Invoke("请先填写网络摄像头地址", ToastSeverity.Warning);
+                        Context.ShowToast?.Invoke(networkError, ToastSeverity.Warning);
                         return;
                     }
 

@@ -1410,6 +1410,42 @@
   <data name="网络摄像头地址无效：{networkError}" xml:space="preserve"><value>网络摄像头地址无效：{networkError}</value></data>
   <data name="网络摄像头连接失败" xml:space="preserve"><value>网络摄像头连接失败</value></data>
   <data name="网络摄像头连接失败：{source.LastError}" xml:space="preserve"><value>网络摄像头连接失败：{source.LastError}</value></data>
+  <data name="品牌" xml:space="preserve"><value>品牌</value></data>
+  <data name="设备类型" xml:space="preserve"><value>设备类型</value></data>
+  <data name="摄像机（单路）" xml:space="preserve"><value>摄像机（单路）</value></data>
+  <data name="录像机（多路）" xml:space="preserve"><value>录像机（多路）</value></data>
+  <data name="主机/IP" xml:space="preserve"><value>主机/IP</value></data>
+  <data name="端口" xml:space="preserve"><value>端口</value></data>
+  <data name="账号" xml:space="preserve"><value>账号</value></data>
+  <data name="密码" xml:space="preserve"><value>密码</value></data>
+  <data name="码流" xml:space="preserve"><value>码流</value></data>
+  <data name="主码流" xml:space="preserve"><value>主码流</value></data>
+  <data name="子码流" xml:space="preserve"><value>子码流</value></data>
+  <data name="通道" xml:space="preserve"><value>通道</value></data>
+  <data name="完整地址" xml:space="preserve"><value>完整地址</value></data>
+  <data name="完整拉流地址" xml:space="preserve"><value>完整拉流地址</value></data>
+  <data name="品牌选错会连不上；不确定就选“其他”并粘贴摄像头网页里的完整 RTSP 地址" xml:space="preserve"><value>品牌选错会连不上；不确定就选“其他”并粘贴摄像头网页里的完整 RTSP 地址</value></data>
+  <data name="改为手动填写完整地址" xml:space="preserve"><value>改为手动填写完整地址</value></data>
+  <data name="改回按品牌填写" xml:space="preserve"><value>改回按品牌填写</value></data>
+  <data name="只填 IP 或主机名，例如 192.168.1.64" xml:space="preserve"><value>只填 IP 或主机名，例如 192.168.1.64</value></data>
+  <data name="默认 554，可留空" xml:space="preserve"><value>默认 554，可留空</value></data>
+  <data name="多路录像机填通道号，单摄像头保持 1" xml:space="preserve"><value>多路录像机填通道号，单摄像头保持 1</value></data>
+  <data name="大华" xml:space="preserve"><value>大华</value></data>
+  <data name="海康威视" xml:space="preserve"><value>海康威视</value></data>
+  <data name="宇视" xml:space="preserve"><value>宇视</value></data>
+  <data name="其他" xml:space="preserve"><value>其他</value></data>
+  <data name="选品牌后填地址和账号，软件会自动拼出完整拉流地址" xml:space="preserve"><value>选品牌后填地址和账号，软件会自动拼出完整拉流地址</value></data>
+  <data name="请选择品牌" xml:space="preserve"><value>请选择品牌</value></data>
+  <data name="请填写主机/IP 地址" xml:space="preserve"><value>请填写主机/IP 地址</value></data>
+  <data name="主机/IP 只填地址本身，不要带协议、路径或端口" xml:space="preserve"><value>主机/IP 只填地址本身，不要带协议、路径或端口</value></data>
+  <data name="端口必须是 1-65535 之间的数字" xml:space="preserve"><value>端口必须是 1-65535 之间的数字</value></data>
+  <data name="账号不能包含 @ : / ? # % 或空格" xml:space="preserve"><value>账号不能包含 @ : / ? # % 或空格</value></data>
+  <data name="密码不能包含 @ : / ? # % 或空格，请先在摄像头里改成简单密码" xml:space="preserve"><value>密码不能包含 @ : / ? # % 或空格，请先在摄像头里改成简单密码</value></data>
+  <data name="通道必须是 1-64 之间的数字" xml:space="preserve"><value>通道必须是 1-64 之间的数字</value></data>
+  <data name="请输入网络摄像头地址" xml:space="preserve"><value>请输入网络摄像头地址</value></data>
+  <data name="地址格式不正确，请输入以 rtsp://、rtmp:// 或 http(s):// 开头的完整地址" xml:space="preserve"><value>地址格式不正确，请输入以 rtsp://、rtmp:// 或 http(s):// 开头的完整地址</value></data>
+  <data name="暂不支持该协议，支持 rtsp://、rtmp://、http:// 和 https://" xml:space="preserve"><value>暂不支持该协议，支持 rtsp://、rtmp://、http:// 和 https://</value></data>
+  <data name="地址缺少主机名或 IP" xml:space="preserve"><value>地址缺少主机名或 IP</value></data>
   <data name="网络摄像头连接异常，尝试重连..." xml:space="preserve"><value>网络摄像头连接异常，尝试重连...</value></data>
   <data name="网络摄像头连上了但一直没有画面，正在自动重试；请检查流地址路径、H.264 编码和其他软件占用" xml:space="preserve"><value>网络摄像头连上了但一直没有画面，正在自动重试；请检查流地址路径、H.264 编码和其他软件占用</value></data>
   <data name="网页访问验证失败，请在保存主机上确认后重试" xml:space="preserve"><value>网页访问验证失败，请在保存主机上确认后重试</value></data>

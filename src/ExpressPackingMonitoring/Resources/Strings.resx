@@ -1409,6 +1409,42 @@
   <data name="网络摄像头地址无效：{networkError}" xml:space="preserve"><value>Invalid network camera address: {0}</value></data>
   <data name="网络摄像头连接失败" xml:space="preserve"><value>Network camera connection failed</value></data>
   <data name="网络摄像头连接失败：{source.LastError}" xml:space="preserve"><value>Network camera connection failed: {0}</value></data>
+  <data name="品牌" xml:space="preserve"><value>Brand</value></data>
+  <data name="设备类型" xml:space="preserve"><value>Device type</value></data>
+  <data name="摄像机（单路）" xml:space="preserve"><value>Camera (single channel)</value></data>
+  <data name="录像机（多路）" xml:space="preserve"><value>Recorder (multi-channel)</value></data>
+  <data name="主机/IP" xml:space="preserve"><value>Host / IP</value></data>
+  <data name="端口" xml:space="preserve"><value>Port</value></data>
+  <data name="账号" xml:space="preserve"><value>Username</value></data>
+  <data name="密码" xml:space="preserve"><value>Password</value></data>
+  <data name="码流" xml:space="preserve"><value>Stream</value></data>
+  <data name="主码流" xml:space="preserve"><value>Main stream</value></data>
+  <data name="子码流" xml:space="preserve"><value>Sub stream</value></data>
+  <data name="通道" xml:space="preserve"><value>Channel</value></data>
+  <data name="完整地址" xml:space="preserve"><value>Full URL</value></data>
+  <data name="完整拉流地址" xml:space="preserve"><value>Full stream URL</value></data>
+  <data name="品牌选错会连不上；不确定就选“其他”并粘贴摄像头网页里的完整 RTSP 地址" xml:space="preserve"><value>A wrong brand will not connect; if unsure, choose "Other" and paste the full RTSP URL from the camera web page</value></data>
+  <data name="改为手动填写完整地址" xml:space="preserve"><value>Enter the full URL manually</value></data>
+  <data name="改回按品牌填写" xml:space="preserve"><value>Back to brand presets</value></data>
+  <data name="只填 IP 或主机名，例如 192.168.1.64" xml:space="preserve"><value>IP or host name only, e.g. 192.168.1.64</value></data>
+  <data name="默认 554，可留空" xml:space="preserve"><value>Default 554; may be left blank</value></data>
+  <data name="多路录像机填通道号，单摄像头保持 1" xml:space="preserve"><value>For a multi-channel recorder enter the channel; keep 1 for a single camera</value></data>
+  <data name="大华" xml:space="preserve"><value>Dahua</value></data>
+  <data name="海康威视" xml:space="preserve"><value>Hikvision</value></data>
+  <data name="宇视" xml:space="preserve"><value>Uniview</value></data>
+  <data name="其他" xml:space="preserve"><value>Other</value></data>
+  <data name="选品牌后填地址和账号，软件会自动拼出完整拉流地址" xml:space="preserve"><value>Choose a brand, then enter the address and account; the app builds the full stream URL</value></data>
+  <data name="请选择品牌" xml:space="preserve"><value>Select a brand</value></data>
+  <data name="请填写主机/IP 地址" xml:space="preserve"><value>Enter the host or IP address</value></data>
+  <data name="主机/IP 只填地址本身，不要带协议、路径或端口" xml:space="preserve"><value>Enter only the host or IP, without the scheme, path, or port</value></data>
+  <data name="端口必须是 1-65535 之间的数字" xml:space="preserve"><value>Port must be a number between 1 and 65535</value></data>
+  <data name="账号不能包含 @ : / ? # % 或空格" xml:space="preserve"><value>Username cannot contain @ : / ? # % or spaces</value></data>
+  <data name="密码不能包含 @ : / ? # % 或空格，请先在摄像头里改成简单密码" xml:space="preserve"><value>Password cannot contain @ : / ? # % or spaces; change it to a simple password on the camera first</value></data>
+  <data name="通道必须是 1-64 之间的数字" xml:space="preserve"><value>Channel must be a number between 1 and 64</value></data>
+  <data name="请输入网络摄像头地址" xml:space="preserve"><value>Enter the network camera address</value></data>
+  <data name="地址格式不正确，请输入以 rtsp://、rtmp:// 或 http(s):// 开头的完整地址" xml:space="preserve"><value>Invalid address; enter the full URL starting with rtsp://, rtmp://, or http(s)://</value></data>
+  <data name="暂不支持该协议，支持 rtsp://、rtmp://、http:// 和 https://" xml:space="preserve"><value>This protocol is not supported; use rtsp://, rtmp://, http://, or https://</value></data>
+  <data name="地址缺少主机名或 IP" xml:space="preserve"><value>The address is missing a host name or IP</value></data>
   <data name="网络摄像头连接异常，尝试重连..." xml:space="preserve"><value>Network camera connection error; reconnecting...</value></data>
   <data name="网络摄像头连上了但一直没有画面，正在自动重试；请检查流地址路径、H.264 编码和其他软件占用" xml:space="preserve"><value>The network camera connects but shows no video; retrying. Check the stream path, H.264 encoding, and other apps using the camera</value></data>
   <data name="网页访问验证失败，请在保存主机上确认后重试" xml:space="preserve"><value>Web access verification failed. Confirm on the storage host and try again</value></data>

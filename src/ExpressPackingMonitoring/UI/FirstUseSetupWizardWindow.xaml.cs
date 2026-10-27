@@ -349,9 +349,9 @@ public partial class FirstUseSetupWizardWindow : Window
         {
             if (IsNetworkCameraSelected)
             {
-                if (!NetworkCameraUrlPolicy.TryNormalize(NetworkCameraUrlTextBox.Text, out _, out string networkError))
+                if (!NetworkCameraAddressEditor.TryGetUrl(out _, out string networkError))
                 {
-                    CameraStatusText.Text = $"网络摄像头地址无效：{networkError}";
+                    CameraStatusText.Text = networkError;
                     CameraStatusText.Visibility = Visibility.Visible;
                     return;
                 }
@@ -469,8 +469,7 @@ public partial class FirstUseSetupWizardWindow : Window
         {
             NetworkCameraPanel.Visibility = Visibility.Visible;
             NetworkCameraTestButton.Visibility = Visibility.Visible;
-            if (string.IsNullOrWhiteSpace(NetworkCameraUrlTextBox.Text))
-                NetworkCameraUrlTextBox.Text = _config.NetworkCameraUrl ?? "";
+            NetworkCameraAddressEditor.Load(_config.NetworkCameraUrl ?? "");
             LoadSelectedCameraRotation();
             _evaluatedCameraMoniker = "";
         }
@@ -523,7 +522,11 @@ public partial class FirstUseSetupWizardWindow : Window
     private string GetSelectedCameraConfigKey()
     {
         if (IsNetworkCameraSelected)
-            return AppConfig.GetCameraConfigKey("network", NetworkCameraUrlTextBox.Text);
+        {
+            return NetworkCameraAddressEditor.TryGetUrl(out string networkUrl, out _)
+                ? AppConfig.GetCameraConfigKey("network", networkUrl)
+                : "";
+        }
         return CameraComboBox.SelectedItem is CameraInfo camera ? camera.Moniker ?? "" : "";
     }
 
@@ -603,10 +606,9 @@ public partial class FirstUseSetupWizardWindow : Window
         {
             if (IsNetworkCameraSelected)
             {
-                string networkUrl = NetworkCameraUrlTextBox.Text?.Trim() ?? "";
-                if (!NetworkCameraUrlPolicy.TryNormalize(networkUrl, out networkUrl, out string networkError))
+                if (!NetworkCameraAddressEditor.TryGetUrl(out string networkUrl, out string networkError))
                 {
-                    FailRecordingProfile($"网络摄像头地址无效：{networkError}");
+                    FailRecordingProfile(networkError);
                     return false;
                 }
 
@@ -875,9 +877,9 @@ public partial class FirstUseSetupWizardWindow : Window
 
     private async void StartNetworkCameraPreview(bool enableRecognition)
     {
-        if (!NetworkCameraUrlPolicy.TryNormalize(NetworkCameraUrlTextBox.Text, out string url, out string error))
+        if (!NetworkCameraAddressEditor.TryGetUrl(out string url, out string error))
         {
-            SetCameraPreviewStatus($"地址无效：{error}");
+            SetCameraPreviewStatus(error);
             return;
         }
 
@@ -1019,13 +1021,6 @@ public partial class FirstUseSetupWizardWindow : Window
 
     private bool IsNetworkCameraSelected =>
         CameraComboBox.SelectedItem is CameraInfo camera && camera.Moniker == "network:";
-
-    private void NetworkCameraUrlTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        NetworkCameraUrlPlaceholderText.Visibility = string.IsNullOrEmpty(NetworkCameraUrlTextBox.Text)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
 
     private void SetCameraPreviewStatus(string text)
     {
@@ -1449,7 +1444,7 @@ public partial class FirstUseSetupWizardWindow : Window
 
         if (IsNetworkCameraSelected)
         {
-            if (NetworkCameraUrlPolicy.TryNormalize(NetworkCameraUrlTextBox.Text, out string networkUrl, out _))
+            if (NetworkCameraAddressEditor.TryGetUrl(out string networkUrl, out _))
             {
                 // 网络摄像头的真实分辨率由摄像头决定：向导预览时已经读到就按真值写，
                 // 别把向导/上一台摄像头留下的旧值存进配置，留给运行期再自愈改一次。

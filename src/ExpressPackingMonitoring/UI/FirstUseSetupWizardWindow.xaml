@@ -266,17 +266,8 @@
                             <StackPanel x:Name="NetworkCameraPanel"
                                         Visibility="Collapsed"
                                         Margin="0,8,0,0">
-                                <Grid>
-                                    <TextBox x:Name="NetworkCameraUrlTextBox"
-                                             TextChanged="NetworkCameraUrlTextBox_TextChanged"
-                                             ToolTip="rtsp://user:password@192.168.1.64:554/stream"/>
-                                    <TextBlock x:Name="NetworkCameraUrlPlaceholderText"
-                                               Text="例如：rtsp://账号:密码@192.168.1.64:554/stream"
-                                               Margin="10,0,0,0"
-                                               VerticalAlignment="Center"
-                                               IsHitTestVisible="False"
-                                               Foreground="{DynamicResource TextSecondary}"/>
-                                </Grid>
+                                <controls:NetworkCameraAddressEditor x:Name="NetworkCameraAddressEditor"
+                                                                     Compact="True"/>
                             </StackPanel>
                         </StackPanel>
                         <Border Grid.Row="1"
