@@ -6,147 +6,174 @@
              HorizontalAlignment="Stretch">
     <!--
         网络摄像头地址的共用编辑器：选品牌后只填地址/账号/密码，完整 RTSP 地址由
-        NetworkCameraAddressTemplate 拼出来；"其他"仍保留完整地址手动填写。
+        NetworkCameraAddressTemplate 拼出来；品牌选"其他"时，右侧直接变成完整地址输入。
         设置页与首用向导共用这一份，避免两边各维护一套地址规则。
+        预设模式三行：品牌/主机/端口，账号/密码，设备类型/码流/通道。
     -->
-    <StackPanel>
+    <StackPanel Margin="0,0,0,6">
         <Grid x:Name="PresetPanel">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Grid.Column="0">
-                <TextBlock Text="品牌"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <ComboBox x:Name="BrandComboBox"
-                          Margin="0,4,0,0"
-                          DisplayMemberPath="Label"
-                          SelectionChanged="Selection_Changed"/>
-            </StackPanel>
-
-            <StackPanel x:Name="DevicePanel"
-                        Grid.Row="0"
-                        Grid.Column="2">
-                <TextBlock Text="设备类型"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <ComboBox x:Name="DeviceComboBox"
-                          Margin="0,4,0,0"
-                          DisplayMemberPath="Label"
-                          SelectionChanged="Selection_Changed"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,0,0">
-                <TextBlock Text="主机/IP"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <TextBox x:Name="HostTextBox"
-                         Margin="0,4,0,0"
-                         TextChanged="Text_Changed"
-                         ToolTip="只填 IP 或主机名，例如 192.168.1.64"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,12,0,0">
-                <TextBlock Text="端口"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <TextBox x:Name="PortTextBox"
-                         Width="96"
-                         HorizontalAlignment="Left"
-                         Margin="0,4,0,0"
-                         TextChanged="Text_Changed"
-                         ToolTip="默认 554，可留空"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,12,0,0">
-                <TextBlock Text="账号"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <TextBox x:Name="UserTextBox"
-                         Margin="0,4,0,0"
-                         TextChanged="Text_Changed"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,12,0,0">
-                <TextBlock Text="密码"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <TextBox x:Name="PasswordTextBox"
-                         Margin="0,4,0,0"
-                         TextChanged="Text_Changed"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,12,0,0">
-                <TextBlock Text="码流"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <ComboBox x:Name="StreamComboBox"
-                          Margin="0,4,0,0"
-                          DisplayMemberPath="Label"
-                          SelectionChanged="Selection_Changed"/>
-            </StackPanel>
-
-            <StackPanel x:Name="ChannelPanel"
-                        Grid.Row="3"
-                        Grid.Column="2"
-                        Margin="0,12,0,0">
-                <TextBlock Text="通道"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextSecondary}"/>
-                <TextBox x:Name="ChannelTextBox"
-                         Width="96"
-                         HorizontalAlignment="Left"
-                         Margin="0,4,0,0"
-                         TextChanged="Text_Changed"
-                         ToolTip="多路录像机填通道号，单摄像头保持 1"/>
-            </StackPanel>
-        </Grid>
-
-        <StackPanel x:Name="ManualPanel" Visibility="Collapsed">
-            <TextBlock Text="完整地址"
-                       FontSize="12"
-                       Foreground="{DynamicResource TextSecondary}"/>
-            <TextBox x:Name="ManualUrlTextBox"
-                     Margin="0,4,0,0"
-                     TextChanged="Text_Changed"
-                     ToolTip="rtsp://user:password@192.168.1.64:554/stream"/>
-            <TextBlock Text="例如 rtsp://账号:密码@192.168.1.64:554/stream"
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="品牌"
                        FontSize="12"
                        Foreground="{DynamicResource TextSecondary}"
-                       Margin="0,4,0,0"/>
-        </StackPanel>
+                       VerticalAlignment="Center"
+                       Margin="0,0,4,0"/>
+            <ComboBox x:Name="BrandComboBox"
+                      Grid.Row="0" Grid.Column="1"
+                      Width="Auto" MinWidth="0" MaxWidth="1000"
+                      HorizontalAlignment="Stretch"
+                      DisplayMemberPath="Label"
+                      SelectionChanged="BrandSelection_Changed"/>
+
+            <TextBlock x:Name="HostLabel"
+                       Grid.Row="0" Grid.Column="3"
+                       Text="主机/IP"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,4,0"/>
+            <TextBox x:Name="HostTextBox"
+                     Grid.Row="0" Grid.Column="4"
+                     HorizontalAlignment="Stretch"
+                     TextChanged="Text_Changed"
+                     ToolTip="只填 IP 或主机名，例如 192.168.1.64"/>
+
+            <TextBlock x:Name="PortLabel"
+                       Grid.Row="0" Grid.Column="6"
+                       Text="端口"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,4,0"/>
+            <TextBox x:Name="PortTextBox"
+                     Grid.Row="0" Grid.Column="7"
+                     Width="72"
+                     HorizontalAlignment="Left"
+                     TextChanged="Text_Changed"
+                     ToolTip="默认 554，可留空"/>
+
+            <TextBlock x:Name="UserLabel"
+                       Grid.Row="1" Grid.Column="0"
+                       Text="账号"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,8,4,0"/>
+            <TextBox x:Name="UserTextBox"
+                     Grid.Row="1" Grid.Column="1"
+                     HorizontalAlignment="Stretch"
+                     Margin="0,8,0,0"
+                     TextChanged="Text_Changed"/>
+
+            <TextBlock x:Name="PasswordLabel"
+                       Grid.Row="1" Grid.Column="3"
+                       Text="密码"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,8,4,0"/>
+            <TextBox x:Name="PasswordTextBox"
+                     Grid.Row="1" Grid.Column="4"
+                     HorizontalAlignment="Stretch"
+                     Margin="0,8,0,0"
+                     TextChanged="Text_Changed"/>
+
+            <TextBlock x:Name="DeviceLabel"
+                       Grid.Row="2" Grid.Column="0"
+                       Text="设备类型"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,8,4,0"/>
+            <ComboBox x:Name="DeviceComboBox"
+                      Grid.Row="2" Grid.Column="1"
+                      Width="Auto" MinWidth="0" MaxWidth="1000"
+                      HorizontalAlignment="Stretch"
+                      Margin="0,8,0,0"
+                      DisplayMemberPath="Label"
+                      SelectionChanged="Selection_Changed"/>
+
+            <TextBlock x:Name="StreamLabel"
+                       Grid.Row="2" Grid.Column="3"
+                       Text="码流"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,8,4,0"/>
+            <ComboBox x:Name="StreamComboBox"
+                      Grid.Row="2" Grid.Column="4"
+                      Width="Auto" MinWidth="0" MaxWidth="1000"
+                      HorizontalAlignment="Stretch"
+                      Margin="0,8,0,0"
+                      DisplayMemberPath="Label"
+                      SelectionChanged="Selection_Changed"/>
+
+            <TextBlock x:Name="ChannelLabel"
+                       Grid.Row="2" Grid.Column="6"
+                       Text="通道"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,8,4,0"/>
+            <TextBox x:Name="ChannelTextBox"
+                     Grid.Row="2" Grid.Column="7"
+                     Width="72"
+                     HorizontalAlignment="Left"
+                     Margin="0,8,0,0"
+                     TextChanged="Text_Changed"
+                     ToolTip="多路录像机填通道号，单摄像头保持 1"/>
+
+            <!-- 品牌选"其他"时，这一行右侧直接变成完整地址输入 -->
+            <TextBlock x:Name="ManualLabel"
+                       Grid.Row="0" Grid.Column="3"
+                       Text="完整地址"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,4,0"
+                       Visibility="Collapsed"/>
+            <TextBox x:Name="ManualUrlTextBox"
+                     Grid.Row="0" Grid.Column="4" Grid.ColumnSpan="4"
+                     HorizontalAlignment="Stretch"
+                     TextChanged="Text_Changed"
+                     Visibility="Collapsed"
+                     ToolTip="rtsp://user:password@192.168.1.64:554/stream"/>
+            <TextBlock x:Name="ManualHintText"
+                       Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="8"
+                       Text="例如 rtsp://账号:密码@192.168.1.64:554/stream"
+                       FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}"
+                       Margin="0,4,0,0"
+                       Visibility="Collapsed"/>
+        </Grid>
 
         <TextBlock x:Name="PreviewText"
                    TextWrapping="Wrap"
                    FontSize="11"
                    Foreground="{DynamicResource TextSecondary}"
-                   Margin="0,10,0,0"/>
+                   Margin="0,4,0,0"/>
 
         <TextBlock x:Name="PresetHintText"
                    Text="品牌选错会连不上；不确定就选“其他”并粘贴摄像头网页里的完整 RTSP 地址"
                    TextWrapping="Wrap"
                    FontSize="11"
                    Foreground="{DynamicResource TextSecondary}"
-                   Margin="0,4,0,0"/>
-
-        <Button x:Name="SwitchModeButton"
-                Content="改为手动填写完整地址"
-                HorizontalAlignment="Left"
-                Margin="0,6,0,0"
-                Padding="0"
-                Background="{StaticResource TransparentBrush}"
-                BorderThickness="0"
-                Cursor="Hand"
-                Foreground="{DynamicResource AccentBlue}"
-                Click="SwitchModeButton_Click"/>
+                   Margin="0,4,0,8"/>
     </StackPanel>
 </UserControl>

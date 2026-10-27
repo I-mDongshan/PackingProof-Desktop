@@ -1226,22 +1226,16 @@
                                                               Cursor="Hand"/>
                                                 </Grid>
 
-                                                <Grid Style="{StaticResource SettingRowStyle}"
-                                                      Visibility="{Binding IsNetworkSelected, Converter={StaticResource BoolToVisibility}}">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="24"/>
-                                                        <ColumnDefinition Width="260"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Margin="0,0,16,0">
-                                                        <TextBlock Text="网络摄像头地址" Style="{StaticResource FieldLabelStyle}"/>
-                                                        <TextBlock Text="例如 rtsp://账号:密码@192.168.1.64:554/stream"
-                                                                   Style="{StaticResource FieldHintStyle}"/>
-                                                    </StackPanel>
-                                                    <TextBox Grid.Column="2"
-                                                             Text="{Binding NetworkUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                             ToolTip="rtsp://user:password@192.168.1.65:554/stream"/>
-                                                </Grid>
+                                                <StackPanel Margin="0,0,0,8"
+                                                            Visibility="{Binding IsNetworkSelected, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="网络摄像头地址" Style="{StaticResource FieldLabelStyle}"/>
+                                                    <TextBlock Text="选品牌后填地址和账号，软件会自动拼出完整拉流地址"
+                                                               Style="{StaticResource FieldHintStyle}"
+                                                               Margin="0,2,0,6"/>
+                                                    <controls:NetworkCameraAddressEditor
+                                                        Compact="True"
+                                                        Url="{Binding NetworkUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
 
                                                 <Grid Style="{StaticResource SettingRowStyle}"
                                                       Visibility="{Binding IsConfigured, Converter={StaticResource BoolToVisibility}}">

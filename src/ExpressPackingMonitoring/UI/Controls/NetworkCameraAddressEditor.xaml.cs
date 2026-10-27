@@ -18,6 +18,36 @@ public partial class NetworkCameraAddressEditor : UserControl
     private bool _isLoading;
     private bool _isDirty;
     private bool _compact;
+    private bool _isUpdatingUrl;
+    private string _lastComposedUrl = "";
+
+    /// <summary>
+    /// 拼出来的完整地址（"其他"模式就是用户填的地址）。副画面卡片等场景直接绑定这个属性；
+    /// 只有校验通过的地址才会回写，避免把半截输入存进配置。
+    /// </summary>
+    public static readonly DependencyProperty UrlProperty =
+        DependencyProperty.Register(
+            nameof(Url),
+            typeof(string),
+            typeof(NetworkCameraAddressEditor),
+            new FrameworkPropertyMetadata(
+                "",
+                FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                OnUrlPropertyChanged));
+
+    public string Url
+    {
+        get => (string)GetValue(UrlProperty);
+        set => SetValue(UrlProperty, value);
+    }
+
+    private static void OnUrlPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not NetworkCameraAddressEditor editor || editor._isUpdatingUrl)
+            return;
+
+        editor.Load(e.NewValue as string, force: true);
+    }
 
     /// <summary>紧凑模式：隐藏地址预览和品牌提示，给首用向导的画面预览留高度。</summary>
     public bool Compact
@@ -72,16 +102,23 @@ public partial class NetworkCameraAddressEditor : UserControl
     }
 
     /// <summary>把已有地址回填到界面：能识别品牌路径就回填字段，否则落到"其他"显示完整地址。</summary>
-    public void Load(string? url)
+    public void Load(string? url, bool force = false)
     {
         // 用户已经改过就不再覆盖：设置页切换摄像头再切回来时不能把刚填的内容冲掉。
-        if (_isDirty)
+        // 绑定源（副画面卡片）换了地址时 force=true，必须按新值重填。
+        if (_isDirty && !force)
             return;
 
         _isLoading = true;
         try
         {
-            if (NetworkCameraAddressTemplate.TryParse(url, out NetworkCameraAddress? address)
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                // 新配置默认落在第一个品牌上，用户直接看到"地址+账号密码"的简化表单；
+                // 已有地址解析不出品牌时才落到"其他"手动填写。
+                SelectOption(BrandComboBox, NetworkCameraBrand.Dahua);
+            }
+            else if (NetworkCameraAddressTemplate.TryParse(url, out NetworkCameraAddress? address)
                 && address != null)
             {
                 ApplyAddress(address);
@@ -89,7 +126,7 @@ public partial class NetworkCameraAddressEditor : UserControl
             else
             {
                 SelectOption(BrandComboBox, NetworkCameraBrand.Other);
-                ManualUrlTextBox.Text = url ?? "";
+                ManualUrlTextBox.Text = url;
             }
         }
         finally
@@ -97,6 +134,7 @@ public partial class NetworkCameraAddressEditor : UserControl
             _isLoading = false;
         }
 
+        _isDirty = false;
         UpdateFieldVisibility();
         UpdatePreview();
     }
@@ -148,38 +186,85 @@ public partial class NetworkCameraAddressEditor : UserControl
 
     private void OnFieldChanged()
     {
-        if (_isLoading || !IsLoaded)
+        if (_isLoading)
             return;
 
-        _isDirty = true;
-        UpdateFieldVisibility();
-        UpdatePreview();
+        if (IsLoaded)
+        {
+            // 构造阶段（还没进可视树）由代码赋默认值不算用户改动，否则随后 Load 会被 dirty 拦住。
+            _isDirty = true;
+            UpdateFieldVisibility();
+            UpdatePreview();
+        }
+
+        PublishUrl();
+    }
+
+    /// <summary>把校验通过的地址回写给绑定方；半截输入不覆盖配置里的旧值。</summary>
+    private void PublishUrl()
+    {
+        if (_isLoading || _isUpdatingUrl)
+            return;
+        if (!TryGetUrl(out string url, out _) || string.Equals(Url, url, StringComparison.Ordinal))
+            return;
+
+        _isUpdatingUrl = true;
+        try
+        {
+            SetCurrentValue(UrlProperty, url);
+            GetBindingExpression(UrlProperty)?.UpdateSource();
+        }
+        finally
+        {
+            _isUpdatingUrl = false;
+        }
     }
 
     private void UpdateFieldVisibility()
     {
         bool manual = IsManualMode;
+        if (!manual && TryGetUrl(out string composed, out _))
+            _lastComposedUrl = composed;
+
         Visibility presetVisibility = manual ? Visibility.Collapsed : Visibility.Visible;
+        HostLabel.Visibility = presetVisibility;
+        HostTextBox.Visibility = presetVisibility;
+        PortLabel.Visibility = presetVisibility;
+        PortTextBox.Visibility = presetVisibility;
+        UserLabel.Visibility = presetVisibility;
+        UserTextBox.Visibility = presetVisibility;
+        PasswordLabel.Visibility = presetVisibility;
+        PasswordTextBox.Visibility = presetVisibility;
+        StreamLabel.Visibility = presetVisibility;
+        StreamComboBox.Visibility = presetVisibility;
 
-        PresetPanel.Visibility = presetVisibility;
-        PresetHintText.Visibility = !_compact && presetVisibility == Visibility.Visible
+        // 品牌下拉常驻；选"其他"时右侧直接变成完整地址。
+        ManualLabel.Visibility = manual ? Visibility.Visible : Visibility.Collapsed;
+        ManualUrlTextBox.Visibility = manual ? Visibility.Visible : Visibility.Collapsed;
+        ManualHintText.Visibility = manual ? Visibility.Visible : Visibility.Collapsed;
+
+        bool showDevice = !manual && SelectedBrand == NetworkCameraBrand.Uniview;
+        DeviceLabel.Visibility = showDevice ? Visibility.Visible : Visibility.Collapsed;
+        DeviceComboBox.Visibility = showDevice ? Visibility.Visible : Visibility.Collapsed;
+
+        // 设备类型只对宇视显示；隐藏时码流/通道左移补位，避免第三行开头空一格。
+        int streamColumn = showDevice ? 3 : 0;
+        Grid.SetColumn(StreamLabel, streamColumn);
+        Grid.SetColumn(StreamComboBox, streamColumn + 1);
+        Grid.SetColumn(ChannelLabel, streamColumn + 3);
+        Grid.SetColumn(ChannelTextBox, streamColumn + 4);
+
+        bool showChannel = !manual
+            && NetworkCameraAddressTemplate.UsesChannel(SelectedBrand, SelectedDevice);
+        ChannelLabel.Visibility = showChannel ? Visibility.Visible : Visibility.Collapsed;
+        ChannelTextBox.Visibility = showChannel ? Visibility.Visible : Visibility.Collapsed;
+
+        PresetHintText.Visibility = !manual && !_compact
             ? Visibility.Visible
             : Visibility.Collapsed;
-        PreviewText.Visibility = !_compact && presetVisibility == Visibility.Visible
+        PreviewText.Visibility = !manual && !_compact
             ? Visibility.Visible
             : Visibility.Collapsed;
-        ManualPanel.Visibility = manual ? Visibility.Visible : Visibility.Collapsed;
-        DevicePanel.Visibility = presetVisibility == Visibility.Visible
-            && SelectedBrand == NetworkCameraBrand.Uniview
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-        ChannelPanel.Visibility = presetVisibility == Visibility.Visible
-            && NetworkCameraAddressTemplate.UsesChannel(SelectedBrand, SelectedDevice)
-                ? Visibility.Visible
-                : Visibility.Collapsed;
-
-        SwitchModeButton.Content = AppLanguage.Get(
-            manual ? "改回按品牌填写" : "改为手动填写完整地址");
     }
 
     private void UpdatePreview()
@@ -210,38 +295,29 @@ public partial class NetworkCameraAddressEditor : UserControl
         PreviewText.Text = $"{AppLanguage.Get("完整拉流地址")}：{preview}";
     }
 
-    private void SwitchModeButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// 品牌切到"其他"时，把刚刚拼出的地址带进完整地址框，省得用户重打；
+    /// 切回品牌时字段保留，手动框里的内容也留着，再选"其他"能继续改。
+    /// </summary>
+    private void BrandSelection_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (IsManualMode)
+        if (!_isLoading
+            && IsManualMode
+            && string.IsNullOrWhiteSpace(ManualUrlTextBox.Text)
+            && _lastComposedUrl.Length > 0)
         {
-            string manual = ManualUrlTextBox.Text ?? "";
-            if (NetworkCameraAddressTemplate.TryParse(manual, out NetworkCameraAddress? address)
-                && address != null)
+            _isLoading = true;
+            try
             {
-                _isLoading = true;
-                try
-                {
-                    ApplyAddress(address);
-                }
-                finally
-                {
-                    _isLoading = false;
-                }
+                ManualUrlTextBox.Text = _lastComposedUrl;
             }
-            else
+            finally
             {
-                SelectOption(BrandComboBox, NetworkCameraBrand.Dahua);
+                _isLoading = false;
             }
-        }
-        else
-        {
-            if (TryGetUrl(out string url, out _))
-                ManualUrlTextBox.Text = url;
-            SelectOption(BrandComboBox, NetworkCameraBrand.Other);
         }
 
-        UpdateFieldVisibility();
-        UpdatePreview();
+        OnFieldChanged();
     }
 
     private static void SelectOption<T>(ComboBox comboBox, T value)

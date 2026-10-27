@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Data;
@@ -87,10 +89,59 @@ public sealed class WindowConstructionTests
                 "rtsp://admin:secret@192.168.110.108:554/cam/realmonitor?channel=2&subtype=0",
                 withChannel);
 
-            editor.Load("rtsp://admin:secret@192.168.110.108:554/custom/path");
+            editor.Load("rtsp://admin:secret@192.168.110.108:554/custom/path", force: true);
             Assert.True(editor.TryGetUrl(out string manual, out error), error);
             Assert.Equal("rtsp://admin:secret@192.168.110.108:554/custom/path", manual);
         });
+    }
+
+    [Fact]
+    public void NetworkCameraAddressEditor_TwoWayUrlBindingRoundTrips()
+    {
+        RunOnStaThread(() =>
+        {
+            var holder = new UrlHolder
+            {
+                Url = "rtsp://admin:pw@192.168.1.64:554/Streaming/Channels/101"
+            };
+            var editor = new NetworkCameraAddressEditor();
+            editor.SetBinding(
+                NetworkCameraAddressEditor.UrlProperty,
+                new Binding(nameof(UrlHolder.Url))
+                {
+                    Source = holder,
+                    Mode = BindingMode.TwoWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+                });
+
+            Assert.True(editor.TryGetUrl(out string loaded, out string error), error);
+            Assert.Equal(holder.Url, loaded);
+
+            var host = (TextBox)editor.FindName("HostTextBox");
+            host.Text = "10.0.0.9";
+            Assert.Contains("10.0.0.9", holder.Url);
+            Assert.True(editor.TryGetUrl(out string updated, out error), error);
+            Assert.Equal(holder.Url, updated);
+        });
+    }
+
+    private sealed class UrlHolder : INotifyPropertyChanged
+    {
+        private string _url = "";
+
+        public string Url
+        {
+            get => _url;
+            set
+            {
+                if (string.Equals(_url, value, StringComparison.Ordinal))
+                    return;
+                _url = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Url)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 
     [Fact]
