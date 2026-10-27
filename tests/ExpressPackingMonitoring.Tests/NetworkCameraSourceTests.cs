@@ -232,6 +232,10 @@ public sealed class NetworkCameraSourceTests
                 TestContext.Current.CancellationToken);
             Assert.Equal(320, receivedWidth);
             Assert.Equal(240, receivedHeight);
+            // "解析出流信息"和"真的收到画面"必须分开：重连是否成功按帧计数判定，
+            // 不能只看 SDP（摄像头可以接受会话却一帧不送）。
+            Assert.True(source.FramesReceived > 0);
+            Assert.NotNull(source.StreamInfoReceivedAtUtc);
             source.Stop();
             Assert.False(source.IsRunning);
         }

@@ -253,8 +253,13 @@ namespace ExpressPackingMonitoring.ViewModels
         private int _cameraStartupFailureRecorded = 0; // 同一轮启动只统计一次错误
         private int _cameraStartupRetryPending = 0;    // 已排好下一次退避重试，不叠加
         private volatile bool _cameraAutoReconnectSuspended = false;
-        // RTSP 网络源首帧可能因等待关键帧延迟数秒，宽限期内不判信号丢失。
-        private const double NetworkCameraConnectGraceSeconds = 20.0;
+        // 网络摄像头"连上但零帧"的恢复状态：记住本次会话用的传输方式，零帧后改用另一种重试；
+        // 哪种方式真正出过帧就沿用到本次运行结束，避免每次都先踩同一个坑。
+        private string _networkCameraSessionTransport = "";
+        private string _networkCameraTransportOverride = "";
+        private string _networkCameraWorkingTransport = "";
+        private string _networkCameraTransportUrl = "";
+        private string _networkCameraConfiguredTransport = "";
 
         /// <summary>
         /// 网络摄像头启动后等流信息的最长时间：真实实测约 2-3 秒，

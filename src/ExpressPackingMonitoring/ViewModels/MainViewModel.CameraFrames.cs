@@ -70,7 +70,8 @@ namespace ExpressPackingMonitoring.ViewModels
         private void NetworkCameraSource_FrameReady(object sender, NetworkCameraFrameEventArgs e)
         {
             _lastFrameTime = DateTime.Now;
-            Interlocked.Increment(ref _framesSinceCameraSessionStart);
+            if (Interlocked.Increment(ref _framesSinceCameraSessionStart) == 1)
+                OnNetworkCameraFirstFrame(sender as NetworkCameraSource);
             MarkCameraStreamHealthy();
             Interlocked.Exchange(ref _archiveFrameUtcTicks, DateTime.UtcNow.Ticks);
             UpdateCameraSourceFpsEstimate();

@@ -112,7 +112,15 @@ namespace ExpressPackingMonitoring.ViewModels
                     else
                     {
                         _consecutiveRestartFailures++;
-                        if (_consecutiveRestartFailures >= MaxConsecutiveRestartFailures)
+                        if (IsNetworkCameraConfigured())
+                        {
+                            // 网络摄像头会按退避一直重试，不在这里"停止自动重连"：
+                            // 摄像头/网络恢复后必须能自己接回来，语音只在零帧提示时播一次。
+                            RuntimeLog.Warn(
+                                "Camera",
+                                $"网络摄像头重连后仍没有画面（录制已停止），failures={_consecutiveRestartFailures}，继续重试");
+                        }
+                        else if (_consecutiveRestartFailures >= MaxConsecutiveRestartFailures)
                         {
                             RuntimeLog.Warn("Camera", $"Camera reconnect failed {_consecutiveRestartFailures} times after interrupted recording");
                             ShowToast($"摄像头连续 {MaxConsecutiveRestartFailures} 次重连失败，录制已停止。请重新插拔后在设置中手动重启", ToastSeverity.Error);
@@ -144,12 +152,22 @@ namespace ExpressPackingMonitoring.ViewModels
                     else
                     {
                         _consecutiveRestartFailures++;
-                        RuntimeLog.Warn("Camera", $"Camera reconnect failed while idle, failures={_consecutiveRestartFailures}");
-                        if (_consecutiveRestartFailures >= MaxConsecutiveRestartFailures)
+                        if (IsNetworkCameraConfigured())
                         {
-                            ShowToast($"摄像头连续 {MaxConsecutiveRestartFailures} 次重连失败，已停止自动重连。请重新插拔后在设置中手动重启", ToastSeverity.Error);
-                            SpeakWarning(DefaultSpeechCatalog.ReconnectCamera, 3);
-                            Debug.WriteLine($"[Camera] 连续 {_consecutiveRestartFailures} 次重连失败，停止自动重连");
+                            // 同上：网络源继续按退避重试，提示由零帧看门狗给（每次故障只给一次）。
+                            RuntimeLog.Warn(
+                                "Camera",
+                                $"网络摄像头重连后仍没有画面，failures={_consecutiveRestartFailures}，继续重试");
+                        }
+                        else
+                        {
+                            RuntimeLog.Warn("Camera", $"Camera reconnect failed while idle, failures={_consecutiveRestartFailures}");
+                            if (_consecutiveRestartFailures >= MaxConsecutiveRestartFailures)
+                            {
+                                ShowToast($"摄像头连续 {MaxConsecutiveRestartFailures} 次重连失败，已停止自动重连。请重新插拔后在设置中手动重启", ToastSeverity.Error);
+                                SpeakWarning(DefaultSpeechCatalog.ReconnectCamera, 3);
+                                Debug.WriteLine($"[Camera] 连续 {_consecutiveRestartFailures} 次重连失败，停止自动重连");
+                            }
                         }
                     }
                 }
@@ -240,6 +258,9 @@ namespace ExpressPackingMonitoring.ViewModels
         public void ManualRestartCamera()
         {
             ResetCameraRestartCounters();
+            // 手动重启：回到用户配置的传输方式，不要沿用自动回退记住的选择。
+            _networkCameraWorkingTransport = "";
+            _networkCameraTransportOverride = "";
             RestartCamera();
         }
 
@@ -754,9 +775,11 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
             }
 
+            string transport = ResolveNetworkCameraTransportCore(url);
+            _networkCameraSessionTransport = transport;
             var source = new NetworkCameraSource(
                 url,
-                Config.NetworkCameraRtspTransport,
+                transport,
                 Config.Fps > 0 ? Config.Fps : 15);
             source.StreamInfoReady += NetworkCameraSource_StreamInfoReady;
             source.FrameReady += NetworkCameraSource_FrameReady;
@@ -785,7 +808,7 @@ namespace ExpressPackingMonitoring.ViewModels
             _cameraEverConnected = true;
             RuntimeLog.Info(
                 "Camera",
-                $"StartNetworkCamera url={NetworkCameraUrlPolicy.SanitizeForLog(url)}, transport={Config.NetworkCameraRtspTransport}, previewSession={previewSessionId}");
+                $"StartNetworkCamera url={NetworkCameraUrlPolicy.SanitizeForLog(url)}, transport={transport}, previewSession={previewSessionId}");
         }
 
         private void NetworkCameraSource_StreamInfoReady(object sender, NetworkCameraStreamInfoEventArgs e)
@@ -824,6 +847,8 @@ namespace ExpressPackingMonitoring.ViewModels
             NetworkCameraSource networkSource = _networkCameraSource;
             if (networkSource != null)
             {
+                LogZeroFrameNetworkCameraSession(networkSource);
+
                 networkSource.StreamInfoReady -= NetworkCameraSource_StreamInfoReady;
                 networkSource.FrameReady -= NetworkCameraSource_FrameReady;
                 networkSource.SourceError -= NetworkCameraSource_SourceError;
@@ -1176,6 +1201,11 @@ namespace ExpressPackingMonitoring.ViewModels
                         MarkRecordingFramePipelineStage(
                             RecordingFramePipelineStage.NoFrame,
                             Volatile.Read(ref _latestFrameSequence));
+                        // 网络摄像头按退避一直重试：摄像头/网络恢复后必须能自己接回来；
+                        // USB 等本地设备拔掉就是拔掉了，连续失败到上限才停。
+                        int maxRestartFailures = IsNetworkCameraConfigured()
+                            ? int.MaxValue
+                            : MaxConsecutiveRestartFailures;
                         CameraWatchdogState watchdogState = new(
                             _isCameraSleeping,
                             _isSetupWizardActive,
@@ -1186,7 +1216,7 @@ namespace ExpressPackingMonitoring.ViewModels
                             IsRecording,
                             IsWithinCameraWakeGrace(),
                             _consecutiveRestartFailures,
-                            MaxConsecutiveRestartFailures,
+                            maxRestartFailures,
                             DateTime.Now - _lastRestartAttempt,
                             MinRestartIntervalSeconds);
                         if (CameraWatchdogPolicy.CanJudgeCameraLost(watchdogState))
@@ -1209,13 +1239,22 @@ namespace ExpressPackingMonitoring.ViewModels
                                     int zeroFrameStreak = Volatile.Read(ref _framesSinceCameraSessionStart) == 0
                                         ? Interlocked.Increment(ref _zeroFrameRestartStreak)
                                         : ResetZeroFrameRestartStreak();
+                                    bool zeroFrame = zeroFrameStreak > 0;
+                                    // "连上了但零帧"和"根本没连上"要给不同的提示：前者才谈得上流路径/编码/并发占用。
+                                    bool streamInfoReceived = _networkCameraSource?.StreamInfoReceivedAtUtc != null;
                                     bool announce = CameraWatchdogPolicy.ShouldAnnounceCameraLost(
                                             watchdogState)
                                         && CameraWatchdogPolicy.ShouldAnnounceZeroFrameStreak(zeroFrameStreak);
+                                    bool showGuidance = zeroFrame
+                                        && streamInfoReceived
+                                        && IsNetworkCameraConfigured()
+                                        && NetworkCameraRecoveryPolicy.ShouldShowGuidance(zeroFrameStreak);
                                     RuntimeLog.Info(
                                         "Camera",
                                         $"信号丢失 {noFrameSeconds:F1}s，重连 (失败次数={_consecutiveRestartFailures},"
                                         + $" 零帧重连={zeroFrameStreak}, 播报={announce})");
+                                    if (zeroFrame && IsNetworkCameraConfigured())
+                                        PrepareNetworkCameraTransportFallback();
                                     if (CameraWatchdogPolicy.ShouldRunZeroFrameSelfCheck(
                                             zeroFrameStreak,
                                             string.Equals(_zeroFrameSelfCheckUrl, Config.NetworkCameraUrl, StringComparison.Ordinal)))
@@ -1226,8 +1265,24 @@ namespace ExpressPackingMonitoring.ViewModels
                                     {
                                         if (announce)
                                         {
-                                            ShowToast("摄像头信号丢失，尝试重连...", ToastSeverity.Warning);
-                                            SpeakWarning(DefaultSpeechCatalog.CameraReconnecting);
+                                            if (zeroFrame && streamInfoReceived)
+                                            {
+                                                ShowNetworkCameraNoVideoGuidance();
+                                            }
+                                            else if (zeroFrame)
+                                            {
+                                                ShowToast("网络摄像头连接异常，尝试重连...", ToastSeverity.Warning);
+                                                SpeakWarning(DefaultSpeechCatalog.CameraReconnecting);
+                                            }
+                                            else
+                                            {
+                                                ShowToast("摄像头信号丢失，尝试重连...", ToastSeverity.Warning);
+                                                SpeakWarning(DefaultSpeechCatalog.CameraReconnecting);
+                                            }
+                                        }
+                                        else if (showGuidance)
+                                        {
+                                            ShowNetworkCameraNoVideoGuidance();
                                         }
 
                                         _ = RestartCameraWithRecordingStopAsync(
@@ -1827,7 +1882,12 @@ namespace ExpressPackingMonitoring.ViewModels
 
             var networkSource = _networkCameraSource;
             if (networkSource != null)
-                return networkSource.ActualWidth > 0 && networkSource.ActualHeight > 0;
+            {
+                // 只有流信息不算就绪：摄像头可以接受 RTSP 会话（SDP 正常）却一帧画面都不送。
+                // 以前这里只看分辨率，重连每次都记成"已连接"、失败计数被清零，
+                // 于是零帧循环既不升级也不停止（现场反馈"老是断连、拉不到流"）。
+                return Volatile.Read(ref _framesSinceCameraSessionStart) > 0;
+            }
             return IsVideoSourceRunning();
         }
 
@@ -1858,12 +1918,6 @@ namespace ExpressPackingMonitoring.ViewModels
                     return IsCameraStreamReady();
                 }
             }
-        }
-
-        private bool IsNetworkCameraGracePeriod()
-        {
-            return _networkCameraSource != null
-                && (DateTime.Now - _networkCameraStartedAt).TotalSeconds < NetworkCameraConnectGraceSeconds;
         }
 
         private void TryPerformMotionDetection(Mat currentFrame)

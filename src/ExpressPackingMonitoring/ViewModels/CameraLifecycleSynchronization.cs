@@ -231,7 +231,18 @@ internal static class CameraWatchdogPolicy
         && !state.StartupRetryPending
         && state.ConsecutiveRestartFailures < state.MaxRestartFailures
         && state.SinceLastRestartAttempt.TotalSeconds
-            >= state.MinRestartIntervalSeconds * Math.Max(1, state.ConsecutiveRestartFailures);
+            >= ResolveRestartIntervalSeconds(state.MinRestartIntervalSeconds, state.ConsecutiveRestartFailures);
+
+    /// <summary>
+    /// 连续失败后的重试间隔上限。网络摄像头会一直退避重试（见 NetworkCameraRecoveryPolicy），
+    /// 间隔不能按失败次数无限增长，否则恢复一次要等几分钟。
+    /// </summary>
+    internal const double MaxRestartIntervalSeconds = 20.0;
+
+    public static double ResolveRestartIntervalSeconds(double minimumSeconds, int consecutiveFailures) =>
+        Math.Min(
+            MaxRestartIntervalSeconds,
+            Math.Max(0, minimumSeconds) * Math.Max(1, consecutiveFailures));
 
     /// <summary>
     /// 判到"没有帧"之后要不要弹警告并播报。刚被用户活动唤醒的那十几秒里不要：
@@ -258,6 +269,40 @@ internal static class CameraWatchdogPolicy
 
     public static bool ShouldRunZeroFrameSelfCheck(int zeroFrameStreak, bool alreadyRanForCurrentUrl) =>
         !alreadyRanForCurrentUrl && zeroFrameStreak >= ZeroFrameSelfCheckStreak;
+}
+
+/// <summary>
+/// 网络摄像头"连上了但没有画面"的恢复策略。
+///
+/// 现场问题（0.0.88 反馈）：摄像头工作约两分钟后停止送流，应用每 20 秒重连一次，
+/// 但每次只要解析出 SDP 就记成"已连接"，于是一整晚都在静默重连、画面始终不恢复。
+/// 关键认知：SDP 走 RTSP 控制通道，媒体走 RTP，两者是两条路——控制通道能通
+/// 不代表媒体能通。所以"拿到流信息却零帧"必须按连接失败处理，并换一种传输方式
+/// 重试，而不是拿同一种方式无限循环。
+/// </summary>
+internal static class NetworkCameraRecoveryPolicy
+{
+    /// <summary>解析出流信息后等第一帧的时间：正常摄像头几秒内必到，超过它就不是慢，而是零帧。</summary>
+    internal static readonly TimeSpan FirstFrameGrace = TimeSpan.FromSeconds(10);
+
+    /// <summary>连 SDP 都拿不到时的宽限上限：ffmpeg 卡在连接阶段也不能无限等。</summary>
+    internal static readonly TimeSpan StreamInfoGrace = TimeSpan.FromSeconds(20);
+
+    /// <summary>连续第几轮零帧时给出一次可操作提示。</summary>
+    internal const int GuidanceAfterZeroFrameRounds = 3;
+
+    /// <summary>换一种 RTSP 传输方式重试：配置的是 tcp 就先试 udp，反之亦然。</summary>
+    internal static string AlternateTransport(string? transport) =>
+        string.Equals(transport, "udp", StringComparison.OrdinalIgnoreCase) ? "tcp" : "udp";
+
+    internal static bool ShouldShowGuidance(int zeroFrameRounds) =>
+        zeroFrameRounds == GuidanceAfterZeroFrameRounds;
+
+    /// <summary>还在宽限期内就不判掉线：拿到 SDP 后看首帧窗口，没拿到 SDP 时看连接窗口。</summary>
+    internal static bool IsWithinFirstFrameGrace(TimeSpan sinceStart, TimeSpan? sinceStreamInfo) =>
+        sinceStreamInfo is { } streamInfoAge
+            ? streamInfoAge < FirstFrameGrace
+            : sinceStart < StreamInfoGrace;
 }
 
 internal sealed class CameraFrameRateGate

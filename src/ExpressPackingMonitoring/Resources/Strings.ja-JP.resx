@@ -1409,6 +1409,7 @@
   <data name="网络摄像头连接失败" xml:space="preserve"><value>ネットワーク カメラの接続に失敗しました</value></data>
   <data name="网络摄像头连接失败：{source.LastError}" xml:space="preserve"><value>ネットワーク カメラの接続に失敗しました: {0}</value></data>
   <data name="网络摄像头连接异常，尝试重连..." xml:space="preserve"><value>ネットワーク カメラの接続が異常です。再接続します...</value></data>
+  <data name="网络摄像头连上了但一直没有画面，正在自动重试；请检查流地址路径、H.264 编码和其他软件占用" xml:space="preserve"><value>ネットワーク カメラには接続できましたが映像がありません。再試行中です。ストリームのパス、H.264 エンコード、他のソフトによる使用を確認してください</value></data>
   <data name="网页访问验证失败，请在保存主机上确认后重试" xml:space="preserve"><value>Web アクセスの検証に失敗しました。保存ホストで確認して再度お試しください</value></data>
   <data name="未安装" xml:space="preserve"><value>未インストール</value></data>
   <data name="未检测到可用麦克风" xml:space="preserve"><value>利用可能なマイクが見つかりません</value></data>

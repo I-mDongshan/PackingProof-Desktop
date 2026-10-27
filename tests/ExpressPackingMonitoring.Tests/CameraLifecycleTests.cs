@@ -215,6 +215,56 @@ public sealed class CameraLifecycleTests
         bool expected) =>
         Assert.Equal(expected, CameraWatchdogPolicy.ShouldRunZeroFrameSelfCheck(streak, alreadyRan));
 
+    /// <summary>
+    /// 网络摄像头"连上但零帧"必须换一种 RTSP 传输方式重试：SDP 走控制通道、媒体走 RTP，
+    /// 控制通道能通不代表媒体能通；同一种方式反复重连只会一直零帧。
+    /// </summary>
+    [Fact]
+    public void NetworkCameraRecoveryPolicy_AlternatesRtspTransport()
+    {
+        Assert.Equal("udp", NetworkCameraRecoveryPolicy.AlternateTransport("tcp"));
+        Assert.Equal("tcp", NetworkCameraRecoveryPolicy.AlternateTransport("udp"));
+        Assert.Equal("udp", NetworkCameraRecoveryPolicy.AlternateTransport("TCP"));
+        Assert.Equal("udp", NetworkCameraRecoveryPolicy.AlternateTransport(""));
+        Assert.Equal("udp", NetworkCameraRecoveryPolicy.AlternateTransport(null));
+    }
+
+    /// <summary>
+    /// 拿到 SDP 后只等首帧（10 秒），不再从启动时刻起一刀切等 20 秒：
+    /// 否则摄像头接受会话却不送流时，每次无效重连都要拖满 20 秒。
+    /// </summary>
+    [Fact]
+    public void NetworkCameraRecoveryPolicy_FirstFrameGraceStartsAtStreamInfo()
+    {
+        Assert.True(NetworkCameraRecoveryPolicy.IsWithinFirstFrameGrace(TimeSpan.FromSeconds(19), null));
+        Assert.False(NetworkCameraRecoveryPolicy.IsWithinFirstFrameGrace(TimeSpan.FromSeconds(21), null));
+
+        // 连接用了很久、SDP 刚到手：首帧窗口从头算
+        Assert.True(NetworkCameraRecoveryPolicy.IsWithinFirstFrameGrace(
+            TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(9)));
+        Assert.False(NetworkCameraRecoveryPolicy.IsWithinFirstFrameGrace(
+            TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(11)));
+    }
+
+    [Fact]
+    public void NetworkCameraRecoveryPolicy_GivesGuidanceOnceAfterRepeatedZeroFrames()
+    {
+        Assert.False(NetworkCameraRecoveryPolicy.ShouldShowGuidance(1));
+        Assert.False(NetworkCameraRecoveryPolicy.ShouldShowGuidance(2));
+        Assert.True(NetworkCameraRecoveryPolicy.ShouldShowGuidance(3));
+        Assert.False(NetworkCameraRecoveryPolicy.ShouldShowGuidance(4));
+    }
+
+    /// <summary>网络源会一直退避重试，重试间隔必须有上限，不能按失败次数无限增长。</summary>
+    [Fact]
+    public void CameraWatchdogPolicy_CapsRestartIntervalForEndlessRetry()
+    {
+        Assert.Equal(3, CameraWatchdogPolicy.ResolveRestartIntervalSeconds(3, 0));
+        Assert.Equal(3, CameraWatchdogPolicy.ResolveRestartIntervalSeconds(3, 1));
+        Assert.Equal(9, CameraWatchdogPolicy.ResolveRestartIntervalSeconds(3, 3));
+        Assert.Equal(20, CameraWatchdogPolicy.ResolveRestartIntervalSeconds(3, 99));
+    }
+
     [Theory]
     [InlineData(false, 1.5)]
     [InlineData(true, 0.8)]

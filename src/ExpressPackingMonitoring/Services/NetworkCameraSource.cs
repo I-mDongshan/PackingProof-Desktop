@@ -70,6 +70,10 @@ internal sealed class NetworkCameraSource : IDisposable
     private Task? _frameReadTask;
     private TaskCompletionSource<bool>? _streamInfoReady;
     private volatile bool _stopping;
+    // 本次会话真正收到的帧数。"拿到 SDP"和"收到画面"是两件事：摄像头接受了
+    // RTSP 会话却一帧不送时，只有帧计数能把它和正常连接区分开。
+    private long _framesReceived;
+    private long _streamInfoReceivedAtUtcTicks;
 
     public NetworkCameraSource(
         string url,
@@ -79,6 +83,7 @@ internal sealed class NetworkCameraSource : IDisposable
     {
         _url = url;
         _transport = string.Equals(transport, "udp", StringComparison.OrdinalIgnoreCase) ? "udp" : "tcp";
+        CurrentTransport = _transport;
         _fallbackFps = fallbackFps > 0 ? fallbackFps : DefaultFallbackFps;
         _ffmpegPathOverride = ffmpegPathOverride;
     }
@@ -89,6 +94,25 @@ internal sealed class NetworkCameraSource : IDisposable
 
     public string Url => _url;
     public string? LastError { get; private set; }
+
+    /// <summary>本条会话实际使用的 RTSP 传输方式：流信息阶段自动换过传输方式时以这里为准。</summary>
+    public string CurrentTransport { get; private set; }
+
+    /// <summary>本次会话已解码出的帧数。0 表示"连上了但一帧画面都没有"。</summary>
+    public int FramesReceived => (int)Math.Min(int.MaxValue, Interlocked.Read(ref _framesReceived));
+
+    /// <summary>本次会话解析出流信息（SDP）的时刻；还没拿到流信息时为 null。</summary>
+    public DateTime? StreamInfoReceivedAtUtc
+    {
+        get
+        {
+            long ticks = Interlocked.Read(ref _streamInfoReceivedAtUtcTicks);
+            return ticks > 0 ? new DateTime(ticks, DateTimeKind.Utc) : null;
+        }
+    }
+
+    /// <summary>最近一次会话的 ffmpeg stderr 尾部（已脱敏），供"连上但零帧"时定位原因。</summary>
+    public string LastStderrTail => BuildStderrTail(6);
 
     public bool IsRunning
     {
@@ -122,6 +146,8 @@ internal sealed class NetworkCameraSource : IDisposable
             _stopping = false;
             LastError = null;
             _stderrLines.Clear();
+            Interlocked.Exchange(ref _framesReceived, 0);
+            Interlocked.Exchange(ref _streamInfoReceivedAtUtcTicks, 0);
             _streamInfoReady = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             _process = LaunchProcess(_transport);
@@ -295,6 +321,7 @@ internal sealed class NetworkCameraSource : IDisposable
                 process = LaunchProcess(fallbackTransport);
                 if (process != null)
                 {
+                    CurrentTransport = fallbackTransport;
                     _process = process;
                     streamReady = await WaitForStreamInfoAsync(process);
                 }
@@ -324,6 +351,7 @@ internal sealed class NetworkCameraSource : IDisposable
                 if (!await ReadExactlyAsync(stdout, buffer, frameSize))
                     break;
 
+                Interlocked.Increment(ref _framesReceived);
                 Mat? frame = BufferToMat(buffer);
                 if (frame != null)
                     FrameReady?.Invoke(this, new NetworkCameraFrameEventArgs(frame));
@@ -359,6 +387,7 @@ internal sealed class NetworkCameraSource : IDisposable
                     ActualHeight = height;
                     ActualFps = fps > 0 ? fps : _fallbackFps;
                     NativeModes = [new NativeCameraMode(width, height, ActualFps)];
+                    Interlocked.Exchange(ref _streamInfoReceivedAtUtcTicks, DateTime.UtcNow.Ticks);
                     _streamInfoReady?.TrySetResult(true);
                     StreamInfoReady?.Invoke(this, new NetworkCameraStreamInfoEventArgs(width, height, ActualFps));
                     return true;
@@ -479,20 +508,29 @@ internal sealed class NetworkCameraSource : IDisposable
     private void FailStreamInfo()
     {
         string detail = BuildStderrError();
-        lock (_stderrLock)
-        {
-            if (_stderrLines.Count > 0)
-            {
-                string tail = string.Join(" | ", _stderrLines.TakeLast(5));
-                RuntimeLog.Warn("NetworkCamera", $"ffmpeg stderr tail: {tail}");
-            }
-        }
+        string tail = BuildStderrTail(5);
+        if (tail.Length > 0)
+            RuntimeLog.Warn("NetworkCamera", $"ffmpeg stderr tail: {tail}");
 
         LastError = detail.Length > 0
             ? $"无法获取网络摄像头画面信息：{detail}"
             : "无法获取网络摄像头画面信息，请检查地址和协议";
         _streamInfoReady?.TrySetResult(false);
         RaiseError(LastError);
+    }
+
+    /// <summary>把最近几行 stderr 拼成一条（已脱敏）。零帧/断流时这是唯一能说明原因的现场证据。</summary>
+    private string BuildStderrTail(int lineCount)
+    {
+        if (lineCount <= 0)
+            return "";
+
+        lock (_stderrLock)
+        {
+            if (_stderrLines.Count == 0)
+                return "";
+            return string.Join(" | ", _stderrLines.TakeLast(lineCount));
+        }
     }
 
     private string BuildStderrError()
@@ -609,7 +647,13 @@ internal sealed class NetworkCameraSource : IDisposable
 
     private void RaiseError(string description)
     {
-        RuntimeLog.Warn("NetworkCamera", $"SourceError: {description}");
+        // 断流时把 ffmpeg 最后几行带上：现场反馈里只有"流已断开"这一句时，
+        // 根本分不清是摄像头停止送流、TCP 被重置还是解码失败。
+        string tail = BuildStderrTail(4);
+        string message = tail.Length > 0
+            ? $"SourceError: {description}；ffmpeg={tail}"
+            : $"SourceError: {description}";
+        RuntimeLog.Warn("NetworkCamera", message);
         SourceError?.Invoke(this, new NetworkCameraErrorEventArgs(description));
     }
 

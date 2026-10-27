@@ -37,6 +37,17 @@ public sealed class NetworkCameraConfigurationTests
         Assert.Contains("/stream", sanitized);
     }
 
+    /// <summary>只有 RTSP 地址才谈得上 tcp/udp 媒体通道切换，rtmp/http 不能跟着换。</summary>
+    [Theory]
+    [InlineData("rtsp://192.168.1.10:554/stream", true)]
+    [InlineData("RTSP://192.168.1.10/stream", true)]
+    [InlineData("rtsps://192.168.1.10/stream", false)]
+    [InlineData("rtmp://192.168.1.10/live/stream", false)]
+    [InlineData("http://192.168.1.10:8080/video.mjpg", false)]
+    [InlineData("", false)]
+    public void IsRtsp_OnlyMatchesRtspScheme(string url, bool expected) =>
+        Assert.Equal(expected, NetworkCameraUrlPolicy.IsRtsp(url));
+
     [Fact]
     public void SanitizeForLog_KeepsUrlWithoutCredentials()
     {

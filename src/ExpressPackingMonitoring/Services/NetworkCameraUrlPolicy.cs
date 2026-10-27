@@ -37,6 +37,11 @@ internal static class NetworkCameraUrlPolicy
         return true;
     }
 
+    /// <summary>只有 RTSP 地址才有 tcp/udp 传输方式可选。</summary>
+    internal static bool IsRtsp(string? url) =>
+        Uri.TryCreate(url ?? "", UriKind.Absolute, out Uri? uri)
+        && string.Equals(uri.Scheme, "rtsp", StringComparison.OrdinalIgnoreCase);
+
     internal static string SanitizeForLog(string? url)
     {
         if (string.IsNullOrWhiteSpace(url))

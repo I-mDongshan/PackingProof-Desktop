@@ -1410,6 +1410,7 @@
   <data name="网络摄像头连接失败" xml:space="preserve"><value>Network camera connection failed</value></data>
   <data name="网络摄像头连接失败：{source.LastError}" xml:space="preserve"><value>Network camera connection failed: {0}</value></data>
   <data name="网络摄像头连接异常，尝试重连..." xml:space="preserve"><value>Network camera connection error; reconnecting...</value></data>
+  <data name="网络摄像头连上了但一直没有画面，正在自动重试；请检查流地址路径、H.264 编码和其他软件占用" xml:space="preserve"><value>The network camera connects but shows no video; retrying. Check the stream path, H.264 encoding, and other apps using the camera</value></data>
   <data name="网页访问验证失败，请在保存主机上确认后重试" xml:space="preserve"><value>Web access verification failed. Confirm on the storage host and try again</value></data>
   <data name="未安装" xml:space="preserve"><value>Not installed</value></data>
   <data name="未检测到可用麦克风" xml:space="preserve"><value>No available microphone detected</value></data>
