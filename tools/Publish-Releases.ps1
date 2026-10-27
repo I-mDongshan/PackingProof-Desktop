@@ -229,7 +229,9 @@ Assert-SetupPayloadIntegrity `
     -AppDir $payloadAppDir
 $storeManifestPath = Join-Path $packageRoot $artifactNames.StoreManifestFileName
 $storePackagePath = Join-Path $artifactNames.StorePackageRoot $artifactNames.StorePackageFileName
-$storePackageRequired = -not $UpdateNotes
+# 预览版在 store_channel_allowed=false 期间必须用 -SkipStorePackage 出包，不能带 Store MSIX；
+# 只有正式发布才强制校验同一版本的 Store 包。
+$storePackageRequired = -not $UpdateNotes -and -not $Prerelease
 $storePackageIncluded = $false
 $storeManifest = $null
 if (-not (Test-Path -LiteralPath $storeManifestPath -PathType Leaf)) {
