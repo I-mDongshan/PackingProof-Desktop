@@ -632,8 +632,7 @@ namespace ExpressPackingMonitoring.Services
         {
             EnsureFirewallServicesAvailable();
             string userSid = WindowsPlatformSupport.GetCurrentUserSidOrThrow();
-
-            RunElevatedCmd(BuildAccessSetupCommand(port, userSid, includeUrlAcl), "配置局域网服务访问权限");
+            WindowsLanAccessSetup.RequestElevatedConfiguration(port, userSid, includeUrlAcl);
         }
 
         internal static void RepairLanAccess(int port)
@@ -643,9 +642,6 @@ namespace ExpressPackingMonitoring.Services
 
         internal const string FirewallRuleName = "快递打包监控 Web服务";
         internal const string UdpFirewallRuleName = "快递打包监控 设备发现";
-        internal const int UrlAclAddFailureExitCode = 11;
-        internal const int TcpFirewallAddFailureExitCode = 12;
-        internal const int UdpFirewallAddFailureExitCode = 13;
 
         private const uint ScManagerConnect = 0x0001;
         private const uint ServiceQueryStatus = 0x0004;
@@ -780,58 +776,6 @@ namespace ExpressPackingMonitoring.Services
             return $"{state},start={start},disabled={diagnostic.IsDisabled}";
         }
 
-        internal static string BuildAccessSetupCommand(int port, string userSid, bool includeUrlAcl = true)
-        {
-            if (port <= 0 || port > 65535)
-                throw new ArgumentOutOfRangeException(nameof(port));
-            if (string.IsNullOrWhiteSpace(userSid))
-                throw new ArgumentException("用户 SID 不能为空", nameof(userSid));
-
-            string url = $"http://+:{port}/";
-            string firewallCommand = BuildFirewallSetupCommand(port);
-            if (!includeUrlAcl)
-                return firewallCommand;
-
-            string netsh = QuoteCmdExecutable(GetWindowsSystemExecutablePath("netsh.exe"));
-            string urlAclCommand = $"(echo [LAN-STEP] urlacl-delete & {netsh} http delete urlacl url={url} & "
-                + $"echo [LAN-STEP] urlacl-add & {netsh} http add urlacl url={url} sddl=\"D:(A;;GX;;;{userSid})\" "
-                + $"|| exit /b {UrlAclAddFailureExitCode})";
-            return $"{urlAclCommand} && ({firewallCommand})";
-        }
-
-        internal static string BuildFirewallSetupCommand(int port)
-        {
-            if (port <= 0 || port > 65535)
-                throw new ArgumentOutOfRangeException(nameof(port));
-
-            string netsh = QuoteCmdExecutable(GetWindowsSystemExecutablePath("netsh.exe"));
-            string tcpRule = $"echo [LAN-STEP] firewall-tcp-delete & {netsh} advfirewall firewall delete rule name=\"{FirewallRuleName}\" & "
-                + $"echo [LAN-STEP] firewall-tcp-add & {netsh} advfirewall firewall add rule name=\"{FirewallRuleName}\" dir=in action=allow protocol=TCP localport={port} "
-                + $"|| exit /b {TcpFirewallAddFailureExitCode}";
-            string udpRule = $"echo [LAN-STEP] firewall-udp-delete & {netsh} advfirewall firewall delete rule name=\"{UdpFirewallRuleName}\" & "
-                + $"echo [LAN-STEP] firewall-udp-add & {netsh} advfirewall firewall add rule name=\"{UdpFirewallRuleName}\" dir=in action=allow protocol=UDP localport={UdpDiscoveryProtocol.Port} "
-                + $"|| exit /b {UdpFirewallAddFailureExitCode}";
-            return $"({tcpRule}) && ({udpRule})";
-        }
-
-        internal static string GetWindowsSystemExecutablePath(string executableName)
-        {
-            if (string.IsNullOrWhiteSpace(executableName) || Path.GetFileName(executableName) != executableName)
-                throw new ArgumentException("系统程序名称无效", nameof(executableName));
-
-            string systemDirectory = Environment.SystemDirectory;
-            return string.IsNullOrWhiteSpace(systemDirectory)
-                ? executableName
-                : Path.Combine(systemDirectory, executableName);
-        }
-
-        private static string QuoteCmdExecutable(string executablePath)
-        {
-            if (executablePath.Contains('"'))
-                throw new ArgumentException("系统程序路径包含无效字符", nameof(executablePath));
-            return $"\"{executablePath}\"";
-        }
-
         internal static bool HasExpectedFirewallRule(int port)
         {
             if (port <= 0 || port > 65535)
@@ -928,120 +872,6 @@ namespace ExpressPackingMonitoring.Services
             return false;
         }
 
-        private static void RunElevatedCmd(string arguments, string actionName)
-        {
-            string outputPath = Path.Combine(Path.GetTempPath(), $"PackingProof-lan-repair-{Guid.NewGuid():N}.log");
-            try
-            {
-                bool alreadyElevated = IsCurrentProcessElevated();
-                RuntimeLog.Info("Web", $"LAN access setup elevation requested alreadyElevated={alreadyElevated}");
-                var psi = new ProcessStartInfo
-                {
-                    FileName = GetWindowsSystemExecutablePath("cmd.exe"),
-                    Arguments = BuildElevatedCmdArguments(arguments, outputPath),
-                    Verb = "runas",
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    CreateNoWindow = true
-                };
-                using var proc = Process.Start(psi);
-                if (proc == null)
-                    throw new InvalidOperationException($"{actionName}失败：无法启动管理员命令");
-
-                if (!proc.WaitForExit(15000))
-                {
-                    try { proc.Kill(entireProcessTree: true); } catch { }
-                    throw new TimeoutException($"{actionName}超时，请手动以管理员身份运行 netsh 或关闭 Web 服务");
-                }
-
-                if (proc.ExitCode != 0)
-                {
-                    string output = ReadElevatedCmdOutput(outputPath);
-                    string failedStep = ResolveLanSetupFailureStep(proc.ExitCode, output);
-                    string detail = CompactLanSetupOutput(output);
-                    if (failedStep.StartsWith("firewall-", StringComparison.Ordinal))
-                    {
-                        try
-                        {
-                            EnsureFirewallServicesAvailable();
-                        }
-                        catch (LanAccessSetupException serviceException)
-                        {
-                            throw new LanAccessSetupException(
-                                serviceException.FailureKind,
-                                $"{actionName}失败，失败阶段：{failedStep}，输出：{detail}",
-                                serviceException);
-                        }
-                    }
-                    throw new InvalidOperationException(
-                        $"{actionName}失败，netsh 退出码：{proc.ExitCode}，失败阶段：{failedStep}，输出：{detail}");
-                }
-            }
-            catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
-            {
-                throw new InvalidOperationException($"{actionName}未完成：未获得管理员授权", ex);
-            }
-            catch (Exception ex) when (ex is not InvalidOperationException && ex is not TimeoutException)
-            {
-                throw new InvalidOperationException($"{actionName}失败，可能是用户取消了管理员授权或系统拒绝执行", ex);
-            }
-            finally
-            {
-                try { File.Delete(outputPath); } catch { }
-            }
-        }
-
-        internal static string BuildElevatedCmdCommand(string arguments, string outputPath)
-        {
-            if (string.IsNullOrWhiteSpace(arguments))
-                throw new ArgumentException("管理员命令不能为空", nameof(arguments));
-            if (string.IsNullOrWhiteSpace(outputPath))
-                throw new ArgumentException("命令输出路径不能为空", nameof(outputPath));
-
-            return $"({arguments}) > \"{outputPath}\" 2>&1";
-        }
-
-        internal static string BuildElevatedCmdArguments(string arguments, string outputPath)
-        {
-            string command = BuildElevatedCmdCommand(arguments, outputPath);
-            return $"/D /S /C \"{command}\"";
-        }
-
-        internal static string ResolveLanSetupFailureStep(int exitCode, string output) =>
-            exitCode switch
-            {
-                UrlAclAddFailureExitCode => "urlacl-add",
-                TcpFirewallAddFailureExitCode => "firewall-tcp-add",
-                UdpFirewallAddFailureExitCode => "firewall-udp-add",
-                _ => ExtractLastLanSetupStep(output)
-            };
-
-        internal static bool IsCurrentProcessElevated()
-            => WindowsPlatformSupport.IsCurrentProcessElevated();
-
-        internal static string ExtractLastLanSetupStep(string output)
-        {
-            const string marker = "[LAN-STEP] ";
-            string step = "unknown";
-            foreach (string line in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-            {
-                int markerIndex = line.IndexOf(marker, StringComparison.Ordinal);
-                if (markerIndex >= 0)
-                    step = line[(markerIndex + marker.Length)..].Trim();
-            }
-            return step;
-        }
-
-        internal static string CompactLanSetupOutput(string output)
-        {
-            string compact = string.Join(
-                " | ",
-                output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-            if (string.IsNullOrWhiteSpace(compact))
-                return "无命令输出";
-            return compact.Length <= 4000 ? compact : compact[..4000] + "…";
-        }
-
         internal static string GetLanAccessFailureUserMessage(
             bool repairAttempted,
             bool repairButtonAvailable = false,
@@ -1076,23 +906,6 @@ namespace ExpressPackingMonitoring.Services
                     return setupException.FailureKind;
             }
             return LanAccessFailureKind.Unknown;
-        }
-
-        private static string ReadElevatedCmdOutput(string outputPath)
-        {
-            try
-            {
-                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-                Encoding outputEncoding = Encoding.GetEncoding(
-                    System.Globalization.CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
-                return File.Exists(outputPath)
-                    ? File.ReadAllText(outputPath, outputEncoding)
-                    : "";
-            }
-            catch (Exception ex)
-            {
-                return $"读取命令输出失败：{ex.Message}";
-            }
         }
 
         private async Task ListenLoop(CancellationToken token)

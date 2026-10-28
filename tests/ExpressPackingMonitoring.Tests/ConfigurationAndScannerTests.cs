@@ -5,7 +5,6 @@ using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.ViewModels;
-using System.Diagnostics;
 using System.Text.Json;
 using Xunit;
 
@@ -534,26 +533,86 @@ public sealed class ConfigurationAndScannerTests
     }
 
     [Fact]
-    public void BuildAccessSetupCommand_UsesLanguageIndependentUserSid()
+    public void LanAccessSetup_UsesOneElevatedHelperInvocation()
     {
-        string command = WebServer.BuildAccessSetupCommand(5280, "S-1-5-21-1000");
-        string netshPath = WebServer.GetWindowsSystemExecutablePath("netsh.exe");
+        string outputPath = Path.Combine(Path.GetTempPath(), "lan setup result.log");
 
-        Assert.Contains("url=http://+:5280/", command);
-        Assert.Contains("sddl=\"D:(A;;GX;;;S-1-5-21-1000)\"", command);
-        Assert.Contains($"\"{netshPath}\" http", command);
-        Assert.Contains($"\"{netshPath}\" advfirewall", command);
-        Assert.Contains("localport=5280", command);
-        Assert.Contains("delete urlacl", command);
-        Assert.Contains("firewall delete rule", command);
-        Assert.Contains("[LAN-STEP] urlacl-delete", command);
-        Assert.Contains("[LAN-STEP] urlacl-add", command);
-        Assert.Contains("[LAN-STEP] firewall-tcp-add", command);
-        Assert.Contains("[LAN-STEP] firewall-udp-add", command);
-        Assert.Contains($"exit /b {WebServer.UrlAclAddFailureExitCode}", command);
-        Assert.Contains($"exit /b {WebServer.TcpFirewallAddFailureExitCode}", command);
-        Assert.Contains($"exit /b {WebServer.UdpFirewallAddFailureExitCode}", command);
-        Assert.DoesNotContain("user=Everyone", command, StringComparison.OrdinalIgnoreCase);
+        System.Diagnostics.ProcessStartInfo startInfo =
+            WindowsLanAccessSetup.BuildElevatedStartInfo(
+                5280,
+                "S-1-5-21-1000",
+                includeUrlAcl: true,
+                outputPath);
+
+        Assert.True(startInfo.UseShellExecute);
+        Assert.Equal("runas", startInfo.Verb);
+        Assert.Contains(WindowsLanAccessSetup.ConfigureCommandLineOption, startInfo.ArgumentList);
+        Assert.Contains("5280", startInfo.ArgumentList);
+        Assert.Contains("S-1-5-21-1000", startInfo.ArgumentList);
+        Assert.Contains("true", startInfo.ArgumentList);
+        Assert.Contains(outputPath, startInfo.ArgumentList);
+    }
+
+    [Fact]
+    public void LanAccessSetup_ParsesStructuredHelperArguments()
+    {
+        string[] args =
+        [
+            WindowsLanAccessSetup.ConfigureCommandLineOption,
+            "--port", "5280",
+            "--user-sid", "S-1-5-21-1000",
+            "--include-url-acl", "false",
+            "--output", @"C:\Temp\lan setup result.log"
+        ];
+
+        bool parsed = WindowsLanAccessSetup.TryParseConfigurationRequest(
+            args,
+            out WindowsLanAccessSetup.ConfigurationRequest? request,
+            out string error);
+
+        Assert.True(parsed, error);
+        Assert.NotNull(request);
+        Assert.Equal(5280, request.Port);
+        Assert.Equal("S-1-5-21-1000", request.UserSid);
+        Assert.False(request.IncludeUrlAcl);
+        Assert.Equal(@"C:\Temp\lan setup result.log", request.OutputPath);
+    }
+
+    [Fact]
+    public void LanAccessSetup_BuildsComFirewallRulesForTcpAndUdp()
+    {
+        IReadOnlyList<WindowsLanAccessSetup.FirewallRuleSpecification> rules =
+            WindowsLanAccessSetup.BuildFirewallRuleSpecifications(5280);
+
+        Assert.Collection(
+            rules,
+            tcp =>
+            {
+                Assert.Equal(WebServer.FirewallRuleName, tcp.Name);
+                Assert.Equal(6, tcp.Protocol);
+                Assert.Equal(5280, tcp.Port);
+            },
+            udp =>
+            {
+                Assert.Equal(WebServer.UdpFirewallRuleName, udp.Name);
+                Assert.Equal(17, udp.Protocol);
+                Assert.Equal(5281, udp.Port);
+            });
+    }
+
+    [Fact]
+    public void LanAccessSetup_SourceDoesNotInvokeNetshAdvfirewall()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string source = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "ExpressPackingMonitoring",
+            "Services",
+            "WindowsLanAccessSetup.cs"));
+
+        Assert.Contains("HNetCfg.FwPolicy2", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("advfirewall firewall", source, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -562,138 +621,28 @@ public sealed class ConfigurationAndScannerTests
         if (!OperatingSystem.IsWindows())
             return;
 
-        string cmdPath = WebServer.GetWindowsSystemExecutablePath("cmd.exe");
-        string netshPath = WebServer.GetWindowsSystemExecutablePath("netsh.exe");
+        string netshPath = WindowsLanAccessSetup.GetWindowsSystemExecutablePath("netsh.exe");
 
-        Assert.True(Path.IsPathFullyQualified(cmdPath));
         Assert.True(Path.IsPathFullyQualified(netshPath));
-        Assert.True(File.Exists(cmdPath));
         Assert.True(File.Exists(netshPath));
     }
 
     [Fact]
-    public void WindowsSystemExecutables_RunNetshByAbsolutePath()
-    {
-        if (!OperatingSystem.IsWindows())
-            return;
-
-        string outputPath = Path.Combine(
-            Path.GetTempPath(),
-            $"PackingProof netsh 测试 {Guid.NewGuid():N}.log");
-        try
-        {
-            string netshPath = WebServer.GetWindowsSystemExecutablePath("netsh.exe");
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = WebServer.GetWindowsSystemExecutablePath("cmd.exe"),
-                Arguments = WebServer.BuildElevatedCmdArguments(
-                    $"\"{netshPath}\" advfirewall show currentprofile",
-                    outputPath),
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
-
-            using Process process = Process.Start(startInfo)!;
-            Assert.NotNull(process);
-            Assert.True(process.WaitForExit(5000));
-            Assert.Equal(0, process.ExitCode);
-            Assert.True(File.Exists(outputPath));
-            Assert.NotEmpty(File.ReadAllText(outputPath));
-        }
-        finally
-        {
-            try { File.Delete(outputPath); } catch { }
-        }
-    }
-
-    [Fact]
-    public void BuildAccessSetupCommand_FirewallRepairDoesNotRewriteUrlAcl()
-    {
-        string command = WebServer.BuildAccessSetupCommand(
-            5280,
-            "S-1-5-21-1000",
-            includeUrlAcl: false);
-
-        Assert.DoesNotContain("urlacl", command, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("firewall delete rule", command, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("firewall add rule", command, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("localport=5280", command);
-    }
-
-    [Fact]
-    public void ElevatedLanSetupDiagnostics_ReportLastStartedStepAndCompactOutput()
+    public void LanAccessSetupDiagnostics_ReportLastStartedStepAndCompactOutput()
     {
         const string output = "[LAN-STEP] urlacl-delete\r\n删除 URL 保留失败\r\n"
             + "[LAN-STEP] urlacl-add\r\n拒绝访问\r\n";
 
-        Assert.Equal("urlacl-add", WebServer.ExtractLastLanSetupStep(output));
+        Assert.Equal("urlacl-add", WindowsLanAccessSetup.ExtractLastStep(output));
         Assert.Equal(
             "[LAN-STEP] urlacl-delete | 删除 URL 保留失败 | [LAN-STEP] urlacl-add | 拒绝访问",
-            WebServer.CompactLanSetupOutput(output));
-    }
-
-    [Fact]
-    public void ElevatedLanSetupCommand_RedirectsOutputToDiagnosticFile()
-    {
-        string command = WebServer.BuildElevatedCmdCommand("netsh test", @"C:\Temp\lan repair.log");
-
-        Assert.StartsWith("(netsh test)", command, StringComparison.Ordinal);
-        Assert.EndsWith("\"C:\\Temp\\lan repair.log\" 2>&1", command, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ElevatedLanSetupArguments_UseShellExecuteCompatibleQuotedCommand()
-    {
-        string arguments = WebServer.BuildElevatedCmdArguments(
-            "netsh test name=\"PackingProof Test\"",
-            @"C:\Temp\lan repair.log");
-
-        Assert.StartsWith("/D /S /C \"", arguments, StringComparison.Ordinal);
-        Assert.Contains("name=\"PackingProof Test\"", arguments);
-        Assert.Contains("\"C:\\Temp\\lan repair.log\" 2>&1", arguments);
-        Assert.DoesNotContain("\"\"PackingProof Test\"\"", arguments);
-        Assert.DoesNotContain("\"\"C:\\Temp\\lan repair.log\"\"", arguments);
-        Assert.EndsWith("\"", arguments, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ElevatedLanSetupArguments_ExecuteWithQuotedUnicodeOutputPathOnWindows()
-    {
-        if (!OperatingSystem.IsWindows())
-            return;
-
-        string outputPath = Path.Combine(
-            Path.GetTempPath(),
-            $"PackingProof 参数测试 {Guid.NewGuid():N}.log");
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = WebServer.GetWindowsSystemExecutablePath("cmd.exe"),
-                Arguments = WebServer.BuildElevatedCmdArguments(
-                    "echo [LAN-STEP] quote-test & exit /b 11",
-                    outputPath),
-                UseShellExecute = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
-
-            using Process process = Process.Start(startInfo)!;
-            Assert.NotNull(process);
-            Assert.True(process.WaitForExit(5000));
-            Assert.Equal(11, process.ExitCode);
-            Assert.True(File.Exists(outputPath));
-            Assert.Contains("[LAN-STEP] quote-test", File.ReadAllText(outputPath));
-        }
-        finally
-        {
-            try { File.Delete(outputPath); } catch { }
-        }
+            WindowsLanAccessSetup.CompactOutput(output));
     }
 
     [Theory]
-    [InlineData(WebServer.UrlAclAddFailureExitCode, "urlacl-add")]
-    [InlineData(WebServer.TcpFirewallAddFailureExitCode, "firewall-tcp-add")]
-    [InlineData(WebServer.UdpFirewallAddFailureExitCode, "firewall-udp-add")]
+    [InlineData(WindowsLanAccessSetup.UrlAclAddFailureExitCode, "urlacl-add")]
+    [InlineData(WindowsLanAccessSetup.TcpFirewallAddFailureExitCode, "firewall-tcp-add")]
+    [InlineData(WindowsLanAccessSetup.UdpFirewallAddFailureExitCode, "firewall-udp-add")]
     [InlineData(1, "firewall-tcp-add")]
     public void LanSetupFailureStep_UsesDedicatedExitCodeOrCapturedMarker(
         int exitCode,
@@ -701,7 +650,7 @@ public sealed class ConfigurationAndScannerTests
     {
         const string output = "[LAN-STEP] firewall-tcp-add\r\n失败\r\n";
 
-        Assert.Equal(expectedStep, WebServer.ResolveLanSetupFailureStep(exitCode, output));
+        Assert.Equal(expectedStep, WindowsLanAccessSetup.ResolveFailureStep(exitCode, output));
     }
 
     [Fact]
@@ -1377,5 +1326,18 @@ public sealed class ConfigurationAndScannerTests
         }
         Assert.DoesNotContain(DefaultSpeechCatalog.Prompts, item => item.Text == "摄像头已唤醒");
         Assert.DoesNotContain(DefaultSpeechCatalog.Prompts, item => item.Text == "摄像头已休眠");
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "ExpressPackingMonitoring.sln")))
+                return directory.FullName;
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Repository root not found.");
     }
 }

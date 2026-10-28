@@ -16,6 +16,7 @@ public sealed class RootLauncherStartupTests
     [Theory]
     [InlineData("--audio-check")]
     [InlineData("--audio-probe")]
+    [InlineData(WindowsLanAccessSetup.ConfigureCommandLineOption)]
     [InlineData("--uninstall-plan-recordings")]
     [InlineData("--uninstall-delete-recordings")]
     [InlineData("--uninstall-delete-local-data")]

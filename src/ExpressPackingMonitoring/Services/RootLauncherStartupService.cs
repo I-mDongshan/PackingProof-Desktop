@@ -63,6 +63,10 @@ internal static class RootLauncherStartupService
     {
         return args.Any(arg =>
             arg.StartsWith("--uninstall-", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                arg,
+                WindowsLanAccessSetup.ConfigureCommandLineOption,
+                StringComparison.OrdinalIgnoreCase)
             || string.Equals(arg, "--audio-check", StringComparison.OrdinalIgnoreCase)
             || string.Equals(arg, "--audio-probe", StringComparison.OrdinalIgnoreCase));
     }

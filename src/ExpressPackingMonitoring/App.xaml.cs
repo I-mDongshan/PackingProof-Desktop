@@ -32,6 +32,13 @@ namespace ExpressPackingMonitoring
             ApplyConfiguredWpfRenderingMode();
             WinRtPlacementService.Apply();
             base.OnStartup(e);
+            if (WindowsLanAccessSetup.TryHandleCommandLine(e.Args, out int lanSetupExitCode))
+            {
+                RuntimeLog.Info("App", $"Windows LAN access setup handled, exitCode={lanSetupExitCode}");
+                Shutdown(lanSetupExitCode);
+                return;
+            }
+
             if (!ApplicationRestart.WaitForRestartParentExit(e.Args, 15000, out string restartWaitError))
             {
                 AppDialog.Error(null, restartWaitError, "切换用途失败");
