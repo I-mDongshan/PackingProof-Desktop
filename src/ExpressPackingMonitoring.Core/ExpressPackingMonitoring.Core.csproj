@@ -128,6 +128,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Services\FfmpegWorkLimiter.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\IArchiveProvider.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\JdBarcodePolicy.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Services\LanNetworkCandidateRanking.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\LanRequestRateLimiter.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\LauncherUpdateService.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Services\LegacyOrderPushDeduplicator.cs" />

@@ -1184,7 +1184,19 @@ public static class WorkstationNetwork
 
     public static string GetBestLocalAccessAddress(int port)
     {
-        string ip = GetLocalNetworkCandidates().FirstOrDefault()?.Address.ToString() ?? "127.0.0.1";
+        LanNetworkCandidate? selected = GetLocalNetworkCandidates().FirstOrDefault();
+        string ip = selected?.Address.ToString() ?? "127.0.0.1";
+        if (selected != null
+            && RuntimeLogThrottle.ShouldLog(
+                $"lan-access-address|{selected.Address}|{selected.InterfaceName}",
+                TimeSpan.FromMinutes(10),
+                DateTime.Now))
+        {
+            RuntimeLog.Info(
+                "Network",
+                $"LAN access address selected address={selected.Address}, interface={selected.InterfaceName}, "
+                + $"description={selected.InterfaceDescription}, virtual={selected.IsLikelyVirtual}, score={selected.Score}");
+        }
         return $"{ip}:{port}";
     }
 
@@ -1470,16 +1482,9 @@ public static class WorkstationNetwork
             (byte)value
         ]);
 
-    private sealed record LocalNetworkCandidate(
-        IPAddress Address,
-        IPAddress? IPv4Mask,
-        NetworkInterface Interface,
-        bool HasGateway,
-        int Score);
-
-    private static IEnumerable<LocalNetworkCandidate> GetLocalNetworkCandidates()
+    private static IEnumerable<LanNetworkCandidate> GetLocalNetworkCandidates()
     {
-        var candidates = new List<LocalNetworkCandidate>();
+        var candidates = new List<LanNetworkCandidate>();
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
         {
             if (nic.OperationalStatus != OperationalStatus.Up) continue;
@@ -1490,54 +1495,25 @@ public static class WorkstationNetwork
             var properties = nic.GetIPProperties();
             bool hasGateway = properties.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork &&
                                                                    !IPAddress.Equals(g.Address, IPAddress.Any));
+            bool hasDnsServer = properties.DnsAddresses.Any(address =>
+                address.AddressFamily == AddressFamily.InterNetwork);
             foreach (var addr in properties.UnicastAddresses)
             {
                 if (addr.Address.AddressFamily != AddressFamily.InterNetwork) continue;
-                if (!IsUsableLanAddress(addr.Address)) continue;
+                if (!LanNetworkCandidateRanking.IsUsableLanAddress(addr.Address)) continue;
 
-                int score = 0;
-                if (hasGateway) score += 100;
-                if (IsPrivateLanAddress(addr.Address)) score += 60;
-                if (nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet ||
-                    nic.NetworkInterfaceType == NetworkInterfaceType.GigabitEthernet ||
-                    nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
-                    score += 25;
-                if (addr.IPv4Mask != null && addr.IPv4Mask.ToString() == "255.255.255.0")
-                    score += 5;
-
-                candidates.Add(new LocalNetworkCandidate(addr.Address, addr.IPv4Mask, nic, hasGateway, score));
+                candidates.Add(LanNetworkCandidateRanking.Create(
+                    addr.Address,
+                    addr.IPv4Mask,
+                    nic.Name,
+                    nic.Description,
+                    nic.NetworkInterfaceType,
+                    hasGateway,
+                    hasDnsServer));
             }
         }
 
-        return candidates
-            .OrderByDescending(c => c.Score)
-            .ThenBy(c => c.Address.ToString(), StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static bool IsUsableLanAddress(IPAddress address)
-    {
-        if (IPAddress.IsLoopback(address)) return false;
-        byte[] bytes = address.GetAddressBytes();
-        if (bytes.Length != 4) return false;
-
-        // 0.0.0.0, APIPA, multicast, broadcast, and the RFC 2544 benchmark block are not useful here.
-        if (bytes[0] == 0) return false;
-        if (bytes[0] == 169 && bytes[1] == 254) return false;
-        if (bytes[0] >= 224) return false;
-        if (bytes[0] == 255) return false;
-        if (bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19)) return false;
-
-        return true;
-    }
-
-    private static bool IsPrivateLanAddress(IPAddress address)
-    {
-        byte[] bytes = address.GetAddressBytes();
-        if (bytes.Length != 4) return false;
-
-        return bytes[0] == 10 ||
-               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
-               (bytes[0] == 192 && bytes[1] == 168);
+        return LanNetworkCandidateRanking.Rank(candidates);
     }
 }
 

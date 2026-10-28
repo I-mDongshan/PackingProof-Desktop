@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -345,6 +346,63 @@ public sealed class HostDiscoveryTests
         Assert.Contains(IPAddress.Parse("10.20.30.1"), addresses);
         Assert.Contains(IPAddress.Parse("10.20.30.254"), addresses);
         Assert.DoesNotContain(IPAddress.Parse("10.20.31.1"), addresses);
+    }
+
+    [Theory]
+    [InlineData("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter")]
+    [InlineData("VMware Network Adapter VMnet8", "VMware Virtual Ethernet Adapter for VMnet8")]
+    [InlineData("Ethernet 2", "VirtualBox Host-Only Ethernet Adapter")]
+    [InlineData("Local Area Connection", "TAP-Windows Adapter V9")]
+    [InlineData("Tailscale", "Tailscale Tunnel")]
+    public void CommonVirtualAdaptersAreRecognized(string name, string description)
+    {
+        Assert.True(LanNetworkCandidateRanking.IsLikelyVirtualAdapter($"{name} {description}"));
+    }
+
+    [Fact]
+    public void PhysicalLanAddressOutranksVirtualAdapterEvenWhenVirtualHasGateway()
+    {
+        LanNetworkCandidate virtualAdapter = LanNetworkCandidateRanking.Create(
+            IPAddress.Parse("172.24.0.1"),
+            IPAddress.Parse("255.255.0.0"),
+            "vEthernet (Default Switch)",
+            "Hyper-V Virtual Ethernet Adapter",
+            NetworkInterfaceType.Ethernet,
+            hasGateway: true,
+            hasDnsServer: true);
+        LanNetworkCandidate physicalAdapter = LanNetworkCandidateRanking.Create(
+            IPAddress.Parse("192.168.31.50"),
+            IPAddress.Parse("255.255.255.0"),
+            "以太网",
+            "Realtek Gaming 2.5GbE Family Controller",
+            NetworkInterfaceType.Ethernet,
+            hasGateway: false,
+            hasDnsServer: true);
+
+        IReadOnlyList<LanNetworkCandidate> ranked =
+            LanNetworkCandidateRanking.Rank([virtualAdapter, physicalAdapter]);
+
+        Assert.Equal(physicalAdapter.Address, ranked[0].Address);
+        Assert.False(ranked[0].IsLikelyVirtual);
+        Assert.True(ranked[1].IsLikelyVirtual);
+    }
+
+    [Fact]
+    public void VirtualAdapterRemainsUsableWhenItIsTheOnlyLanCandidate()
+    {
+        LanNetworkCandidate virtualAdapter = LanNetworkCandidateRanking.Create(
+            IPAddress.Parse("10.211.55.2"),
+            IPAddress.Parse("255.255.255.0"),
+            "Ethernet",
+            "Parallels Virtual Ethernet Adapter",
+            NetworkInterfaceType.Ethernet,
+            hasGateway: true,
+            hasDnsServer: true);
+
+        LanNetworkCandidate selected = Assert.Single(
+            LanNetworkCandidateRanking.Rank([virtualAdapter]));
+
+        Assert.Equal(IPAddress.Parse("10.211.55.2"), selected.Address);
     }
 
     private static async Task<PackingProofNodeInfo?> IgnoreTimeoutAsync(CancellationToken token)
