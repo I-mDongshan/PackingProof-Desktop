@@ -33,9 +33,16 @@ internal sealed class RecordingDeleteService
     /// 归档架构守卫按那个连写词扫描“远端删除只允许经 NasCircularCleanupService”的调用点，
     /// 而这里的删除只作用于本机副本，不碰远端归档，不该被算进那条守卫。
     /// </summary>
-    internal async Task<RecordingDeleteResult> DeleteRecordingAsync(
+    internal Task<RecordingDeleteResult> DeleteRecordingAsync(
         long recordId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Task.Run(
+            () => DeleteRecordingCoreAsync(recordId, cancellationToken),
+            cancellationToken);
+
+    private async Task<RecordingDeleteResult> DeleteRecordingCoreAsync(
+        long recordId,
+        CancellationToken cancellationToken)
     {
         VideoRecord? record = _database.GetVideoById(recordId);
         string? refusal = RecordingDeletePolicy.DescribeRefusal(record, LocalFileExists(record));

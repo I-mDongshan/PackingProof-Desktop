@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Services;
 using System.Windows;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
@@ -60,6 +61,158 @@ public partial class PlaybackWindow
     {
         _pendingStartUnpause = false;
         _startUnpauseFallback?.Stop();
+    }
+
+    /// <summary>
+    /// 右键“删除录像”：删掉本机录像文件，再把记录标记为删除。
+    /// 记录本身保留（列表里不再显示、删除日志留档），备份位置上的归档副本
+    /// 按“程序只上传不删除”的既有约定不在这里删。
+    /// </summary>
+    private async void DeleteVideo_Click(object sender, RoutedEventArgs e)
+    {
+        VideoItem? item = GetContextMenuItem(sender);
+        if (item == null) return;
+
+        // ContextMenu 的 Click 在菜单关闭前触发；先让本次输入返回，再打开模态确认框，
+        // 避免在菜单的鼠标捕获/嵌套消息循环里再弹窗。
+        await Dispatcher.Yield(DispatcherPriority.Input);
+        if (_isClosing) return;
+
+        if (_db == null)
+        {
+            AppDialog.Error(this, "录像数据库不可用，无法删除", "删除录像");
+            return;
+        }
+
+        if (!item.CanDelete)
+        {
+            AppDialog.Warning(
+                this,
+                string.IsNullOrWhiteSpace(item.DeleteBlockedHint)
+                    ? "这条录像不能删除"
+                    : item.DeleteBlockedHint,
+                "删除录像");
+            return;
+        }
+
+        string orderText = string.IsNullOrWhiteSpace(item.OrderId)
+            ? "未记录订单号"
+            : item.OrderId;
+        string timeText = item.StartTime == default
+            ? "未知"
+            : item.StartTime.ToString("yyyy-MM-dd HH:mm:ss");
+        string message =
+            $"确定删除这条录像吗？\n\n单号：{orderText}\n时间：{timeText}\n\n"
+            + (item.HasArchiveCopy
+                ? "本机录像文件会被删除，已备份到网络位置的归档副本会保留。\n"
+                : "本机录像文件会被删除。\n")
+            + "删除后列表里不再显示这条记录";
+        if (!AppDialog.Confirm(
+                this,
+                message,
+                "删除录像",
+                AppDialogSeverity.Warning,
+                confirmText: "删除",
+                cancelText: "取消",
+                isDangerous: true))
+        {
+            return;
+        }
+
+        VideoDatabase database = _db;
+        if (!await _playerSemaphore.WaitAsync(TimeSpan.FromSeconds(3)))
+        {
+            AppDialog.Warning(this, "播放器正在切换视频，请稍后再试", "删除录像");
+            return;
+        }
+
+        try
+        {
+            if (_isClosing)
+                return;
+
+            // 正在播放的这条先停下来：LibVLC 还占着文件句柄时，Windows 上删不掉文件。
+            // Stop/Dispose 都放到后台执行，避免原生播放器回调把整个窗口卡住。
+            if (ReferenceEquals(VideoList.SelectedItem, item))
+                await StopAndDisposePlaybackForDeletionAsync();
+
+            if (_isClosing)
+                return;
+
+            var service = new RecordingDeleteService(database);
+            RecordingDeleteResult result = await service.DeleteRecordingAsync(item.RecordId);
+            if (!result.Deleted)
+            {
+                AppDialog.Warning(this, result.Message, "删除录像");
+                return;
+            }
+
+            if (ReferenceEquals(VideoList.SelectedItem, item))
+                VideoList.SelectedItem = null;
+            ShowPlaybackToast("已删除该录像");
+            RequestVideoLoad();
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Error("Playback", "删除录像失败", ex);
+            AppDialog.Error(this, ex.Message, "删除录像");
+        }
+        finally
+        {
+            _playerSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// 删除正在播放的录像前，先彻底放开 LibVLC 对文件的占用。
+    /// Stop/Media.Dispose 都可能等待原生事件，必须离开 UI 线程执行；删除入口会先持有
+    /// _playerSemaphore，保证这里不会与起播、切歌同时改同一个播放器。
+    /// </summary>
+    private async Task StopAndDisposePlaybackForDeletionAsync()
+    {
+        MediaPlayer? player = _mediaPlayer;
+        PlaybackMediaSource? source = _currentMediaSource;
+        _currentMediaSource = null;
+        CancelAwaitingFirstFrame();
+        _timer.Stop();
+        UpdatePlayState(false);
+
+        if (player != null)
+        {
+            player.LengthChanged -= MediaPlayer_LengthChanged;
+            player.TimeChanged -= MediaPlayer_TimeChanged;
+            player.EndReached -= MediaPlayer_EndReached;
+            player.EncounteredError -= MediaPlayer_EncounteredError;
+            player.Vout -= MediaPlayer_Vout;
+            player.Paused -= MediaPlayer_Paused;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    player?.Stop();
+                }
+                finally
+                {
+                    source?.Dispose();
+                }
+            });
+        }
+        finally
+        {
+            if (player != null)
+            {
+                player.LengthChanged += MediaPlayer_LengthChanged;
+                player.TimeChanged += MediaPlayer_TimeChanged;
+                player.EndReached += MediaPlayer_EndReached;
+                player.EncounteredError += MediaPlayer_EncounteredError;
+                player.Vout += MediaPlayer_Vout;
+                player.Paused += MediaPlayer_Paused;
+            }
+        }
     }
 
     private void MediaPlayer_Vout(object? sender, EventArgs e) => TryStartPlaybackAfterFirstFrame();

@@ -75,6 +75,23 @@ public sealed class PlaybackWindowTests
     }
 
     [Fact]
+    public void DeleteVideo_KeepsNativePlayerReleaseOffUiThread()
+    {
+        string playbackSource = File.ReadAllText(FindRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "UI",
+            "PlaybackWindow.Playback.cs"));
+
+        Assert.Contains("await Dispatcher.Yield(DispatcherPriority.Input);", playbackSource, StringComparison.Ordinal);
+        Assert.Contains("await _playerSemaphore.WaitAsync(TimeSpan.FromSeconds(3))", playbackSource, StringComparison.Ordinal);
+        Assert.Contains("await StopAndDisposePlaybackForDeletionAsync();", playbackSource, StringComparison.Ordinal);
+        Assert.Contains("await Task.Run(() =>", playbackSource, StringComparison.Ordinal);
+        Assert.Contains("player?.Stop();", playbackSource, StringComparison.Ordinal);
+        Assert.Contains("source?.Dispose();", playbackSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GetOrderDisplayName_PrefersTrackingNumber()
     {
         string result = PlaybackWindow.GetOrderDisplayName(
@@ -582,5 +599,20 @@ public sealed class PlaybackWindowTests
         {
             CultureInfo.CurrentUICulture = original;
         }
+    }
+
+    private static string FindRepositoryFile(params string[] relativeParts)
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            string candidate = Path.Combine([directory.FullName, .. relativeParts]);
+            if (File.Exists(candidate))
+                return candidate;
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(
+            $"Repository file not found: {Path.Combine(relativeParts)}");
     }
 }

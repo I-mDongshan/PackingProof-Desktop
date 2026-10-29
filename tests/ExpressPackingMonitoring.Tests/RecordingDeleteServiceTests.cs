@@ -3,6 +3,8 @@ using ExpressPackingMonitoring.Services;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -56,6 +58,56 @@ public sealed class RecordingDeleteServiceTests : IDisposable
 
     private Task<RecordingDeleteResult> DeleteAsync(long recordId) =>
         CreateService().DeleteRecordingAsync(recordId, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task Delete_DoesNotBlockCallerWhileDatabaseIsBusy()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        (long id, string filePath) = InsertFinishedRecording(orderId: "单号数据库忙");
+        FieldInfo lockField = typeof(VideoDatabase).GetField(
+            "_lock",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("VideoDatabase lock field not found");
+        object databaseLock = lockField.GetValue(_database)
+            ?? throw new InvalidOperationException("VideoDatabase lock is null");
+        using var lockHeld = new ManualResetEventSlim();
+        using var releaseLock = new ManualResetEventSlim();
+
+        Task holder = Task.Run(() =>
+        {
+            lock (databaseLock)
+            {
+                lockHeld.Set();
+                releaseLock.Wait(cancellationToken);
+            }
+        }, cancellationToken);
+
+        try
+        {
+            Assert.True(lockHeld.Wait(TimeSpan.FromSeconds(2), cancellationToken));
+            RecordingDeleteService service = CreateService();
+            Task<Task<RecordingDeleteResult>> caller = Task.Factory.StartNew(
+                () => service.DeleteRecordingAsync(id, cancellationToken),
+                cancellationToken,
+                TaskCreationOptions.DenyChildAttach,
+                TaskScheduler.Default);
+
+            Task firstCompleted = await Task.WhenAny(
+                caller,
+                Task.Delay(TimeSpan.FromSeconds(2), cancellationToken));
+            Assert.Same(caller, firstCompleted);
+
+            releaseLock.Set();
+            RecordingDeleteResult result = await await caller;
+            Assert.True(result.Deleted, result.Message);
+            Assert.False(File.Exists(filePath));
+        }
+        finally
+        {
+            releaseLock.Set();
+            await holder;
+        }
+    }
 
     [Fact]
     public async Task Delete_RemovesLocalFileAndKeepsDeletionRecord()
