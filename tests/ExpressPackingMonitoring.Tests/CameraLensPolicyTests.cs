@@ -160,6 +160,14 @@ public sealed class CameraLensPolicyTests
             "Command=\"{Binding SetLensFocusManualCommand}\"",
             xaml,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "IsEnabled=\"{Binding IsLensZoomControlEnabled, Mode=OneWay}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IsEnabled=\"{Binding IsLensFocusControlEnabled, Mode=OneWay}\"",
+            xaml,
+            StringComparison.Ordinal);
         Assert.DoesNotContain(
             "IsChecked=\"{Binding LensFocusAuto",
             xaml,

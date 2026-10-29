@@ -51,6 +51,8 @@ namespace ExpressPackingMonitoring.ViewModels
         private bool _lensFocusAuto = true;
         private bool _lensControlAvailable;
         private bool _lensPanelOpen;
+        private bool _lensZoomControlEnabled;
+        private bool _lensFocusControlEnabled;
         /// <summary>挂接代数：停止/换设备时递增，作废仍在途的异步挂接（网络探测是秒级往返）</summary>
         private int _lensAttachGeneration;
         /// <summary>镜头设备写入串行化：快速拖动/切换时保持下发顺序，避免旧值最后落到设备。</summary>
@@ -101,6 +103,18 @@ namespace ExpressPackingMonitoring.ViewModels
 
         /// <summary>有没有手动对焦可调。</summary>
         public bool HasLensFocus { get; private set; }
+
+        public bool IsLensZoomControlEnabled
+        {
+            get => _lensZoomControlEnabled;
+            private set => SetProperty(ref _lensZoomControlEnabled, value);
+        }
+
+        public bool IsLensFocusControlEnabled
+        {
+            get => _lensFocusControlEnabled;
+            private set => SetProperty(ref _lensFocusControlEnabled, value);
+        }
 
         public double LensZoomMinimum
         {
@@ -425,6 +439,8 @@ namespace ExpressPackingMonitoring.ViewModels
 
                 HasLensZoom = zoomRange is { IsValid: true, SupportsManual: true };
                 HasLensFocus = CameraLensPolicy.SupportsManualFocus(focusRange);
+                IsLensZoomControlEnabled = HasLensZoom;
+                IsLensFocusControlEnabled = HasLensFocus;
 
                 if (zoomRange != null)
                 {
@@ -750,6 +766,10 @@ namespace ExpressPackingMonitoring.ViewModels
                             _lensUpdatingUiState = false;
                         }
                     }
+                    else
+                    {
+                        IsLensZoomControlEnabled = false;
+                    }
 
                     LensStatusText = AppLanguage.Get(
                         "镜头设置未生效，请重试或使用摄像头厂商软件");
@@ -787,6 +807,8 @@ namespace ExpressPackingMonitoring.ViewModels
                     _lensFocusAuto = actual?.Auto ?? fallbackAuto;
                     if (actual != null)
                         _lensFocusValue = controller.FocusRange!.Clamp(actual.Value.Value);
+                    else
+                        IsLensFocusControlEnabled = false;
                     OnPropertyChanged(nameof(LensFocusAuto));
                     OnPropertyChanged(nameof(IsLensFocusManual));
                     OnPropertyChanged(nameof(LensFocusValue));

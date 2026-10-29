@@ -698,6 +698,7 @@
 
                                     <!-- 变焦：马达镜头的光学变焦，值域是设备原生单位，旁边给百分比反馈 -->
                                     <StackPanel Margin="0,0,0,12"
+                                                IsEnabled="{Binding IsLensZoomControlEnabled, Mode=OneWay}"
                                                 Visibility="{Binding HasLensZoom, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                         <Grid Margin="0,0,0,6">
                                             <TextBlock Text="{loc:Localized 变焦}"
@@ -717,7 +718,8 @@
                                     </StackPanel>
 
                                     <!-- 对焦：显式选择自动/手动；切到手动后才能拖对焦滑条 -->
-                                    <StackPanel Visibility="{Binding HasLensFocus, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel IsEnabled="{Binding IsLensFocusControlEnabled, Mode=OneWay}"
+                                                Visibility="{Binding HasLensFocus, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                         <StackPanel.Resources>
                                             <Style x:Key="LensFocusAutoButtonStyle"
                                                    TargetType="Button"

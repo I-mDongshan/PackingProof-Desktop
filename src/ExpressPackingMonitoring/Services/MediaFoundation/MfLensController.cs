@@ -7,9 +7,8 @@ namespace ExpressPackingMonitoring.Services.MediaFoundation;
 /// <summary>
 /// 挂在已打开的 Media Foundation 设备源上的镜头控制器：变焦与对焦。
 ///
-/// 生命周期约定：本类持有的 <see cref="IAMCameraControl"/> 引用来自同一个
-/// SourceReader/媒体源采集会话，设备的开关完全由该会话负责。
-/// 因此这里绝不能 <c>Marshal.ReleaseComObject</c>，否则会把仍在采集的 RCW 提前释放。
+/// 生命周期约定：媒体源自带的接口随采集会话释放；SourceReader 额外返回的接口
+/// 由原始 COM 指针持有，并在控制器 Dispose 时确定性释放，避免与媒体源共享 RCW。
 ///
 /// 线程模型：接口在 MTA 上取得；从 UI（STA）调用时统一切到线程池执行，
 /// 与 <c>MfCameraSource.Start</c> 的 STA 规避同款，避免跨套间 RCW 查询失败。
@@ -17,19 +16,16 @@ namespace ExpressPackingMonitoring.Services.MediaFoundation;
 /// </summary>
 internal sealed class MfLensController : ILensController, IDisposable
 {
-    private readonly IAMCameraControl _control;
-    private readonly bool _ownsControl;
+    private readonly ICameraControlCalls _control;
     private readonly object _sync = new();
     private bool _disposed;
 
     private MfLensController(
-        IAMCameraControl control,
+        ICameraControlCalls control,
         LensRange? zoomRange,
-        LensRange? focusRange,
-        bool ownsControl)
+        LensRange? focusRange)
     {
         _control = control;
-        _ownsControl = ownsControl;
         ZoomRange = zoomRange;
         FocusRange = focusRange;
     }
@@ -54,9 +50,11 @@ internal sealed class MfLensController : ILensController, IDisposable
         IMFMediaSource mediaSource,
         IMFSourceReader? sourceReader = null)
     {
-        IAMCameraControl? readerControl = TryGetReaderControl(sourceReader);
-        IAMCameraControl? mediaControl = mediaSource as IAMCameraControl;
-        IAMCameraControl? control = readerControl ?? mediaControl;
+        ICameraControlCalls? readerControl = TryGetReaderControl(sourceReader);
+        ICameraControlCalls? mediaControl = mediaSource is IAMCameraControl mediaCameraControl
+            ? new ManagedCameraControl(mediaCameraControl)
+            : null;
+        ICameraControlCalls? control = readerControl ?? mediaControl;
         if (control == null)
         {
             RuntimeLog.Info("Camera", "媒体源不支持 IAMCameraControl，镜头控制不可用");
@@ -68,8 +66,7 @@ internal sealed class MfLensController : ILensController, IDisposable
         MfLensController controller = new(
             control,
             zoomRange,
-            focusRange,
-            ownsControl: readerControl != null && !ReferenceEquals(readerControl, mediaControl));
+            focusRange);
         if (!controller.IsUsable && readerControl != null && mediaControl != null)
         {
             RuntimeLog.Info("Camera", "SourceReader 镜头接口没有可用能力，回退到媒体源接口");
@@ -80,8 +77,7 @@ internal sealed class MfLensController : ILensController, IDisposable
             controller = new MfLensController(
                 mediaControl,
                 zoomRange,
-                focusRange,
-                ownsControl: false);
+                focusRange);
         }
 
         if (controller.IsUsable)
@@ -221,7 +217,7 @@ internal sealed class MfLensController : ILensController, IDisposable
             step);
     }
 
-    private static IAMCameraControl? TryGetReaderControl(IMFSourceReader? sourceReader)
+    private static ICameraControlCalls? TryGetReaderControl(IMFSourceReader? sourceReader)
     {
         if (sourceReader == null)
             return null;
@@ -254,20 +250,17 @@ internal sealed class MfLensController : ILensController, IDisposable
 
         try
         {
-            return (IAMCameraControl)Marshal.GetObjectForIUnknown(controlPointer);
+            return new RawCameraControl(controlPointer);
         }
         catch (Exception ex)
         {
-            RuntimeLog.Warn("Camera", $"SourceReader 镜头控制接口列集失败：{ex.Message}");
-            return null;
-        }
-        finally
-        {
+            RuntimeLog.Warn("Camera", $"SourceReader 镜头控制接口包装失败：{ex.Message}");
             Marshal.Release(controlPointer);
+            return null;
         }
     }
 
-    private static LensRange? ReadRange(IAMCameraControl control, int property, string name)
+    private static LensRange? ReadRange(ICameraControlCalls control, int property, string name)
     {
         try
         {
@@ -302,13 +295,121 @@ internal sealed class MfLensController : ILensController, IDisposable
                 return;
 
             _disposed = true;
-            if (_ownsControl)
-            {
-                try { Marshal.ReleaseComObject(_control); } catch { }
-            }
+            try { (_control as IDisposable)?.Dispose(); } catch { }
         }
     }
 
+}
+
+internal interface ICameraControlCalls
+{
+    int GetRange(
+        int property,
+        out int min,
+        out int max,
+        out int step,
+        out int defaultValue,
+        out int flags);
+
+    int Set(int property, int value, int flags);
+
+    int Get(int property, out int value, out int flags);
+}
+
+/// <summary>媒体源自带接口，生命周期归媒体源所有。</summary>
+internal sealed class ManagedCameraControl : ICameraControlCalls
+{
+    private readonly IAMCameraControl _control;
+
+    internal ManagedCameraControl(IAMCameraControl control) => _control = control;
+
+    public int GetRange(
+        int property,
+        out int min,
+        out int max,
+        out int step,
+        out int defaultValue,
+        out int flags) =>
+        _control.GetRange(property, out min, out max, out step, out defaultValue, out flags);
+
+    public int Set(int property, int value, int flags) =>
+        _control.Set(property, value, flags);
+
+    public int Get(int property, out int value, out int flags) =>
+        _control.Get(property, out value, out flags);
+}
+
+/// <summary>
+/// SourceReader 额外返回的接口引用：直接持有原始 COM 指针，Dispose 时 Release，
+/// 不创建可能与媒体源共享、只能等待 GC 的 RCW。
+/// </summary>
+internal sealed class RawCameraControl : ICameraControlCalls, IDisposable
+{
+    private IntPtr _control;
+
+    internal RawCameraControl(IntPtr control)
+    {
+        if (control == IntPtr.Zero)
+            throw new ArgumentNullException(nameof(control));
+        _control = control;
+    }
+
+    public int GetRange(
+        int property,
+        out int min,
+        out int max,
+        out int step,
+        out int defaultValue,
+        out int flags)
+    {
+        GetRangeDelegate call = GetFunction<GetRangeDelegate>(3);
+        return call(_control, property, out min, out max, out step, out defaultValue, out flags);
+    }
+
+    public int Set(int property, int value, int flags)
+    {
+        SetDelegate call = GetFunction<SetDelegate>(4);
+        return call(_control, property, value, flags);
+    }
+
+    public int Get(int property, out int value, out int flags)
+    {
+        GetDelegate call = GetFunction<GetDelegate>(5);
+        return call(_control, property, out value, out flags);
+    }
+
+    private TDelegate GetFunction<TDelegate>(int vtableIndex) where TDelegate : Delegate
+    {
+        if (_control == IntPtr.Zero)
+            throw new ObjectDisposedException(nameof(RawCameraControl));
+
+        IntPtr vtable = Marshal.ReadIntPtr(_control);
+        IntPtr method = Marshal.ReadIntPtr(vtable, vtableIndex * IntPtr.Size);
+        return Marshal.GetDelegateForFunctionPointer<TDelegate>(method);
+    }
+
+    public void Dispose()
+    {
+        IntPtr control = Interlocked.Exchange(ref _control, IntPtr.Zero);
+        if (control != IntPtr.Zero)
+            Marshal.Release(control);
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate int GetRangeDelegate(
+        IntPtr self,
+        int property,
+        out int min,
+        out int max,
+        out int step,
+        out int defaultValue,
+        out int flags);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate int SetDelegate(IntPtr self, int property, int value, int flags);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate int GetDelegate(IntPtr self, int property, out int value, out int flags);
 }
 
 /// <summary>
