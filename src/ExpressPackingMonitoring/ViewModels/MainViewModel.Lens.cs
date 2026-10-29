@@ -59,6 +59,7 @@ namespace ExpressPackingMonitoring.ViewModels
         private readonly SemaphoreSlim _lensCommandGate = new(1, 1);
         private long _lensZoomApplyVersion;
         private long _lensFocusApplyVersion;
+        private int _lensStateRefreshRunning;
 
         private ICommand _toggleLensPanelCommand;
         private ICommand _setLensFocusAutoCommand;
@@ -383,7 +384,50 @@ namespace ExpressPackingMonitoring.ViewModels
             if (!IsLensControlAvailable)
                 return;
 
-            IsLensPanelOpen = !IsLensPanelOpen;
+            bool opening = !IsLensPanelOpen;
+            IsLensPanelOpen = opening;
+            bool needsRefresh = (HasLensZoom && !IsLensZoomControlEnabled)
+                || (HasLensFocus && !IsLensFocusControlEnabled);
+            if (opening
+                && needsRefresh
+                && Interlocked.CompareExchange(ref _lensStateRefreshRunning, 1, 0) == 0)
+            {
+                _ = RefreshLensControlStateAsync();
+            }
+        }
+
+        /// <summary>打开面板时重试一次设备状态读取，瞬时 COM 失败后不必重连摄像头。</summary>
+        internal async Task RefreshLensControlStateAsync()
+        {
+            ILensController controller = _lensController;
+            try
+            {
+                if (controller == null)
+                    return;
+
+                LensUiSnapshot snapshot = await Task.Run(
+                    () => CaptureLensUiSnapshot(controller));
+                await RunOnUiThreadAsync(() =>
+                {
+                    if (!ReferenceEquals(_lensController, controller) || _isDisposed)
+                        return;
+
+                    NotifyLensUiState(snapshot);
+                    if ((!HasLensZoom || snapshot.ZoomValue != null)
+                        && (!HasLensFocus || snapshot.FocusState != null))
+                    {
+                        LensStatusText = "";
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                RuntimeLog.Warn("Camera", $"重新读取镜头状态失败：{ex.Message}");
+            }
+            finally
+            {
+                Volatile.Write(ref _lensStateRefreshRunning, 0);
+            }
         }
 
         internal LensUiSnapshot ApplyLensStartupPlan(

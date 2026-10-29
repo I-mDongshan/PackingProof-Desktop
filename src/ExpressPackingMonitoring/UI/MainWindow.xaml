@@ -727,7 +727,9 @@
                                                 <Setter Property="Height" Value="28"/>
                                                 <Setter Property="MinWidth" Value="58"/>
                                                 <Setter Property="Padding" Value="10,0"/>
-                                                <Setter Property="Margin" Value="4,0,0,0"/>
+                                                <Setter Property="Margin" Value="0,0,0,4"/>
+                                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding LensFocusAuto, Mode=OneWay}" Value="True">
                                                         <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
@@ -742,7 +744,8 @@
                                                 <Setter Property="Height" Value="28"/>
                                                 <Setter Property="MinWidth" Value="58"/>
                                                 <Setter Property="Padding" Value="10,0"/>
-                                                <Setter Property="Margin" Value="4,0,0,0"/>
+                                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding LensFocusAuto, Mode=OneWay}" Value="False">
                                                         <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
@@ -752,26 +755,23 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Resources>
-                                        <Grid>
-                                            <TextBlock Text="{loc:Localized 对焦}"
-                                                       Foreground="{StaticResource TextOnAccent}"
-                                                       FontSize="13"/>
-                                            <StackPanel Orientation="Horizontal"
-                                                        HorizontalAlignment="Right">
-                                                <Button x:Name="LensFocusAutoButton"
-                                                        Content="{loc:Localized 自动对焦}"
-                                                        Command="{Binding SetLensFocusAutoCommand}"
-                                                        Style="{StaticResource LensFocusAutoButtonStyle}"
-                                                        Focusable="False"
-                                                        Cursor="Hand"/>
-                                                <Button x:Name="LensFocusManualButton"
-                                                        Content="{loc:Localized 手动对焦}"
-                                                        Command="{Binding SetLensFocusManualCommand}"
-                                                        Style="{StaticResource LensFocusManualButtonStyle}"
-                                                        Focusable="False"
-                                                        Cursor="Hand"/>
-                                            </StackPanel>
-                                        </Grid>
+                                        <TextBlock Text="{loc:Localized 对焦}"
+                                                   Foreground="{StaticResource TextOnAccent}"
+                                                   FontSize="13"/>
+                                        <StackPanel Margin="0,6,0,0">
+                                            <Button x:Name="LensFocusAutoButton"
+                                                    Content="{loc:Localized 自动对焦}"
+                                                    Command="{Binding SetLensFocusAutoCommand}"
+                                                    Style="{StaticResource LensFocusAutoButtonStyle}"
+                                                    Focusable="False"
+                                                    Cursor="Hand"/>
+                                            <Button x:Name="LensFocusManualButton"
+                                                    Content="{loc:Localized 手动对焦}"
+                                                    Command="{Binding SetLensFocusManualCommand}"
+                                                    Style="{StaticResource LensFocusManualButtonStyle}"
+                                                    Focusable="False"
+                                                    Cursor="Hand"/>
+                                        </StackPanel>
                                         <Grid Margin="0,8,0,2">
                                             <TextBlock Text="{loc:Localized 近}"
                                                        Foreground="{StaticResource OverlayTextSecondary}"

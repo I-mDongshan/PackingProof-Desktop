@@ -252,6 +252,23 @@ public sealed class CameraLensPolicyTests
         Assert.Equal(0, controller.FocusWrites);
     }
 
+    [Fact]
+    public async Task RefreshingLensPanel_ReenablesControlsAfterTransientReadFailure()
+    {
+        var viewModel = (MainViewModel)RuntimeHelpers.GetUninitializedObject(typeof(MainViewModel));
+        var controller = new CountingLensController();
+        SetPrivateField(viewModel, "_lensController", controller);
+        SetPrivateField(viewModel, "_lensZoomControlEnabled", false);
+        SetPrivateField(viewModel, "_lensFocusControlEnabled", false);
+        SetPrivateField(viewModel, "_lensStored", new CameraLensSettings());
+
+        await viewModel.RefreshLensControlStateAsync();
+
+        Assert.True(viewModel.IsLensZoomControlEnabled);
+        Assert.True(viewModel.IsLensFocusControlEnabled);
+        Assert.Equal("", viewModel.LensStatusText);
+    }
+
     [Theory]
     [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Manual, 1, true)]
     [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Auto, 1, false)]
