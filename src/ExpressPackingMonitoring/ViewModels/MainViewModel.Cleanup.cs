@@ -284,6 +284,16 @@ namespace ExpressPackingMonitoring.ViewModels
         private IReadOnlyList<string> GetManagedLocalRoots()
             => StorageUsageCalculator.GetManagedLocalRoots(Config);
 
+        private void RecoverInterruptedRecordingDeletes()
+        {
+            VideoDatabase database = _db;
+            if (database == null)
+                return;
+
+            string[] roots = GetManagedLocalRoots().ToArray();
+            _ = Task.Run(() => RecordingDeleteStaging.RecoverOrphans(database, roots));
+        }
+
         /// <summary>
         /// 硬循环兜底（最后降级策略）：正常 GC 后仍无法满足保留要求、
         /// 本地主存储可用空间低于保护线、且没有归档目标或归档目标不可达时，

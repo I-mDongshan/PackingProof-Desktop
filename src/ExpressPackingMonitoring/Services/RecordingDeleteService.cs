@@ -62,41 +62,82 @@ internal sealed class RecordingDeleteService
         if (refusal != null)
             return new RecordingDeleteResult(false, refusal);
 
-        string filePath = record!.FilePath ?? "";
-        if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+        lock (RecordingDeleteStaging.Sync)
         {
-            try
-            {
-                File.Delete(filePath);
-            }
-            catch (Exception ex)
-            {
-                return new RecordingDeleteResult(false, $"本机录像文件删除失败：{ex.Message}");
-            }
-        }
+            string filePath = record!.FilePath ?? "";
+            if (!RecordingDeleteStaging.TryRestoreIfNeeded(filePath))
+                return new RecordingDeleteResult(false, RecordingDeleteStaging.RestoreFailureMessage());
 
-        bool markedDeleted = _database.MarkRecordDeletedById(
-            recordId,
-            RecordingDeletePolicy.Reason,
-            RecordingDeletionReasonCode.UserRequested);
-        if (!markedDeleted)
-        {
-            RuntimeLog.Error(
+            string? pendingPath = null;
+            if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+            {
+                pendingPath = RecordingDeleteStaging.GetPendingPath(filePath);
+                try
+                {
+                    File.Move(filePath, pendingPath);
+                }
+                catch (Exception ex)
+                {
+                    return new RecordingDeleteResult(false, $"本机录像文件删除失败：{ex.Message}");
+                }
+            }
+
+            bool markedDeleted = _database.MarkRecordDeletedById(
+                recordId,
+                RecordingDeletePolicy.Reason,
+                RecordingDeletionReasonCode.UserRequested);
+            if (!markedDeleted)
+            {
+                bool restored = pendingPath == null
+                    || !File.Exists(pendingPath)
+                    || TryRestorePendingFile(pendingPath, filePath);
+                RuntimeLog.Error(
+                    "Playback",
+                    $"录像删除的数据库更新失败 id={recordId}, order={record.OrderId}, path={filePath}, restored={restored}");
+                return new RecordingDeleteResult(
+                    false,
+                    restored
+                        ? AppLanguage.Get("录像删除未完成，数据库更新失败，请重试")
+                        : RecordingDeleteStaging.RestoreFailureMessage());
+            }
+
+            if (pendingPath != null)
+            {
+                try
+                {
+                    File.Delete(pendingPath);
+                }
+                catch (Exception ex)
+                {
+                    RuntimeLog.Warn(
+                        "Playback",
+                        $"录像记录已删除，但暂存文件清理失败 id={recordId}, path={pendingPath}, error={ex.Message}");
+                }
+            }
+
+            RuntimeLog.Info(
                 "Playback",
-                $"本机录像文件已删除，但数据库标记删除失败 id={recordId}, order={record.OrderId}, path={filePath}");
-            return new RecordingDeleteResult(
-                false,
-                AppLanguage.Get("录像文件已删除，但数据库更新失败，请重启后检查录像列表"));
+                $"用户删除录像 id={recordId}, order={record.OrderId}, path={filePath}");
+            return new RecordingDeleteResult(true, "已删除该录像");
         }
-
-        RuntimeLog.Info(
-            "Playback",
-            $"用户删除录像 id={recordId}, order={record.OrderId}, path={filePath}");
-        return new RecordingDeleteResult(true, "已删除该录像");
     }
 
     private static bool LocalFileExists(VideoRecord? record) =>
         record != null
         && !string.IsNullOrWhiteSpace(record.FilePath)
-        && File.Exists(record.FilePath);
+        && (File.Exists(record.FilePath)
+            || File.Exists(RecordingDeleteStaging.GetPendingPath(record.FilePath)));
+
+    private static bool TryRestorePendingFile(string pendingPath, string filePath)
+    {
+        try
+        {
+            File.Move(pendingPath, filePath);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

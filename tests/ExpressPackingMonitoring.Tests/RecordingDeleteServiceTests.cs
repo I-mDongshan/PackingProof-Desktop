@@ -111,7 +111,7 @@ public sealed class RecordingDeleteServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Delete_ReportsFailureWhenDatabaseMarkFailsAfterFileRemoval()
+    public async Task Delete_RestoresFileWhenDatabaseMarkFails()
     {
         (long id, string filePath) = InsertFinishedRecording(orderId: "单号数据库失败");
         FieldInfo connectionField = typeof(VideoDatabase).GetField(
@@ -137,8 +137,48 @@ public sealed class RecordingDeleteServiceTests : IDisposable
 
         Assert.False(result.Deleted);
         Assert.Contains("数据库更新失败", result.Message);
-        Assert.False(File.Exists(filePath));
+        Assert.True(File.Exists(filePath));
+        Assert.False(File.Exists(RecordingDeleteStaging.GetPendingPath(filePath)));
         Assert.NotNull(_database.GetVideoById(id));
+    }
+
+    [Fact]
+    public async Task Delete_RecoversFileLeftByInterruptedDelete()
+    {
+        (long id, string filePath) = InsertFinishedRecording(orderId: "单号断点恢复");
+        string pendingPath = RecordingDeleteStaging.GetPendingPath(filePath);
+        File.Move(filePath, pendingPath);
+
+        RecordingDeleteResult result = await DeleteAsync(id);
+
+        Assert.True(result.Deleted, result.Message);
+        Assert.False(File.Exists(filePath));
+        Assert.False(File.Exists(pendingPath));
+        Assert.Null(_database.GetVideoById(id));
+    }
+
+    [Fact]
+    public void StartupRecovery_RestoresActiveAndCleansDeletedPendingFiles()
+    {
+        (long activeId, string activePath) = InsertFinishedRecording(orderId: "单号启动恢复");
+        string activePending = RecordingDeleteStaging.GetPendingPath(activePath);
+        File.Move(activePath, activePending);
+
+        (long deletedId, string deletedPath) = InsertFinishedRecording(orderId: "单号启动清理");
+        Assert.True(_database.MarkRecordDeletedById(
+            deletedId,
+            RecordingDeletePolicy.Reason,
+            RecordingDeletionReasonCode.UserRequested));
+        string deletedPending = RecordingDeleteStaging.GetPendingPath(deletedPath);
+        File.Move(deletedPath, deletedPending);
+
+        RecordingDeleteStaging.RecoverOrphans(_database, [_directory]);
+
+        Assert.True(File.Exists(activePath));
+        Assert.False(File.Exists(activePending));
+        Assert.NotNull(_database.GetVideoById(activeId));
+        Assert.False(File.Exists(deletedPending));
+        Assert.Null(_database.GetVideoById(deletedId));
     }
 
     [Fact]

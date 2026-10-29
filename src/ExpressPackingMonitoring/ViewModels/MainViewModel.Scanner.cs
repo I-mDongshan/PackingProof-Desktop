@@ -217,6 +217,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 }
             });
             InitDatabase();
+            RecoverInterruptedRecordingDeletes();
             InitializeRecordingTransfers();
             RefreshTodayStats();
             RestoreRecentScanRecords();

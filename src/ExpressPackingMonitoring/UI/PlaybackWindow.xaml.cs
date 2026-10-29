@@ -1070,6 +1070,8 @@ namespace ExpressPackingMonitoring.UI
             // 列表构建不做 NAS 探测，避免离线 NAS 阻塞列表加载。
             string localPath = record.FilePath ?? "";
             bool localExists = !string.IsNullOrWhiteSpace(localPath) && File.Exists(localPath);
+            bool deleteLocalExists = localExists
+                || RecordingDeleteStaging.PendingFileExists(localPath);
             string archivePath = record.ArchivePath ?? "";
             bool archiveEligible = !localExists
                 && record.ArchiveStatus is VideoArchiveStatus.Verified or VideoArchiveStatus.LocalDeleted
@@ -1088,7 +1090,7 @@ namespace ExpressPackingMonitoring.UI
                 ? new FileInfo(localPath)
                 : null;
             // 删除条件由 RecordingDeletePolicy 统一判定，和服务端删除前的复查共用同一套规则。
-            string? deleteRefusal = RecordingDeletePolicy.DescribeRefusal(record, localExists);
+            string? deleteRefusal = RecordingDeletePolicy.DescribeRefusal(record, deleteLocalExists);
             return new VideoItem
             {
                 DisplayName = GetOrderDisplayName(record.TrackingNumber, record.OrderId, record.FileName),

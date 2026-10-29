@@ -1,6 +1,7 @@
 using ExpressPackingMonitoring.Helpers;
 using ExpressPackingMonitoring.Data;
 using ExpressPackingMonitoring.Localization;
+using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.UI;
 using System.Globalization;
 using System.Reflection;
@@ -457,6 +458,42 @@ public sealed class PlaybackWindowTests
             Assert.Equal(file, item.FullPath);
             Assert.NotNull(item.File);
             Assert.Equal(64L, item.File!.Length);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CreateVideoItem_PendingDeleteStaysStagedAndRemainsDeletable()
+    {
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            "packingproof-playback-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string file = Path.Combine(directory, "pending.mp4");
+        string pending = RecordingDeleteStaging.GetPendingPath(file);
+        File.WriteAllBytes(pending, new byte[64]);
+        try
+        {
+            var record = new VideoRecord
+            {
+                FilePath = file,
+                EndTime = DateTime.Now,
+                ArchiveStatus = VideoArchiveStatus.LocalOnly,
+                StorageState = "Local",
+                FileSizeBytes = 64
+            };
+
+            VideoItem item = PlaybackWindow.CreateVideoItem(
+                record,
+                canDeleteRecords: true);
+
+            Assert.True(item.IsMissing);
+            Assert.True(item.CanDelete);
+            Assert.False(File.Exists(file));
+            Assert.True(File.Exists(pending));
         }
         finally
         {
