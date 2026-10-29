@@ -140,4 +140,73 @@ public sealed class CameraLensPolicyTests
         Assert.False(CameraLensPolicy.SupportsManualFocus(AutoOnlyFocusRange));
         Assert.False(CameraLensPolicy.SupportsManualFocus(null));
     }
+
+    [Fact]
+    public void LensPanel_UsesExplicitFocusModeButtons()
+    {
+        string xaml = File.ReadAllText(FindRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "UI",
+            "MainWindow.xaml"));
+
+        Assert.Contains("x:Name=\"LensFocusAutoButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LensFocusManualButton\"", xaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Command=\"{Binding SetLensFocusAutoCommand}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Command=\"{Binding SetLensFocusManualCommand}\"",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IsChecked=\"{Binding LensFocusAuto",
+            xaml,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Manual, 1, true)]
+    [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Auto, 1, false)]
+    [InlineData(0, 0, 40, LensControlFlags.Manual, 35, LensControlFlags.Manual, 1, false)]
+    [InlineData(0, 0, 32500, LensControlFlags.Auto, 123, LensControlFlags.Auto, 65, true)]
+    [InlineData(unchecked((int)0x80004005), 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Manual, 1, false)]
+    [InlineData(0, unchecked((int)0x80004005), 40, LensControlFlags.Manual, 40, LensControlFlags.Manual, 1, false)]
+    public void LensWriteVerifier_RequiresRequestedModeAndValue(
+        int setResult,
+        int readResult,
+        int requestedValue,
+        int requestedFlags,
+        int readValue,
+        int readFlags,
+        int step,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            LensControlWriteVerifier.IsApplied(
+                setResult,
+                readResult,
+                requestedValue,
+                requestedFlags,
+                readValue,
+                readFlags,
+                step));
+    }
+
+    private static string FindRepositoryFile(params string[] relativeParts)
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            string candidate = Path.Combine([directory.FullName, .. relativeParts]);
+            if (File.Exists(candidate))
+                return candidate;
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(
+            $"Repository file not found: {Path.Combine(relativeParts)}");
+    }
 }

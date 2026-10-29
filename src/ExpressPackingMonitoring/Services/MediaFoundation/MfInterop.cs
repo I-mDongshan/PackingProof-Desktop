@@ -22,6 +22,7 @@ internal static class MfInterop
 
     /// <summary>读取第一个视频流，也用作"读任意流"的哨兵。</summary>
     internal const uint MF_SOURCE_READER_FIRST_VIDEO_STREAM = 0xFFFFFFFC;
+    internal const uint MF_SOURCE_READER_MEDIASOURCE = 0xFFFFFFFF;
 
     internal const int MF_E_INVALIDMEDIATYPE = unchecked((int)0xC00D36B4);
     internal const int MF_E_NO_MORE_TYPES = unchecked((int)0xC00D36B9);

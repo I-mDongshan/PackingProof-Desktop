@@ -364,7 +364,7 @@ public sealed partial class MfCameraSource : IDisposable
 
         _reader = reader;
         // 镜头控制挂在与采集同一个媒体源上：不额外打开设备，失败也不影响出帧。
-        _lensController = MfLensController.TryAttach(_mediaSource);
+        _lensController = MfLensController.TryAttach(_mediaSource, reader);
         return TryNegotiateFormat();
     }
 

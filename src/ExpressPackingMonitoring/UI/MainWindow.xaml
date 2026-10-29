@@ -716,18 +716,59 @@
                                                 Value="{Binding LensZoomValue, Mode=TwoWay}"/>
                                     </StackPanel>
 
-                                    <!-- 对焦：默认自动；关掉自动后才能拖手动对焦 -->
+                                    <!-- 对焦：显式选择自动/手动；切到手动后才能拖对焦滑条 -->
                                     <StackPanel Visibility="{Binding HasLensFocus, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel.Resources>
+                                            <Style x:Key="LensFocusAutoButtonStyle"
+                                                   TargetType="Button"
+                                                   BasedOn="{StaticResource VideoOverlayButtonStyle}">
+                                                <Setter Property="Height" Value="28"/>
+                                                <Setter Property="MinWidth" Value="58"/>
+                                                <Setter Property="Padding" Value="10,0"/>
+                                                <Setter Property="Margin" Value="4,0,0,0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LensFocusAuto, Mode=OneWay}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource TextOnAccent}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                            <Style x:Key="LensFocusManualButtonStyle"
+                                                   TargetType="Button"
+                                                   BasedOn="{StaticResource VideoOverlayButtonStyle}">
+                                                <Setter Property="Height" Value="28"/>
+                                                <Setter Property="MinWidth" Value="58"/>
+                                                <Setter Property="Padding" Value="10,0"/>
+                                                <Setter Property="Margin" Value="4,0,0,0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LensFocusAuto, Mode=OneWay}" Value="False">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource TextOnAccent}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Resources>
                                         <Grid>
                                             <TextBlock Text="{loc:Localized 对焦}"
                                                        Foreground="{StaticResource TextOnAccent}"
                                                        FontSize="13"/>
-                                            <CheckBox Content="{loc:Localized 自动对焦}"
-                                                      IsChecked="{Binding LensFocusAuto, Mode=TwoWay}"
-                                                      Foreground="{StaticResource TextOnAccent}"
-                                                      FontSize="13"
-                                                      Cursor="Hand"
-                                                      HorizontalAlignment="Right"/>
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Right">
+                                                <Button x:Name="LensFocusAutoButton"
+                                                        Content="{loc:Localized 自动对焦}"
+                                                        Command="{Binding SetLensFocusAutoCommand}"
+                                                        Style="{StaticResource LensFocusAutoButtonStyle}"
+                                                        Focusable="False"
+                                                        Cursor="Hand"/>
+                                                <Button x:Name="LensFocusManualButton"
+                                                        Content="{loc:Localized 手动对焦}"
+                                                        Command="{Binding SetLensFocusManualCommand}"
+                                                        Style="{StaticResource LensFocusManualButtonStyle}"
+                                                        Focusable="False"
+                                                        Cursor="Hand"/>
+                                            </StackPanel>
                                         </Grid>
                                         <Grid Margin="0,8,0,2">
                                             <TextBlock Text="{loc:Localized 近}"
@@ -747,6 +788,22 @@
                                                 IsEnabled="{Binding IsLensFocusManual, Mode=OneWay}"
                                                 Value="{Binding LensFocusValue, Mode=TwoWay}"/>
                                     </StackPanel>
+                                    <TextBlock Text="{Binding LensStatusText, Mode=OneWay}"
+                                               Foreground="{StaticResource WarningOverlayBorder}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LensStatusText, Mode=OneWay}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

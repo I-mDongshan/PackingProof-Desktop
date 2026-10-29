@@ -1,5 +1,6 @@
 #nullable disable
 using ExpressPackingMonitoring.Config;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Services.LensControl;
@@ -58,10 +59,20 @@ namespace ExpressPackingMonitoring.ViewModels
         private long _lensFocusApplyVersion;
 
         private ICommand _toggleLensPanelCommand;
+        private ICommand _setLensFocusAutoCommand;
+        private ICommand _setLensFocusManualCommand;
+        private string _lensStatusText = "";
 
         /// <summary>面板开合命令；懒建，避免字段初始化器引用实例方法。</summary>
         public ICommand ToggleLensPanelCommand =>
             _toggleLensPanelCommand ??= new RelayCommand(ToggleLensPanel);
+
+        /// <summary>显式切到自动/手动对焦；设备拒绝时会回读实际状态并提示用户。</summary>
+        public ICommand SetLensFocusAutoCommand =>
+            _setLensFocusAutoCommand ??= new RelayCommand(() => LensFocusAuto = true);
+
+        public ICommand SetLensFocusManualCommand =>
+            _setLensFocusManualCommand ??= new RelayCommand(() => LensFocusAuto = false);
 
         /// <summary>当前摄像头是否提供镜头控制；采集停止/换设备时回收，界面据此显隐入口。</summary>
         public bool IsLensControlAvailable
@@ -157,6 +168,13 @@ namespace ExpressPackingMonitoring.ViewModels
 
         /// <summary>手动对焦模式（= 不是自动）：对焦滑条只在手动时可用。</summary>
         public bool IsLensFocusManual => !LensFocusAuto;
+
+        /// <summary>镜头写入失败时显示在面板底部；成功或重新挂接后清空。</summary>
+        public string LensStatusText
+        {
+            get => _lensStatusText;
+            private set => SetProperty(ref _lensStatusText, value);
+        }
 
         public double LensFocusMinimum
         {
@@ -321,6 +339,7 @@ namespace ExpressPackingMonitoring.ViewModels
             _lensController = controller;
             _lensConfigKey = configKey;
             _lensStored = stored ?? new CameraLensSettings();
+            LensStatusText = "";
             IsLensControlAvailable = available;
             if (!available)
                 IsLensPanelOpen = false;
@@ -546,6 +565,11 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", $"设置变焦失败：value={target}");
+                    await ShowLensWriteFailureAsync(
+                            controller,
+                            () => Volatile.Read(ref _lensZoomApplyVersion),
+                            version)
+                        .ConfigureAwait(false);
                     return;
                 }
 
@@ -555,6 +579,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     if (ReferenceEquals(_lensController, controller)
                         && version == Volatile.Read(ref _lensZoomApplyVersion))
                     {
+                        LensStatusText = "";
                         PersistLensState(zoom: target);
                     }
                 }).ConfigureAwait(false);
@@ -562,6 +587,11 @@ namespace ExpressPackingMonitoring.ViewModels
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"设置变焦异常：value={target}, error={ex.Message}");
+                await ShowLensWriteFailureAsync(
+                        controller,
+                        () => Volatile.Read(ref _lensZoomApplyVersion),
+                        version)
+                    .ConfigureAwait(false);
             }
             finally
             {
@@ -578,6 +608,11 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", $"设置手动对焦失败：value={target}");
+                    await ShowLensWriteFailureAsync(
+                            controller,
+                            () => Volatile.Read(ref _lensFocusApplyVersion),
+                            version)
+                        .ConfigureAwait(false);
                     return;
                 }
 
@@ -587,6 +622,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     if (ReferenceEquals(_lensController, controller)
                         && version == Volatile.Read(ref _lensFocusApplyVersion))
                     {
+                        LensStatusText = "";
                         PersistLensState(focus: target);
                     }
                 }).ConfigureAwait(false);
@@ -594,6 +630,11 @@ namespace ExpressPackingMonitoring.ViewModels
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"设置手动对焦异常：value={target}, error={ex.Message}");
+                await ShowLensWriteFailureAsync(
+                        controller,
+                        () => Volatile.Read(ref _lensFocusApplyVersion),
+                        version)
+                    .ConfigureAwait(false);
             }
             finally
             {
@@ -624,6 +665,43 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", auto ? "切回自动对焦失败" : "切手动对焦失败");
+                    (int Value, bool Auto)? actual;
+                    try
+                    {
+                        actual = controller.TryReadFocusState();
+                    }
+                    catch (Exception ex)
+                    {
+                        RuntimeLog.Warn("Camera", $"对焦失败后回读状态异常：{ex.Message}");
+                        actual = null;
+                    }
+
+                    await RunOnUiThreadAsync(() =>
+                    {
+                        if (!ReferenceEquals(_lensController, controller)
+                            || version != Volatile.Read(ref _lensFocusApplyVersion))
+                        {
+                            return;
+                        }
+
+                        _lensUpdatingUiState = true;
+                        try
+                        {
+                            _lensFocusAuto = actual?.Auto ?? !auto;
+                            if (actual != null)
+                                _lensFocusValue = focusRange.Clamp(actual.Value.Value);
+                            OnPropertyChanged(nameof(LensFocusAuto));
+                            OnPropertyChanged(nameof(IsLensFocusManual));
+                            OnPropertyChanged(nameof(LensFocusValue));
+                        }
+                        finally
+                        {
+                            _lensUpdatingUiState = false;
+                        }
+
+                        LensStatusText = AppLanguage.Get(
+                            "镜头设置未生效，请重试或使用摄像头厂商软件");
+                    }).ConfigureAwait(false);
                     return;
                 }
 
@@ -654,17 +732,39 @@ namespace ExpressPackingMonitoring.ViewModels
                         }
                     }
 
+                    LensStatusText = "";
                     PersistLensState(focusAuto: auto, focus: auto ? null : startValue);
                 }).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"切换对焦模式异常：auto={auto}, error={ex.Message}");
+                await ShowLensWriteFailureAsync(
+                        controller,
+                        () => Volatile.Read(ref _lensFocusApplyVersion),
+                        version)
+                    .ConfigureAwait(false);
             }
             finally
             {
                 _lensCommandGate.Release();
             }
+        }
+
+        private async Task ShowLensWriteFailureAsync(
+            ILensController controller,
+            Func<long> currentVersion,
+            long requestedVersion)
+        {
+            await RunOnUiThreadAsync(() =>
+            {
+                if (ReferenceEquals(_lensController, controller)
+                    && requestedVersion == currentVersion())
+                {
+                    LensStatusText = AppLanguage.Get(
+                        "镜头设置未生效，请重试或使用摄像头厂商软件");
+                }
+            }).ConfigureAwait(false);
         }
 
         private static Task RunOnUiThreadAsync(Action action)

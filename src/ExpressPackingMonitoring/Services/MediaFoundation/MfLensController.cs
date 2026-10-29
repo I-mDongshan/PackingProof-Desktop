@@ -1,15 +1,15 @@
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Services.LensControl;
+using System.Runtime.InteropServices;
 
 namespace ExpressPackingMonitoring.Services.MediaFoundation;
 
 /// <summary>
 /// 挂在已打开的 Media Foundation 设备源上的镜头控制器：变焦与对焦。
 ///
-/// 生命周期约定：本类持有的 <see cref="IAMCameraControl"/> 引用是从
-/// <c>MfCameraSource._mediaSource</c> 的 RCW 接口转换来的，**同一 COM 对象身份**。
-/// 因此这里绝不能 <c>Marshal.ReleaseComObject</c> —— 那会连媒体源一起提前释放
-/// （采集代码里已经踩过这类 RCW 共享的坑）。设备的开关完全由媒体源负责。
+/// 生命周期约定：本类持有的 <see cref="IAMCameraControl"/> 引用来自同一个
+/// SourceReader/媒体源采集会话，设备的开关完全由该会话负责。
+/// 因此这里绝不能 <c>Marshal.ReleaseComObject</c>，否则会把仍在采集的 RCW 提前释放。
 ///
 /// 线程模型：接口在 MTA 上取得；从 UI（STA）调用时统一切到线程池执行，
 /// 与 <c>MfCameraSource.Start</c> 的 STA 规避同款，避免跨套间 RCW 查询失败。
@@ -42,9 +42,13 @@ internal sealed class MfLensController : ILensController
     /// 调用方按"这台摄像头没有镜头控制"处理，绝不能影响采集本身。
     /// 必须在 MTA 上调用（<c>MfCameraSource.TryOpenReader</c> 满足）。
     /// </summary>
-    internal static MfLensController? TryAttach(IMFMediaSource mediaSource)
+    internal static MfLensController? TryAttach(
+        IMFMediaSource mediaSource,
+        IMFSourceReader? sourceReader = null)
     {
-        IAMCameraControl? control = mediaSource as IAMCameraControl;
+        IAMCameraControl? readerControl = TryGetReaderControl(sourceReader);
+        IAMCameraControl? mediaControl = mediaSource as IAMCameraControl;
+        IAMCameraControl? control = readerControl ?? mediaControl;
         if (control == null)
         {
             RuntimeLog.Info("Camera", "媒体源不支持 IAMCameraControl，镜头控制不可用");
@@ -54,11 +58,21 @@ internal sealed class MfLensController : ILensController
         LensRange? zoomRange = ReadRange(control, MfLensInterop.CameraControlZoom, "zoom");
         LensRange? focusRange = ReadRange(control, MfLensInterop.CameraControlFocus, "focus");
         MfLensController controller = new(control, zoomRange, focusRange);
+        if (!controller.IsUsable && readerControl != null && mediaControl != null)
+        {
+            RuntimeLog.Info("Camera", "SourceReader 镜头接口没有可用能力，回退到媒体源接口");
+            readerControl = null;
+            zoomRange = ReadRange(mediaControl, MfLensInterop.CameraControlZoom, "zoom");
+            focusRange = ReadRange(mediaControl, MfLensInterop.CameraControlFocus, "focus");
+            controller = new MfLensController(mediaControl, zoomRange, focusRange);
+        }
+
         if (controller.IsUsable)
         {
             RuntimeLog.Info(
                 "Camera",
-                $"镜头控制可用：zoom={(zoomRange == null ? "无" : $"{zoomRange.Min}~{zoomRange.Max}/{zoomRange.Step} flags=0x{zoomRange.Flags:X}")}"
+                $"镜头控制可用（{(readerControl == null ? "媒体源" : "SourceReader")}）："
+                + $"zoom={(zoomRange == null ? "无" : $"{zoomRange.Min}~{zoomRange.Max}/{zoomRange.Step} flags=0x{zoomRange.Flags:X}")}"
                 + $", focus={(focusRange == null ? "无" : $"{focusRange.Min}~{focusRange.Max}/{focusRange.Step} flags=0x{focusRange.Flags:X}")}");
         }
         else
@@ -152,7 +166,63 @@ internal sealed class MfLensController : ILensController
         int readResult = _control.Get(property, out readValue, out readFlags);
         RuntimeLog.Info("Camera", $"{operation}：request={value}, flags=0x{flags:X}, setHRESULT=0x{setResult:X8}, "
             + $"readback={readValue}, readFlags=0x{readFlags:X}, getHRESULT=0x{readResult:X8}");
-        return setResult >= 0;
+        int step = property == MfLensInterop.CameraControlZoom
+            ? ZoomRange?.Step ?? 1
+            : FocusRange?.Step ?? 1;
+        return LensControlWriteVerifier.IsApplied(
+            setResult,
+            readResult,
+            value,
+            flags,
+            readValue,
+            readFlags,
+            step);
+    }
+
+    private static IAMCameraControl? TryGetReaderControl(IMFSourceReader? sourceReader)
+    {
+        if (sourceReader == null)
+            return null;
+
+        Guid noService = Guid.Empty;
+        Guid interfaceId = typeof(IAMCameraControl).GUID;
+        int result;
+        IntPtr controlPointer = IntPtr.Zero;
+        try
+        {
+            result = sourceReader.GetServiceForStream(
+                MfInterop.MF_SOURCE_READER_MEDIASOURCE,
+                ref noService,
+                ref interfaceId,
+                out controlPointer);
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Warn("Camera", $"从 SourceReader 查询镜头控制失败：{ex.Message}");
+            return null;
+        }
+
+        if (result < 0 || controlPointer == IntPtr.Zero)
+        {
+            RuntimeLog.Info("Camera", $"SourceReader 不提供 IAMCameraControl：HRESULT=0x{result:X8}");
+            if (controlPointer != IntPtr.Zero)
+                Marshal.Release(controlPointer);
+            return null;
+        }
+
+        try
+        {
+            return (IAMCameraControl)Marshal.GetObjectForIUnknown(controlPointer);
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Warn("Camera", $"SourceReader 镜头控制接口列集失败：{ex.Message}");
+            return null;
+        }
+        finally
+        {
+            Marshal.Release(controlPointer);
+        }
     }
 
     private static LensRange? ReadRange(IAMCameraControl control, int property, string name)
@@ -182,4 +252,35 @@ internal sealed class MfLensController : ILensController
         }
     }
 
+}
+
+/// <summary>
+/// IAMCameraControl 的 Set 返回 S_OK 并不代表驱动真的切了模式或移动了镜头；
+/// 至少要回读到请求的模式位，位置型属性还要落在设备步进容差内。
+/// </summary>
+internal static class LensControlWriteVerifier
+{
+    internal static bool IsApplied(
+        int setResult,
+        int readResult,
+        int requestedValue,
+        int requestedFlags,
+        int readValue,
+        int readFlags,
+        int step)
+    {
+        if (setResult < 0 || readResult < 0)
+            return false;
+
+        if ((requestedFlags & LensControlFlags.Manual) != 0
+            && (readFlags & LensControlFlags.Manual) == 0)
+        {
+            return false;
+        }
+
+        if ((requestedFlags & LensControlFlags.Auto) != 0)
+            return (readFlags & LensControlFlags.Auto) != 0;
+
+        return Math.Abs(readValue - requestedValue) <= Math.Max(1, step);
+    }
 }
