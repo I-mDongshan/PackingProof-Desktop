@@ -149,6 +149,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                Interlocked.Increment(ref _lensZoomApplyVersion);
                 _lensZoomValue = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(LensZoomPercentText));
@@ -182,6 +183,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                Interlocked.Increment(ref _lensFocusApplyVersion);
                 _lensFocusAuto = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsLensFocusManual));
@@ -230,6 +232,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
                 }
 
+                Interlocked.Increment(ref _lensFocusApplyVersion);
                 _lensFocusValue = value;
                 OnPropertyChanged();
                 ScheduleLensFocusApply();

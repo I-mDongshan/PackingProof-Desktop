@@ -281,9 +281,9 @@ public sealed class CameraLensPolicyTests
             ZoomReadRelease = releaseRead
         };
         SetPrivateField(viewModel, "_lensController", controller);
-        SetPrivateField(viewModel, "_lensZoomControlEnabled", false);
+        SetPrivateField(viewModel, "_lensZoomControlEnabled", true);
         SetPrivateField(viewModel, "_lensFocusControlEnabled", false);
-        SetPrivateField(viewModel, "_lensZoomValue", 320d);
+        SetPrivateField(viewModel, "_lensZoomValue", 200d);
         SetPrivateField(viewModel, "_lensStored", new CameraLensSettings());
         SetPrivateField(viewModel, "_lensZoomApplyVersion", 1L);
 
@@ -291,12 +291,12 @@ public sealed class CameraLensPolicyTests
         Assert.True(readStarted.Wait(
             TimeSpan.FromSeconds(2),
             TestContext.Current.CancellationToken));
-        SetPrivateField(viewModel, "_lensZoomApplyVersion", 2L);
+        viewModel.LensZoomValue = 350;
         releaseRead.Set();
         await refresh;
 
-        Assert.Equal(320, viewModel.LensZoomValue);
-        Assert.False(viewModel.IsLensZoomControlEnabled);
+        Assert.Equal(350, viewModel.LensZoomValue);
+        Assert.True(viewModel.IsLensZoomControlEnabled);
         Assert.True(viewModel.IsLensFocusControlEnabled);
     }
 
