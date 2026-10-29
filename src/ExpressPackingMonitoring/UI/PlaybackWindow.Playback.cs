@@ -81,40 +81,51 @@ public partial class PlaybackWindow
 
         if (_db == null)
         {
-            AppDialog.Error(this, "录像数据库不可用，无法删除", "删除录像");
+            AppDialog.Error(
+                this,
+                AppLanguage.Get("录像数据库不可用，无法删除"),
+                AppLanguage.Get("删除录像"));
             return;
         }
 
+        string deleteTitle = AppLanguage.Get("删除录像");
         if (!item.CanDelete)
         {
             AppDialog.Warning(
                 this,
                 string.IsNullOrWhiteSpace(item.DeleteBlockedHint)
-                    ? "这条录像不能删除"
+                    ? AppLanguage.Get("这条录像不能删除")
                     : item.DeleteBlockedHint,
-                "删除录像");
+                deleteTitle);
             return;
         }
 
         string orderText = string.IsNullOrWhiteSpace(item.OrderId)
-            ? "未记录订单号"
+            ? AppLanguage.Get("未记录订单号")
             : item.OrderId;
         string timeText = item.StartTime == default
-            ? "未知"
+            ? AppLanguage.Get("未知")
             : item.StartTime.ToString("yyyy-MM-dd HH:mm:ss");
-        string message =
-            $"确定删除这条录像吗？\n\n单号：{orderText}\n时间：{timeText}\n\n"
-            + (item.HasArchiveCopy
-                ? "本机录像文件会被删除，已备份到网络位置的归档副本会保留。\n"
-                : "本机录像文件会被删除。\n")
-            + "删除后列表里不再显示这条记录";
+        string archiveWarning = AppLanguage.Get(
+            item.HasArchiveCopy
+                ? "本机录像文件会被删除，已备份到网络位置的归档副本会保留"
+                : "本机录像文件会被删除");
+        string message = string.Join(
+            Environment.NewLine,
+            AppLanguage.Get("确定删除这条录像吗？"),
+            "",
+            AppLanguage.Format("单号: {0}", orderText),
+            AppLanguage.Format("时间: {0}", timeText),
+            "",
+            archiveWarning,
+            AppLanguage.Get("删除后列表里不再显示这条记录"));
         if (!AppDialog.Confirm(
                 this,
                 message,
-                "删除录像",
+                deleteTitle,
                 AppDialogSeverity.Warning,
-                confirmText: "删除",
-                cancelText: "取消",
+                confirmText: AppLanguage.Get("删除"),
+                cancelText: AppLanguage.Get("取消"),
                 isDangerous: true))
         {
             return;
@@ -126,7 +137,10 @@ public partial class PlaybackWindow
         {
             if (!await _playerSemaphore.WaitAsync(TimeSpan.FromSeconds(3)))
             {
-                AppDialog.Warning(this, "播放器正在切换视频，请稍后再试", "删除录像");
+                AppDialog.Warning(
+                    this,
+                    AppLanguage.Get("播放器正在切换视频，请稍后再试"),
+                    deleteTitle);
                 return;
             }
 
@@ -147,7 +161,7 @@ public partial class PlaybackWindow
                 RecordingDeleteResult result = await service.DeleteRecordingAsync(item.RecordId);
                 if (!result.Deleted)
                 {
-                    AppDialog.Warning(this, result.Message, "删除录像");
+                    AppDialog.Warning(this, result.Message, deleteTitle);
                     return;
                 }
 
@@ -164,7 +178,7 @@ public partial class PlaybackWindow
         catch (Exception ex)
         {
             RuntimeLog.Error("Playback", "删除录像失败", ex);
-            AppDialog.Error(this, ex.Message, "删除录像");
+            AppDialog.Error(this, ex.Message, deleteTitle);
         }
         finally
         {

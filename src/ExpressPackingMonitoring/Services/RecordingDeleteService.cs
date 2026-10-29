@@ -54,7 +54,9 @@ internal sealed class RecordingDeleteService
             .TryEnterAsync(recordId, _lockTimeout, cancellationToken)
             .ConfigureAwait(false);
         if (lease == null)
-            return new RecordingDeleteResult(false, "录像正在备份或清理，请稍后再试");
+            return new RecordingDeleteResult(
+                false,
+                AppLanguage.Get("录像正在备份或清理，请稍后再试"));
 
         // 等到锁之后重新读一次：等待期间归档可能刚做完，记录状态已经不是刚才那份。
         record = _database.GetVideoById(recordId);

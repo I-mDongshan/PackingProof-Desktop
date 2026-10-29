@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 
 namespace ExpressPackingMonitoring.Services;
 
@@ -20,18 +21,18 @@ internal static class RecordingDeletePolicy
     internal static string? DescribeRefusal(VideoRecord? record, bool localFileExists)
     {
         if (record == null)
-            return "该录像已删除或不存在";
+            return AppLanguage.Get("该录像已删除或不存在");
         if (record.IsDeleted)
-            return "该录像已经删除";
+            return AppLanguage.Get("该录像已经删除");
         // EndTime 为空表示还在录，文件正在写，这时候删会把录制链路一起弄乱。
         if (record.EndTime == default)
-            return "录像正在录制，停止录制后才能删除";
+            return AppLanguage.Get("录像正在录制，停止录制后才能删除");
         if (record.ArchiveStatus is VideoArchiveStatus.Copying or VideoArchiveStatus.Verifying)
-            return "录像正在备份，请稍后再试";
+            return AppLanguage.Get("录像正在备份，请稍后再试");
         if (string.Equals(record.StorageState, RemoteStorageState, StringComparison.OrdinalIgnoreCase))
-            return "录像保存在录像主机上，请在录像主机上删除";
+            return AppLanguage.Get("录像保存在录像主机上，请在录像主机上删除");
         if (!localFileExists && !HasCompletedArchiveEvidence(record))
-            return "本机找不到录像文件，无法删除";
+            return AppLanguage.Get("本机找不到录像文件，无法删除");
         return null;
     }
 

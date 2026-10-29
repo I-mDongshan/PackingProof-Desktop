@@ -1169,6 +1169,13 @@
   <data name="录像正在备份或清理，请稍后再试" xml:space="preserve"><value>The recording is being backed up or cleaned up; try again later</value></data>
   <data name="录像保存在录像主机上，请在录像主机上删除" xml:space="preserve"><value>The recording is stored on the recording host; delete it there</value></data>
   <data name="本机找不到录像文件，无法删除" xml:space="preserve"><value>The recording file was not found on this computer, so it cannot be deleted</value></data>
+  <data name="未记录订单号" xml:space="preserve"><value>No order number recorded</value></data>
+  <data name="确定删除这条录像吗？" xml:space="preserve"><value>Delete this recording?</value></data>
+  <data name="时间: {0}" xml:space="preserve"><value>Time: {0}</value></data>
+  <data name="本机录像文件会被删除，已备份到网络位置的归档副本会保留" xml:space="preserve"><value>The local recording file will be deleted; the archived copy on the network location will be kept</value></data>
+  <data name="本机录像文件会被删除" xml:space="preserve"><value>The local recording file will be deleted</value></data>
+  <data name="删除后列表里不再显示这条记录" xml:space="preserve"><value>The recording will be removed from the list</value></data>
+  <data name="播放器正在切换视频，请稍后再试" xml:space="preserve"><value>The player is switching videos. Try again later.</value></data>
   <data name="打开文件所在位置" xml:space="preserve"><value>Open file location</value></data>
   <data name="剪贴板被其它程序占用，复制失败。请稍后重试，或关闭输入法、剪贴板管理器等占用剪贴板的程序" xml:space="preserve"><value>The clipboard is in use by another program, so copying failed. Try again shortly, or close programs that hold the clipboard such as input methods or clipboard managers</value></data>
   <data name="筛选" xml:space="preserve"><value>Filter</value></data>

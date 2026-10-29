@@ -1124,7 +1124,7 @@ namespace ExpressPackingMonitoring.UI
                 CanDelete = canDeleteRecords && deleteRefusal == null,
                 DeleteBlockedHint = canDeleteRecords
                     ? deleteRefusal ?? ""
-                    : "当前工位只能查看，不能删除录像",
+                    : AppLanguage.Get("当前工位只能查看，不能删除录像"),
                 HasArchiveCopy = record.ArchiveCompletedAt != null
                     && !string.IsNullOrWhiteSpace(record.ArchivePath),
                 TrackingNumber = record.TrackingNumber ?? "",

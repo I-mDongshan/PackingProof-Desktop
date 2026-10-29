@@ -1168,6 +1168,13 @@
   <data name="录像正在备份或清理，请稍后再试" xml:space="preserve"><value>録画をバックアップまたは整理中です。しばらくしてから再試行してください</value></data>
   <data name="录像保存在录像主机上，请在录像主机上删除" xml:space="preserve"><value>録画は録画ホストに保存されています。録画ホストで削除してください</value></data>
   <data name="本机找不到录像文件，无法删除" xml:space="preserve"><value>このコンピューターに録画ファイルが見つからないため削除できません</value></data>
+  <data name="未记录订单号" xml:space="preserve"><value>注文番号の記録なし</value></data>
+  <data name="确定删除这条录像吗？" xml:space="preserve"><value>この録画を削除しますか？</value></data>
+  <data name="时间: {0}" xml:space="preserve"><value>日時: {0}</value></data>
+  <data name="本机录像文件会被删除，已备份到网络位置的归档副本会保留" xml:space="preserve"><value>ローカルの録画ファイルは削除されます。ネットワーク上のアーカイブは保持されます</value></data>
+  <data name="本机录像文件会被删除" xml:space="preserve"><value>ローカルの録画ファイルは削除されます</value></data>
+  <data name="删除后列表里不再显示这条记录" xml:space="preserve"><value>削除後、この録画は一覧に表示されません</value></data>
+  <data name="播放器正在切换视频，请稍后再试" xml:space="preserve"><value>プレーヤーが動画を切り替えています。しばらくしてから再試行してください。</value></data>
   <data name="打开文件所在位置" xml:space="preserve"><value>ファイルの場所を開く</value></data>
   <data name="剪贴板被其它程序占用，复制失败。请稍后重试，或关闭输入法、剪贴板管理器等占用剪贴板的程序" xml:space="preserve"><value>クリップボードが他のプログラムで使用中のためコピーできませんでした。しばらくして再試行するか、入力メソッドやクリップボード管理ツールなど、クリップボードを使用するプログラムを閉じてください</value></data>
   <data name="筛选" xml:space="preserve"><value>絞り込み</value></data>
