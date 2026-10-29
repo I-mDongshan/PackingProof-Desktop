@@ -31,6 +31,17 @@ internal static class CameraLensPolicy
         focusRange is { IsValid: true, SupportsManual: true };
 
     /// <summary>
+    /// 当前值没读回来时只展示能力范围，不允许用户基于猜测值下发命令。
+    /// </summary>
+    internal static bool CanOperateZoom(LensRange? zoomRange, int? currentValue) =>
+        zoomRange is { IsValid: true, SupportsManual: true } && currentValue.HasValue;
+
+    internal static bool CanOperateFocus(
+        LensRange? focusRange,
+        (int Value, bool Auto)? currentState) =>
+        focusRange is { IsValid: true, SupportsManual: true } && currentState != null;
+
+    /// <summary>
     /// 生成启动恢复计划：
     /// - 变焦记过 → 夹进设备范围后恢复；
     /// - 对焦切过手动 → 恢复手动模式，且记过位置时恢复位置；

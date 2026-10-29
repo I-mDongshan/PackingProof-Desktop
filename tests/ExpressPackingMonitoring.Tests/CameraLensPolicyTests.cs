@@ -2,6 +2,7 @@ using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Services.LensControl;
 using ExpressPackingMonitoring.Services.MediaFoundation;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
@@ -142,6 +143,15 @@ public sealed class CameraLensPolicyTests
     }
 
     [Fact]
+    public void LensControls_RequireReadableCurrentDeviceState()
+    {
+        Assert.True(CameraLensPolicy.CanOperateZoom(ZoomRange, 250));
+        Assert.False(CameraLensPolicy.CanOperateZoom(ZoomRange, null));
+        Assert.True(CameraLensPolicy.CanOperateFocus(FocusRange, (1000, true)));
+        Assert.False(CameraLensPolicy.CanOperateFocus(FocusRange, null));
+    }
+
+    [Fact]
     public void LensPanel_UsesExplicitFocusModeButtons()
     {
         string xaml = File.ReadAllText(FindRepositoryFile(
@@ -204,12 +214,44 @@ public sealed class CameraLensPolicyTests
     }
 
     [Fact]
-    public void MfLensController_ReleasesReaderOwnedComInterface()
+    public void RawCameraControl_ReleasesComInterfaceOnce()
     {
-        Assert.Contains(
-            typeof(IDisposable),
-            typeof(MfLensController).GetInterfaces());
+        int releaseCount = 0;
+        ReleaseDelegate release = _ =>
+        {
+            Interlocked.Increment(ref releaseCount);
+            return 0;
+        };
+
+        IntPtr vtable = Marshal.AllocHGlobal(6 * IntPtr.Size);
+        IntPtr instance = Marshal.AllocHGlobal(IntPtr.Size);
+        try
+        {
+            for (int index = 0; index < 6; index++)
+            {
+                Marshal.WriteIntPtr(vtable, index * IntPtr.Size, IntPtr.Zero);
+            }
+
+            IntPtr releaseAddress = Marshal.GetFunctionPointerForDelegate(release);
+            Marshal.WriteIntPtr(vtable, 2 * IntPtr.Size, releaseAddress);
+            Marshal.WriteIntPtr(instance, vtable);
+
+            var control = new RawCameraControl(instance);
+            control.Dispose();
+            control.Dispose();
+
+            Assert.Equal(1, releaseCount);
+            GC.KeepAlive(release);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(instance);
+            Marshal.FreeHGlobal(vtable);
+        }
     }
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate uint ReleaseDelegate(IntPtr self);
 
     private static string FindRepositoryFile(params string[] relativeParts)
     {

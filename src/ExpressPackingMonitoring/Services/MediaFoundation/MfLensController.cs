@@ -10,9 +10,8 @@ namespace ExpressPackingMonitoring.Services.MediaFoundation;
 /// 生命周期约定：媒体源自带的接口随采集会话释放；SourceReader 额外返回的接口
 /// 由原始 COM 指针持有，并在控制器 Dispose 时确定性释放，避免与媒体源共享 RCW。
 ///
-/// 线程模型：接口在 MTA 上取得；从 UI（STA）调用时统一切到线程池执行，
-/// 与 <c>MfCameraSource.Start</c> 的 STA 规避同款，避免跨套间 RCW 查询失败。
-/// KS 属性调用本身是毫秒级的快操作，同步等待没有负担。
+/// 线程模型：原始接口指针在 MTA 上取得；常规 COM 调用从 UI（STA）转到线程池，
+/// Dispose 只做引用释放，由控制器内部锁保证不会与在途调用并发。
 /// </summary>
 internal sealed class MfLensController : ILensController, IDisposable
 {

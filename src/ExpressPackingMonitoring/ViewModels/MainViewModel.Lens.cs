@@ -439,8 +439,18 @@ namespace ExpressPackingMonitoring.ViewModels
 
                 HasLensZoom = zoomRange is { IsValid: true, SupportsManual: true };
                 HasLensFocus = CameraLensPolicy.SupportsManualFocus(focusRange);
-                IsLensZoomControlEnabled = HasLensZoom;
-                IsLensFocusControlEnabled = HasLensFocus;
+                IsLensZoomControlEnabled = CameraLensPolicy.CanOperateZoom(
+                    zoomRange,
+                    snapshot.ZoomValue);
+                IsLensFocusControlEnabled = CameraLensPolicy.CanOperateFocus(
+                    focusRange,
+                    snapshot.FocusState);
+                if ((HasLensZoom && snapshot.ZoomValue == null)
+                    || (HasLensFocus && snapshot.FocusState == null))
+                {
+                    LensStatusText = AppLanguage.Get(
+                        "镜头设置未生效，请重试或使用摄像头厂商软件");
+                }
 
                 if (zoomRange != null)
                 {
