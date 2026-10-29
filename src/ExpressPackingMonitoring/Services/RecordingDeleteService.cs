@@ -78,7 +78,9 @@ internal sealed class RecordingDeleteService
                 }
                 catch (Exception ex)
                 {
-                    return new RecordingDeleteResult(false, $"本机录像文件删除失败：{ex.Message}");
+                    return new RecordingDeleteResult(
+                        false,
+                        AppLanguage.Format("本机录像文件删除失败：{0}", ex.Message));
                 }
             }
 
@@ -118,7 +120,7 @@ internal sealed class RecordingDeleteService
             RuntimeLog.Info(
                 "Playback",
                 $"用户删除录像 id={recordId}, order={record.OrderId}, path={filePath}");
-            return new RecordingDeleteResult(true, "已删除该录像");
+            return new RecordingDeleteResult(true, AppLanguage.Get("已删除该录像"));
         }
     }
 

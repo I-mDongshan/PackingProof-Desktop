@@ -1745,6 +1745,7 @@
   <data name="视频已删除" xml:space="preserve"><value>録画は削除されました</value></data>
   <data name="录像删除未完成，数据库更新失败，请重试" xml:space="preserve"><value>録画の削除は完了していません。データベースの更新に失敗しました。再試行してください</value></data>
   <data name="录像删除未完成，请重启后重试" xml:space="preserve"><value>録画の削除は完了していません。再起動して再試行してください</value></data>
+  <data name="本机录像文件删除失败：{0}" xml:space="preserve"><value>ローカル録画ファイルを削除できませんでした: {0}</value></data>
   <data name="未知" xml:space="preserve"><value>不明</value></data>
   <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>動画ファイルが外部で削除または移動されたため再生できません</value></data>
   <data name="路径: {0}" xml:space="preserve"><value>パス: {0}</value></data>

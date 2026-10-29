@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Logging;
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Services;
 using System.Windows;
 using System.Windows.Threading;
@@ -152,7 +153,7 @@ public partial class PlaybackWindow
 
                 if (ReferenceEquals(VideoList.SelectedItem, item))
                     VideoList.SelectedItem = null;
-                ShowPlaybackToast("已删除该录像");
+                ShowPlaybackToast(AppLanguage.Get("已删除该录像"));
                 RequestVideoLoad();
             }
             finally

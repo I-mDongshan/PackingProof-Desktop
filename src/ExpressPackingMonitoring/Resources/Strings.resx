@@ -1745,6 +1745,7 @@
   <data name="视频已删除" xml:space="preserve"><value>Recording deleted</value></data>
   <data name="录像删除未完成，数据库更新失败，请重试" xml:space="preserve"><value>The delete did not complete because the database update failed. Try again</value></data>
   <data name="录像删除未完成，请重启后重试" xml:space="preserve"><value>The delete did not complete. Restart and try again</value></data>
+  <data name="本机录像文件删除失败：{0}" xml:space="preserve"><value>Could not delete the local recording file: {0}</value></data>
   <data name="未知" xml:space="preserve"><value>Unknown</value></data>
   <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>The video file was deleted or moved externally, so it cannot be played</value></data>
   <data name="路径: {0}" xml:space="preserve"><value>Path: {0}</value></data>
