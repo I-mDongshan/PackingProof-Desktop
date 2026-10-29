@@ -750,6 +750,10 @@ public sealed class ReleasePackagingPolicyTests
             publishScript,
             StringComparison.Ordinal);
         Assert.Contains(
+            "$updateManifest[\"download_source\"] = $DownloadSource",
+            publishScript,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "`download_source` 控制增量包默认从哪个平台下载：`github`（出包缺省",
             runtimeDocument,
             StringComparison.Ordinal);

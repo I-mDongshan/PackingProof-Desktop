@@ -92,6 +92,30 @@ public sealed class PlaybackWindowTests
     }
 
     [Fact]
+    public void DeleteVideo_DefersWindowCloseUntilPlayerCleanupCompletes()
+    {
+        string windowSource = File.ReadAllText(FindRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "UI",
+            "PlaybackWindow.xaml.cs"));
+        string playbackSource = File.ReadAllText(FindRepositoryFile(
+            "src",
+            "ExpressPackingMonitoring",
+            "UI",
+            "PlaybackWindow.Playback.cs"));
+
+        Assert.Contains("if (_deleteInProgress)", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_closeAfterDelete = true;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("e.Cancel = true;", windowSource, StringComparison.Ordinal);
+        Assert.Contains("_deleteInProgress = false;", playbackSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Background);",
+            playbackSource,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GetOrderDisplayName_PrefersTrackingNumber()
     {
         string result = PlaybackWindow.GetOrderDisplayName(

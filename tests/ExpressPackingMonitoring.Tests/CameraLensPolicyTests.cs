@@ -195,6 +195,14 @@ public sealed class CameraLensPolicyTests
                 step));
     }
 
+    [Fact]
+    public void MfLensController_ReleasesReaderOwnedComInterface()
+    {
+        Assert.Contains(
+            typeof(IDisposable),
+            typeof(MfLensController).GetInterfaces());
+    }
+
     private static string FindRepositoryFile(params string[] relativeParts)
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

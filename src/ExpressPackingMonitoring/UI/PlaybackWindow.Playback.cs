@@ -120,37 +120,45 @@ public partial class PlaybackWindow
         }
 
         VideoDatabase database = _db;
-        if (!await _playerSemaphore.WaitAsync(TimeSpan.FromSeconds(3)))
-        {
-            AppDialog.Warning(this, "播放器正在切换视频，请稍后再试", "删除录像");
-            return;
-        }
-
+        _deleteInProgress = true;
         try
         {
-            if (_isClosing)
-                return;
-
-            // 正在播放的这条先停下来：LibVLC 还占着文件句柄时，Windows 上删不掉文件。
-            // Stop/Dispose 都放到后台执行，避免原生播放器回调把整个窗口卡住。
-            if (ReferenceEquals(VideoList.SelectedItem, item))
-                await StopAndDisposePlaybackForDeletionAsync();
-
-            if (_isClosing)
-                return;
-
-            var service = new RecordingDeleteService(database);
-            RecordingDeleteResult result = await service.DeleteRecordingAsync(item.RecordId);
-            if (!result.Deleted)
+            if (!await _playerSemaphore.WaitAsync(TimeSpan.FromSeconds(3)))
             {
-                AppDialog.Warning(this, result.Message, "删除录像");
+                AppDialog.Warning(this, "播放器正在切换视频，请稍后再试", "删除录像");
                 return;
             }
 
-            if (ReferenceEquals(VideoList.SelectedItem, item))
-                VideoList.SelectedItem = null;
-            ShowPlaybackToast("已删除该录像");
-            RequestVideoLoad();
+            try
+            {
+                if (_isClosing)
+                    return;
+
+                // 正在播放的这条先停下来：LibVLC 还占着文件句柄时，Windows 上删不掉文件。
+                // Stop/Dispose 都放到后台执行，避免原生播放器回调把整个窗口卡住。
+                if (ReferenceEquals(VideoList.SelectedItem, item))
+                    await StopAndDisposePlaybackForDeletionAsync();
+
+                if (_isClosing)
+                    return;
+
+                var service = new RecordingDeleteService(database);
+                RecordingDeleteResult result = await service.DeleteRecordingAsync(item.RecordId);
+                if (!result.Deleted)
+                {
+                    AppDialog.Warning(this, result.Message, "删除录像");
+                    return;
+                }
+
+                if (ReferenceEquals(VideoList.SelectedItem, item))
+                    VideoList.SelectedItem = null;
+                ShowPlaybackToast("已删除该录像");
+                RequestVideoLoad();
+            }
+            finally
+            {
+                _playerSemaphore.Release();
+            }
         }
         catch (Exception ex)
         {
@@ -159,7 +167,12 @@ public partial class PlaybackWindow
         }
         finally
         {
-            _playerSemaphore.Release();
+            _deleteInProgress = false;
+            if (_closeAfterDelete)
+            {
+                _closeAfterDelete = false;
+                _ = Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Background);
+            }
         }
     }
 

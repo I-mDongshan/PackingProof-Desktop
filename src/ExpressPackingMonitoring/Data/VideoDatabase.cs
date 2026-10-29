@@ -3450,13 +3450,14 @@ namespace ExpressPackingMonitoring.Data
         /// <summary>
         /// 用户删除完成（本地与网络端均已删除或无需删除）后标记记录删除并写入删除日志。
         /// </summary>
-        public void MarkRecordDeletedById(long recordId, string reason, string reasonCode = "")
+        public bool MarkRecordDeletedById(long recordId, string reason, string reasonCode = "")
         {
             lock (_lock)
             {
                 using var transaction = _connection.BeginTransaction();
                 try
                 {
+                    int updated;
                     using (var cmd = _connection.CreateCommand())
                     {
                         cmd.Transaction = transaction;
@@ -3473,7 +3474,13 @@ namespace ExpressPackingMonitoring.Data
                         cmd.Parameters.AddWithValue("@reasonCode", reasonCode?.Trim() ?? "");
                         cmd.Parameters.AddWithValue("@archiveStatus", VideoArchiveStatus.LocalDeleted);
                         cmd.Parameters.AddWithValue("@id", recordId);
-                        cmd.ExecuteNonQuery();
+                        updated = cmd.ExecuteNonQuery();
+                    }
+
+                    if (updated == 0)
+                    {
+                        transaction.Rollback();
+                        return false;
                     }
 
                     using (var cmd = _connection.CreateCommand())
@@ -3491,10 +3498,12 @@ namespace ExpressPackingMonitoring.Data
                     }
 
                     transaction.Commit();
+                    return true;
                 }
                 catch
                 {
-                    transaction.Rollback();
+                    try { transaction.Rollback(); } catch { }
+                    return false;
                 }
             }
         }

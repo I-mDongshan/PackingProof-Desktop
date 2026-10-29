@@ -146,10 +146,16 @@ public sealed class ArchiveDatabaseTests : IDisposable
         DateTime now = DateTime.Now;
         long id = InsertLocal(@"\\nas\share\x.mp4", now.AddMinutes(-5), now);
 
-        _database.MarkRecordDeletedById(id, "用户删除");
+        Assert.True(_database.MarkRecordDeletedById(id, "用户删除"));
 
         Assert.Null(_database.GetVideoById(id));
         Assert.Contains(_database.GetDeleteLogs(10), log => log.OrderId == "单号A");
+    }
+
+    [Fact]
+    public void MarkRecordDeletedById_ReturnsFalseWhenRecordDoesNotExist()
+    {
+        Assert.False(_database.MarkRecordDeletedById(long.MaxValue, "用户删除"));
     }
 
     [Fact]

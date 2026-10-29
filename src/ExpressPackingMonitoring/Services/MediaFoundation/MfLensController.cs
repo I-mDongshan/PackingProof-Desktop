@@ -15,13 +15,21 @@ namespace ExpressPackingMonitoring.Services.MediaFoundation;
 /// 与 <c>MfCameraSource.Start</c> 的 STA 规避同款，避免跨套间 RCW 查询失败。
 /// KS 属性调用本身是毫秒级的快操作，同步等待没有负担。
 /// </summary>
-internal sealed class MfLensController : ILensController
+internal sealed class MfLensController : ILensController, IDisposable
 {
     private readonly IAMCameraControl _control;
+    private readonly bool _ownsControl;
+    private readonly object _sync = new();
+    private bool _disposed;
 
-    private MfLensController(IAMCameraControl control, LensRange? zoomRange, LensRange? focusRange)
+    private MfLensController(
+        IAMCameraControl control,
+        LensRange? zoomRange,
+        LensRange? focusRange,
+        bool ownsControl)
     {
         _control = control;
+        _ownsControl = ownsControl;
         ZoomRange = zoomRange;
         FocusRange = focusRange;
     }
@@ -57,14 +65,23 @@ internal sealed class MfLensController : ILensController
 
         LensRange? zoomRange = ReadRange(control, MfLensInterop.CameraControlZoom, "zoom");
         LensRange? focusRange = ReadRange(control, MfLensInterop.CameraControlFocus, "focus");
-        MfLensController controller = new(control, zoomRange, focusRange);
+        MfLensController controller = new(
+            control,
+            zoomRange,
+            focusRange,
+            ownsControl: readerControl != null && !ReferenceEquals(readerControl, mediaControl));
         if (!controller.IsUsable && readerControl != null && mediaControl != null)
         {
             RuntimeLog.Info("Camera", "SourceReader 镜头接口没有可用能力，回退到媒体源接口");
+            controller.Dispose();
             readerControl = null;
             zoomRange = ReadRange(mediaControl, MfLensInterop.CameraControlZoom, "zoom");
             focusRange = ReadRange(mediaControl, MfLensInterop.CameraControlFocus, "focus");
-            controller = new MfLensController(mediaControl, zoomRange, focusRange);
+            controller = new MfLensController(
+                mediaControl,
+                zoomRange,
+                focusRange,
+                ownsControl: false);
         }
 
         if (controller.IsUsable)
@@ -86,17 +103,25 @@ internal sealed class MfLensController : ILensController
     /// <summary>读当前变焦位置（已夹进范围）；读不到时返回 null。</summary>
     public int? TryReadZoom()
     {
-        LensRange? range = ZoomRange;
-        if (range == null)
-            return null;
+        lock (_sync)
+        {
+            LensRange? range = ZoomRange;
+            if (_disposed || range == null)
+                return null;
 
-        int value = 0;
-        int flags = 0;
-        int hr = LensControlThreading.RunOffSta(() => _control.Get(MfLensInterop.CameraControlZoom, out value, out flags));
-        if (hr < 0) { RuntimeLog.Warn("Camera", $"读取变焦失败：HRESULT=0x{hr:X8}"); return null; }
+            int value = 0;
+            int flags = 0;
+            int hr = LensControlThreading.RunOffSta(() =>
+                _control.Get(MfLensInterop.CameraControlZoom, out value, out flags));
+            if (hr < 0)
+            {
+                RuntimeLog.Warn("Camera", $"读取变焦失败：HRESULT=0x{hr:X8}");
+                return null;
+            }
 
-        RuntimeLog.Info("Camera", $"读取变焦：value={value}, flags=0x{flags:X}");
-        return range.Clamp(value);
+            RuntimeLog.Info("Camera", $"读取变焦：value={value}, flags=0x{flags:X}");
+            return range.Clamp(value);
+        }
     }
 
     /// <summary>
@@ -105,53 +130,70 @@ internal sealed class MfLensController : ILensController
     /// </summary>
     public (int Value, bool Auto)? TryReadFocusState()
     {
-        LensRange? range = FocusRange;
-        if (range == null)
+        lock (_sync)
+        {
+            LensRange? range = FocusRange;
+            if (_disposed || range == null)
+                return null;
+
+            int value = 0;
+            int flags = 0;
+            int hr = LensControlThreading.RunOffSta(() =>
+                _control.Get(MfLensInterop.CameraControlFocus, out value, out flags));
+            if (hr < 0)
+            {
+                RuntimeLog.Warn("Camera", $"读取对焦状态失败：HRESULT=0x{hr:X8}");
+                return null;
+            }
+
+            RuntimeLog.Info("Camera", $"读取对焦状态：value={value}, flags=0x{flags:X}");
+
+            if ((flags & LensControlFlags.Auto) != 0)
+                return (range.Clamp(value), true);
+            if ((flags & LensControlFlags.Manual) != 0)
+                return (range.Clamp(value), false);
             return null;
-
-        int value = 0;
-        int flags = 0;
-        int hr = LensControlThreading.RunOffSta(() => _control.Get(MfLensInterop.CameraControlFocus, out value, out flags));
-        if (hr < 0) { RuntimeLog.Warn("Camera", $"读取对焦状态失败：HRESULT=0x{hr:X8}"); return null; }
-
-        RuntimeLog.Info("Camera", $"读取对焦状态：value={value}, flags=0x{flags:X}");
-
-        if ((flags & LensControlFlags.Auto) != 0)
-            return (range.Clamp(value), true);
-        if ((flags & LensControlFlags.Manual) != 0)
-            return (range.Clamp(value), false);
-        return null;
+        }
     }
 
     /// <summary>设置变焦位置。值必须已由调用方按范围夹紧。</summary>
     public bool TrySetZoom(int value)
     {
-        if (ZoomRange is not { } range)
-            return false;
+        lock (_sync)
+        {
+            if (_disposed || ZoomRange is not { } range)
+                return false;
 
-        int flags = range.SupportsManual ? LensControlFlags.Manual : 0;
-        return LensControlThreading.RunOffSta(() =>
-            SetAndVerify("变焦", MfLensInterop.CameraControlZoom, value, flags));
+            int flags = range.SupportsManual ? LensControlFlags.Manual : 0;
+            return LensControlThreading.RunOffSta(() =>
+                SetAndVerify("变焦", MfLensInterop.CameraControlZoom, value, flags));
+        }
     }
 
     /// <summary>切到手动对焦并把对焦位置设到指定值。</summary>
     public bool TrySetFocusManual(int value)
     {
-        if (FocusRange is not { SupportsManual: true })
-            return false;
+        lock (_sync)
+        {
+            if (_disposed || FocusRange is not { SupportsManual: true })
+                return false;
 
-        return LensControlThreading.RunOffSta(() =>
-            SetAndVerify("手动对焦", MfLensInterop.CameraControlFocus, value, LensControlFlags.Manual));
+            return LensControlThreading.RunOffSta(() =>
+                SetAndVerify("手动对焦", MfLensInterop.CameraControlFocus, value, LensControlFlags.Manual));
+        }
     }
 
     /// <summary>切回自动对焦。UVC 约定自动模式下位置值被忽略，传默认值占位。</summary>
     public bool TrySetFocusAuto()
     {
-        if (FocusRange is not { SupportsAuto: true } range)
-            return false;
+        lock (_sync)
+        {
+            if (_disposed || FocusRange is not { SupportsAuto: true } range)
+                return false;
 
-        return LensControlThreading.RunOffSta(() =>
-            SetAndVerify("自动对焦", MfLensInterop.CameraControlFocus, range.Default, LensControlFlags.Auto));
+            return LensControlThreading.RunOffSta(() =>
+                SetAndVerify("自动对焦", MfLensInterop.CameraControlFocus, range.Default, LensControlFlags.Auto));
+        }
     }
 
     /// <summary>
@@ -249,6 +291,21 @@ internal sealed class MfLensController : ILensController
             // 镜头控制绝不能把采集拖垮：范围读不出来就当没有这项能力。
             RuntimeLog.Warn("Camera", $"读镜头属性 {name} 范围失败：{ex.Message}");
             return null;
+        }
+    }
+
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            if (_ownsControl)
+            {
+                try { Marshal.ReleaseComObject(_control); } catch { }
+            }
         }
     }
 

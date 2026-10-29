@@ -1745,6 +1745,7 @@
   <data name="原始大小: {0}" xml:space="preserve"><value>原始大小: {0}</value></data>
   <data name="录制时长: {0}" xml:space="preserve"><value>录制时长: {0}</value></data>
   <data name="视频已删除" xml:space="preserve"><value>视频已删除</value></data>
+  <data name="录像文件已删除，但数据库更新失败，请重启后检查录像列表" xml:space="preserve"><value>录像文件已删除，但数据库更新失败，请重启后检查录像列表</value></data>
   <data name="未知" xml:space="preserve"><value>未知</value></data>
   <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>视频文件已被外部删除或移动，无法播放</value></data>
   <data name="路径: {0}" xml:space="preserve"><value>路径: {0}</value></data>

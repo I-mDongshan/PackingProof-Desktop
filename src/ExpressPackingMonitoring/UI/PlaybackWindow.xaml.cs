@@ -141,6 +141,8 @@ namespace ExpressPackingMonitoring.UI
         private bool _isPlaying;
         private bool _isLoadingVideos;
         private bool _isClosing;
+        private bool _deleteInProgress;
+        private bool _closeAfterDelete;
         private bool _videoLoadLoopRunning;
         private bool _playerInitializationFailed;
         private Task<bool>? _playerReadyTask;
@@ -1357,6 +1359,13 @@ namespace ExpressPackingMonitoring.UI
 
         private void Window_Closing(object sender, CancelEventArgs e)
         {
+            if (_deleteInProgress)
+            {
+                _closeAfterDelete = true;
+                e.Cancel = true;
+                return;
+            }
+
             _isClosing = true;
             _pendingVideoLoad = null;
             _videoLoadRequestVersion++;

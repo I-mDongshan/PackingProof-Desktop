@@ -565,9 +565,8 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", $"设置变焦失败：value={target}");
-                    await ShowLensWriteFailureAsync(
+                    await HandleLensZoomFailureAsync(
                             controller,
-                            () => Volatile.Read(ref _lensZoomApplyVersion),
                             version)
                         .ConfigureAwait(false);
                     return;
@@ -587,9 +586,8 @@ namespace ExpressPackingMonitoring.ViewModels
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"设置变焦异常：value={target}, error={ex.Message}");
-                await ShowLensWriteFailureAsync(
+                await HandleLensZoomFailureAsync(
                         controller,
-                        () => Volatile.Read(ref _lensZoomApplyVersion),
                         version)
                     .ConfigureAwait(false);
             }
@@ -608,10 +606,10 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", $"设置手动对焦失败：value={target}");
-                    await ShowLensWriteFailureAsync(
+                    await HandleLensFocusFailureAsync(
                             controller,
-                            () => Volatile.Read(ref _lensFocusApplyVersion),
-                            version)
+                            version,
+                            fallbackAuto: LensFocusAuto)
                         .ConfigureAwait(false);
                     return;
                 }
@@ -630,10 +628,10 @@ namespace ExpressPackingMonitoring.ViewModels
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"设置手动对焦异常：value={target}, error={ex.Message}");
-                await ShowLensWriteFailureAsync(
+                await HandleLensFocusFailureAsync(
                         controller,
-                        () => Volatile.Read(ref _lensFocusApplyVersion),
-                        version)
+                        version,
+                        fallbackAuto: LensFocusAuto)
                     .ConfigureAwait(false);
             }
             finally
@@ -665,43 +663,11 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (!applied)
                 {
                     RuntimeLog.Warn("Camera", auto ? "切回自动对焦失败" : "切手动对焦失败");
-                    (int Value, bool Auto)? actual;
-                    try
-                    {
-                        actual = controller.TryReadFocusState();
-                    }
-                    catch (Exception ex)
-                    {
-                        RuntimeLog.Warn("Camera", $"对焦失败后回读状态异常：{ex.Message}");
-                        actual = null;
-                    }
-
-                    await RunOnUiThreadAsync(() =>
-                    {
-                        if (!ReferenceEquals(_lensController, controller)
-                            || version != Volatile.Read(ref _lensFocusApplyVersion))
-                        {
-                            return;
-                        }
-
-                        _lensUpdatingUiState = true;
-                        try
-                        {
-                            _lensFocusAuto = actual?.Auto ?? !auto;
-                            if (actual != null)
-                                _lensFocusValue = focusRange.Clamp(actual.Value.Value);
-                            OnPropertyChanged(nameof(LensFocusAuto));
-                            OnPropertyChanged(nameof(IsLensFocusManual));
-                            OnPropertyChanged(nameof(LensFocusValue));
-                        }
-                        finally
-                        {
-                            _lensUpdatingUiState = false;
-                        }
-
-                        LensStatusText = AppLanguage.Get(
-                            "镜头设置未生效，请重试或使用摄像头厂商软件");
-                    }).ConfigureAwait(false);
+                    await HandleLensFocusFailureAsync(
+                            controller,
+                            version,
+                            fallbackAuto: !auto)
+                        .ConfigureAwait(false);
                     return;
                 }
 
@@ -739,10 +705,10 @@ namespace ExpressPackingMonitoring.ViewModels
             catch (Exception ex)
             {
                 RuntimeLog.Warn("Camera", $"切换对焦模式异常：auto={auto}, error={ex.Message}");
-                await ShowLensWriteFailureAsync(
+                await HandleLensFocusFailureAsync(
                         controller,
-                        () => Volatile.Read(ref _lensFocusApplyVersion),
-                        version)
+                        version,
+                        fallbackAuto: !auto)
                     .ConfigureAwait(false);
             }
             finally
@@ -751,19 +717,87 @@ namespace ExpressPackingMonitoring.ViewModels
             }
         }
 
-        private async Task ShowLensWriteFailureAsync(
+        private async Task HandleLensZoomFailureAsync(
             ILensController controller,
-            Func<long> currentVersion,
-            long requestedVersion)
+            long version)
         {
+            int? actual = null;
+            try
+            {
+                actual = controller.TryReadZoom();
+            }
+            catch (Exception ex)
+            {
+                RuntimeLog.Warn("Camera", $"变焦失败后回读状态异常：{ex.Message}");
+            }
+
             await RunOnUiThreadAsync(() =>
             {
                 if (ReferenceEquals(_lensController, controller)
-                    && requestedVersion == currentVersion())
+                    && version == Volatile.Read(ref _lensZoomApplyVersion))
                 {
+                    if (actual.HasValue)
+                    {
+                        _lensUpdatingUiState = true;
+                        try
+                        {
+                            _lensZoomValue = actual.Value;
+                            OnPropertyChanged(nameof(LensZoomValue));
+                            OnPropertyChanged(nameof(LensZoomPercentText));
+                        }
+                        finally
+                        {
+                            _lensUpdatingUiState = false;
+                        }
+                    }
+
                     LensStatusText = AppLanguage.Get(
                         "镜头设置未生效，请重试或使用摄像头厂商软件");
                 }
+            }).ConfigureAwait(false);
+        }
+
+        private async Task HandleLensFocusFailureAsync(
+            ILensController controller,
+            long version,
+            bool fallbackAuto)
+        {
+            (int Value, bool Auto)? actual;
+            try
+            {
+                actual = controller.TryReadFocusState();
+            }
+            catch (Exception ex)
+            {
+                RuntimeLog.Warn("Camera", $"对焦失败后回读状态异常：{ex.Message}");
+                actual = null;
+            }
+
+            await RunOnUiThreadAsync(() =>
+            {
+                if (!ReferenceEquals(_lensController, controller)
+                    || version != Volatile.Read(ref _lensFocusApplyVersion))
+                {
+                    return;
+                }
+
+                _lensUpdatingUiState = true;
+                try
+                {
+                    _lensFocusAuto = actual?.Auto ?? fallbackAuto;
+                    if (actual != null)
+                        _lensFocusValue = controller.FocusRange!.Clamp(actual.Value.Value);
+                    OnPropertyChanged(nameof(LensFocusAuto));
+                    OnPropertyChanged(nameof(IsLensFocusManual));
+                    OnPropertyChanged(nameof(LensFocusValue));
+                }
+                finally
+                {
+                    _lensUpdatingUiState = false;
+                }
+
+                LensStatusText = AppLanguage.Get(
+                    "镜头设置未生效，请重试或使用摄像头厂商软件");
             }).ConfigureAwait(false);
         }
 

@@ -1743,6 +1743,7 @@
   <data name="原始大小: {0}" xml:space="preserve"><value>Original size: {0}</value></data>
   <data name="录制时长: {0}" xml:space="preserve"><value>Duration: {0}</value></data>
   <data name="视频已删除" xml:space="preserve"><value>Recording deleted</value></data>
+  <data name="录像文件已删除，但数据库更新失败，请重启后检查录像列表" xml:space="preserve"><value>The video file was deleted, but the database update failed. Restart and check the video list</value></data>
   <data name="未知" xml:space="preserve"><value>Unknown</value></data>
   <data name="视频文件已被外部删除或移动，无法播放" xml:space="preserve"><value>The video file was deleted or moved externally, so it cannot be played</value></data>
   <data name="路径: {0}" xml:space="preserve"><value>Path: {0}</value></data>

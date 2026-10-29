@@ -1,4 +1,5 @@
 using ExpressPackingMonitoring.Data;
+using ExpressPackingMonitoring.Localization;
 using ExpressPackingMonitoring.Logging;
 using System.IO;
 
@@ -74,10 +75,20 @@ internal sealed class RecordingDeleteService
             }
         }
 
-        _database.MarkRecordDeletedById(
+        bool markedDeleted = _database.MarkRecordDeletedById(
             recordId,
             RecordingDeletePolicy.Reason,
             RecordingDeletionReasonCode.UserRequested);
+        if (!markedDeleted)
+        {
+            RuntimeLog.Error(
+                "Playback",
+                $"本机录像文件已删除，但数据库标记删除失败 id={recordId}, order={record.OrderId}, path={filePath}");
+            return new RecordingDeleteResult(
+                false,
+                AppLanguage.Get("录像文件已删除，但数据库更新失败，请重启后检查录像列表"));
+        }
+
         RuntimeLog.Info(
             "Playback",
             $"用户删除录像 id={recordId}, order={record.OrderId}, path={filePath}");

@@ -779,8 +779,8 @@ public sealed partial class MfCameraSource : IDisposable
     /// <summary>释放原生资源。必须在持有 <see cref="_sync"/> 时调用。</summary>
     private void ReleaseCore()
     {
-        // 引用来自媒体源 RCW 的接口转换，不能 ReleaseComObject（见 MfLensController 的说明），
-        // 置 null 即可：媒体源 Shutdown 后这个引用自然失效。
+        // SourceReader 查询得到的私有引用由控制器确定性释放；媒体源共享接口不会被误释放。
+        _lensController?.Dispose();
         _lensController = null;
 
         if (_reader != null)

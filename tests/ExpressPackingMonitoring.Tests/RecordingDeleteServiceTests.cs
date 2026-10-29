@@ -1,5 +1,6 @@
 using ExpressPackingMonitoring.Data;
 using ExpressPackingMonitoring.Services;
+using Microsoft.Data.Sqlite;
 using System;
 using System.IO;
 using System.Linq;
@@ -107,6 +108,37 @@ public sealed class RecordingDeleteServiceTests : IDisposable
             releaseLock.Set();
             await holder;
         }
+    }
+
+    [Fact]
+    public async Task Delete_ReportsFailureWhenDatabaseMarkFailsAfterFileRemoval()
+    {
+        (long id, string filePath) = InsertFinishedRecording(orderId: "单号数据库失败");
+        FieldInfo connectionField = typeof(VideoDatabase).GetField(
+            "_connection",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("VideoDatabase connection field not found");
+        var connection = (SqliteConnection?)connectionField.GetValue(_database)
+            ?? throw new InvalidOperationException("VideoDatabase connection is null");
+        using (SqliteCommand command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TRIGGER fail_user_delete
+                BEFORE UPDATE OF IsDeleted ON VideoRecords
+                WHEN NEW.IsDeleted = 1
+                BEGIN
+                    SELECT RAISE(ABORT, 'forced delete failure');
+                END;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        RecordingDeleteResult result = await DeleteAsync(id);
+
+        Assert.False(result.Deleted);
+        Assert.Contains("数据库更新失败", result.Message);
+        Assert.False(File.Exists(filePath));
+        Assert.NotNull(_database.GetVideoById(id));
     }
 
     [Fact]
