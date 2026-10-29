@@ -178,7 +178,10 @@ public partial class PlaybackWindow
         catch (Exception ex)
         {
             RuntimeLog.Error("Playback", "删除录像失败", ex);
-            AppDialog.Error(this, ex.Message, deleteTitle);
+            AppDialog.Error(
+                this,
+                AppLanguage.Format("录像删除失败：{0}", ex.Message),
+                deleteTitle);
         }
         finally
         {
