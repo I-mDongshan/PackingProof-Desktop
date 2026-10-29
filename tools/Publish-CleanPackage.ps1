@@ -18,7 +18,7 @@ param(
     [string]$InstallerCompression = "lzma2/ultra64",
     [string]$PatchBaselineVersion = "0.0.84",
     [ValidateSet("gitee", "github", "auto")]
-    [string]$DownloadSource = "gitee",
+    [string]$DownloadSource = "github",
     [switch]$IncludeFullZip,
     [switch]$IncludeSevenZip,
     [switch]$SkipTtsCacheGeneration,

@@ -734,6 +734,31 @@ public sealed class ReleasePackagingPolicyTests
         Assert.Contains("硬上限 40 字", template, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void UpdateManifest_DefaultsDownloadSourceToGithub()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string publishScript = File.ReadAllText(
+            Path.Combine(repositoryRoot, "tools", "Publish-CleanPackage.ps1"),
+            Encoding.UTF8);
+        string runtimeDocument = File.ReadAllText(
+            Path.Combine(repositoryRoot, "docs", "development", "RELEASE_AND_RUNTIME.md"),
+            Encoding.UTF8);
+
+        Assert.Contains(
+            "[string]$DownloadSource = \"github\"",
+            publishScript,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "`download_source` 控制增量包默认从哪个平台下载：`github`（出包缺省",
+            runtimeDocument,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "-DownloadSource github|gitee|auto",
+            runtimeDocument,
+            StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
