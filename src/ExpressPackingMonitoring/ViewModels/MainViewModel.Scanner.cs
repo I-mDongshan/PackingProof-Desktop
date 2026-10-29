@@ -217,7 +217,6 @@ namespace ExpressPackingMonitoring.ViewModels
                 }
             });
             InitDatabase();
-            RecoverInterruptedRecordingDeletes();
             InitializeRecordingTransfers();
             RefreshTodayStats();
             RestoreRecentScanRecords();
@@ -688,8 +687,6 @@ namespace ExpressPackingMonitoring.ViewModels
         {
             try
             {
-                _db = new VideoDatabase(_dbFilePath);
-                _db.VideoRecordFinalized += OnVideoRecordFinalized;
                 if (_archiveService != null)
                 {
                     _archiveService.BackupTargetAvailabilityChanged -=
@@ -698,6 +695,9 @@ namespace ExpressPackingMonitoring.ViewModels
                     _archiveService.ArchiveQueueChanged -= OnArchiveQueueChanged;
                     _archiveService.Dispose();
                 }
+                _db = new VideoDatabase(_dbFilePath);
+                _db.VideoRecordFinalized += OnVideoRecordFinalized;
+                RecoverInterruptedRecordingDeletes();
                 _archiveTargetUnavailable = false;
                 _archiveUnavailableRoot = "";
                 _archiveService = new ArchiveService(

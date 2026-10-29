@@ -51,21 +51,21 @@ internal static class RecordingDeleteStaging
         if (database == null)
             return;
 
-        HashSet<string> activePaths;
-        try
-        {
-            activePaths = new HashSet<string>(
-                database.QueryActiveVideoFilePaths(),
-                StringComparer.OrdinalIgnoreCase);
-        }
-        catch (Exception ex)
-        {
-            RuntimeLog.Warn("Playback", $"读取待恢复录像路径失败：{ex.Message}");
-            return;
-        }
-
         lock (Sync)
         {
+            HashSet<string> activePaths;
+            try
+            {
+                activePaths = new HashSet<string>(
+                    database.QueryActiveVideoFilePaths(),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                RuntimeLog.Warn("Playback", $"读取待恢复录像路径失败：{ex.Message}");
+                return;
+            }
+
             foreach (string root in roots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 try

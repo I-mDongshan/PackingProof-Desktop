@@ -291,7 +291,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 return;
 
             string[] roots = GetManagedLocalRoots().ToArray();
-            _ = Task.Run(() => RecordingDeleteStaging.RecoverOrphans(database, roots));
+            RecordingDeleteStaging.RecoverOrphans(database, roots);
         }
 
         /// <summary>

@@ -432,6 +432,57 @@ public sealed class NoCameraWorkstationTests : IDisposable
     }
 
     [Fact]
+    public async Task HostStartupRecoversInterruptedRecordingDelete()
+    {
+        string directory = CreateTempDirectory();
+        int port = GetFreeTcpPort();
+        string recordings = Path.Combine(directory, "recordings");
+        Directory.CreateDirectory(recordings);
+        string filePath = Path.Combine(recordings, "pending.mp4");
+        string pendingPath = RecordingDeleteStaging.GetPendingPath(filePath);
+        File.WriteAllBytes(pendingPath, new byte[64]);
+        string databasePath = Path.Combine(directory, "videos.db");
+        using (var database = new VideoDatabase(databasePath))
+        {
+            DateTime start = DateTime.Now.AddMinutes(-2);
+            long id = database.InsertVideoRecord(
+                "单号恢复",
+                "发货",
+                "h264",
+                "libx264",
+                filePath,
+                start);
+            database.UpdateVideoRecordOnStop(id, start.AddMinutes(1), 10, 64, "手动");
+        }
+
+        var config = new AppConfig
+        {
+            WebServerPort = port,
+            WebAccessKey = AccessKey,
+            MobileBackupComputerId = Guid.NewGuid().ToString(),
+            StorageLocations = [new StorageLocation { Path = recordings, Priority = 1 }]
+        };
+
+        try
+        {
+            using var host = new NoCameraWorkstationHost(
+                config,
+                databasePath,
+                Path.Combine(directory, "state"));
+            await host.StartAsync(
+                requestLanAccess: false,
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.True(File.Exists(filePath));
+            Assert.False(File.Exists(pendingPath));
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
     public void SettingsOkDoesNotSetDialogResultAfterAsynchronousApply()
     {
         string source = ReadRepositoryFile(

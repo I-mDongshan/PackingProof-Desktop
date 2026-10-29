@@ -158,8 +158,12 @@ internal sealed class NoCameraWorkstationHost : IDisposable
 
         try
         {
+            DisposeArchiveService();
             StoragePath = StorageLocationResolver.Resolve(_config, allowDefaultFallback: false);
             _database ??= new VideoDatabase(_databasePath);
+            RecordingDeleteStaging.RecoverOrphans(
+                _database,
+                StorageUsageCalculator.GetManagedLocalRoots(_config));
             // 扩展运行时和 Web 服务必须共用同一个节点 ID：配置缺失时用同一个兜底值，结果才能对上号。
             _extensionNodeId = WebServer.ResolveNodeId(_config.NodeId, _config.MobileBackupComputerId);
             _extensionAuthorizationStore ??= new ExtensionAuthorizationStore(_stateDirectory);
@@ -171,7 +175,6 @@ internal sealed class NoCameraWorkstationHost : IDisposable
                 _extensionAuthorizationStore,
                 (_, _) => { },
                 _ => { });
-            DisposeArchiveService();
             _archiveTargetUnavailable = false;
             _archiveUnavailableRoot = "";
             _archiveService = new ArchiveService(
