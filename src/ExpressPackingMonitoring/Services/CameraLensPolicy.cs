@@ -76,6 +76,30 @@ internal static class CameraLensPolicy
     }
 
     /// <summary>
+    /// 启动恢复也只写已经回读过当前值的项目，避免把记忆值写到状态未知的设备上。
+    /// </summary>
+    internal static CameraLensApplyPlan RequireReadableStateForStartup(
+        CameraLensApplyPlan plan,
+        LensRange? zoomRange,
+        LensRange? focusRange,
+        int? currentZoom,
+        (int Value, bool Auto)? currentFocus)
+    {
+        int? zoom = zoomRange is { IsValid: true, SupportsManual: true }
+            && currentZoom == null
+                ? null
+                : plan.Zoom;
+        bool canRestoreFocus = focusRange is { IsValid: true, SupportsManual: true }
+            && currentFocus != null;
+        return plan with
+        {
+            Zoom = zoom,
+            FocusAuto = canRestoreFocus ? plan.FocusAuto : null,
+            FocusManual = canRestoreFocus ? plan.FocusManual : null,
+        };
+    }
+
+    /// <summary>
     /// 界面上变焦滑条该用的位置：优先设备当前值（换摄像头/别的程序调过时不跳变），
     /// 读不到时退记忆值，再退设备默认。
     /// </summary>

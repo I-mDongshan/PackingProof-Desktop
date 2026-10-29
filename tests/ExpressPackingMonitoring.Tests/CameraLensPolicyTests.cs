@@ -2,7 +2,10 @@ using ExpressPackingMonitoring.Config;
 using ExpressPackingMonitoring.Services;
 using ExpressPackingMonitoring.Services.LensControl;
 using ExpressPackingMonitoring.Services.MediaFoundation;
+using ExpressPackingMonitoring.ViewModels;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace ExpressPackingMonitoring.Tests;
@@ -118,6 +121,48 @@ public sealed class CameraLensPolicyTests
     }
 
     [Fact]
+    public void StartupPlan_SkipsValuesWhoseCurrentStateCannotBeRead()
+    {
+        var stored = new CameraLensSettings { Zoom = 250, FocusAuto = false, Focus = 12000 };
+        CameraLensApplyPlan plan = CameraLensPolicy.BuildStartupPlan(ZoomRange, FocusRange, stored);
+
+        CameraLensApplyPlan zoomUnknown = CameraLensPolicy.RequireReadableStateForStartup(
+            plan,
+            ZoomRange,
+            FocusRange,
+            currentZoom: null,
+            currentFocus: (12000, false));
+        Assert.Null(zoomUnknown.Zoom);
+        Assert.False(zoomUnknown.FocusAuto);
+        Assert.Equal(12000, zoomUnknown.FocusManual);
+
+        CameraLensApplyPlan focusUnknown = CameraLensPolicy.RequireReadableStateForStartup(
+            plan,
+            ZoomRange,
+            FocusRange,
+            currentZoom: 250,
+            currentFocus: null);
+        Assert.Equal(250, focusUnknown.Zoom);
+        Assert.Null(focusUnknown.FocusAuto);
+        Assert.Null(focusUnknown.FocusManual);
+    }
+
+    [Fact]
+    public void StartupRestore_RefreshesUiFromDeviceAfterWriting()
+    {
+        var viewModel = (MainViewModel)RuntimeHelpers.GetUninitializedObject(typeof(MainViewModel));
+        var controller = new CountingLensController();
+        var stored = new CameraLensSettings { Zoom = 320, FocusAuto = false, Focus = 12000 };
+
+        MainViewModel.LensUiSnapshot snapshot = viewModel.ApplyLensStartupPlan(controller, stored);
+
+        Assert.Equal(1, controller.ZoomWrites);
+        Assert.Equal(1, controller.FocusWrites);
+        Assert.Equal(320, snapshot.ZoomValue);
+        Assert.Equal((12000, false), snapshot.FocusState);
+    }
+
+    [Fact]
     public void ZoomDisplayValue_PrefersDeviceThenStoredThenDefault()
     {
         Assert.Equal(320, CameraLensPolicy.ResolveZoomDisplayValue(ZoomRange, 320, CameraLensSettings.Unset));
@@ -182,6 +227,29 @@ public sealed class CameraLensPolicyTests
             "IsChecked=\"{Binding LensFocusAuto",
             xaml,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LensPanel_DoesNotWriteWithoutReadableDeviceState()
+    {
+        var viewModel = (MainViewModel)RuntimeHelpers.GetUninitializedObject(typeof(MainViewModel));
+        var controller = new CountingLensController();
+        SetPrivateField(viewModel, "_lensControlAvailable", true);
+        SetPrivateField(viewModel, "_lensZoomControlEnabled", false);
+        SetPrivateField(viewModel, "_lensFocusControlEnabled", false);
+        SetPrivateField(viewModel, "_lensController", controller);
+
+        viewModel.LensZoomValue = 320;
+        viewModel.LensFocusValue = 12000;
+        viewModel.LensFocusAuto = false;
+
+        viewModel.ToggleLensPanel();
+        Assert.True(viewModel.IsLensPanelOpen);
+        viewModel.ToggleLensPanel();
+
+        Assert.False(viewModel.IsLensPanelOpen);
+        Assert.Equal(0, controller.ZoomWrites);
+        Assert.Equal(0, controller.FocusWrites);
     }
 
     [Theory]
@@ -266,5 +334,56 @@ public sealed class CameraLensPolicyTests
 
         throw new FileNotFoundException(
             $"Repository file not found: {Path.Combine(relativeParts)}");
+    }
+
+    private static void SetPrivateField<T>(MainViewModel viewModel, string name, T value)
+    {
+        FieldInfo field = typeof(MainViewModel).GetField(
+            name,
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(typeof(MainViewModel).FullName, name);
+        field.SetValue(viewModel, value);
+    }
+
+    private sealed class CountingLensController : ILensController
+    {
+        private int _zoom = 250;
+        private int _focus = 1000;
+        private bool _focusAuto = true;
+
+        public LensRange? ZoomRange => CameraLensPolicyTests.ZoomRange;
+
+        public LensRange? FocusRange => CameraLensPolicyTests.FocusRange;
+
+        public bool IsUsable => true;
+
+        public int ZoomWrites { get; private set; }
+
+        public int FocusWrites { get; private set; }
+
+        public int? TryReadZoom() => _zoom;
+
+        public (int Value, bool Auto)? TryReadFocusState() => (_focus, _focusAuto);
+
+        public bool TrySetZoom(int value)
+        {
+            ZoomWrites++;
+            _zoom = value;
+            return true;
+        }
+
+        public bool TrySetFocusManual(int value)
+        {
+            FocusWrites++;
+            _focus = value;
+            _focusAuto = false;
+            return true;
+        }
+
+        public bool TrySetFocusAuto()
+        {
+            _focusAuto = true;
+            return true;
+        }
     }
 }

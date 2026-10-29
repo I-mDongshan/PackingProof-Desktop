@@ -26,7 +26,7 @@ namespace ExpressPackingMonitoring.ViewModels
     /// </summary>
     public partial class MainViewModel
     {
-        private sealed record LensUiSnapshot(
+        internal sealed record LensUiSnapshot(
             LensRange ZoomRange,
             LensRange FocusRange,
             int? ZoomValue,
@@ -93,6 +93,7 @@ namespace ExpressPackingMonitoring.ViewModels
                     return;
 
                 // 收起时不再等防抖：把还没写进设备的滑条位置立刻应用并落盘。
+                // 对应控件在设备状态无法回读时已被禁用，Apply 方法会拒绝下发。
                 ApplyLensZoomNow();
                 ApplyLensFocusNow();
             }
@@ -140,8 +141,12 @@ namespace ExpressPackingMonitoring.ViewModels
             get => _lensZoomValue;
             set
             {
-                if (_lensUpdatingUiState || Math.Abs(_lensZoomValue - value) < 0.001)
+                if (!IsLensZoomControlEnabled
+                    || _lensUpdatingUiState
+                    || Math.Abs(_lensZoomValue - value) < 0.001)
+                {
                     return;
+                }
 
                 _lensZoomValue = value;
                 OnPropertyChanged();
@@ -169,8 +174,12 @@ namespace ExpressPackingMonitoring.ViewModels
             get => _lensFocusAuto;
             set
             {
-                if (_lensUpdatingUiState || _lensFocusAuto == value)
+                if (!IsLensFocusControlEnabled
+                    || _lensUpdatingUiState
+                    || _lensFocusAuto == value)
+                {
                     return;
+                }
 
                 _lensFocusAuto = value;
                 OnPropertyChanged();
@@ -213,8 +222,12 @@ namespace ExpressPackingMonitoring.ViewModels
             get => _lensFocusValue;
             set
             {
-                if (_lensUpdatingUiState || Math.Abs(_lensFocusValue - value) < 0.001)
+                if (!IsLensFocusControlEnabled
+                    || _lensUpdatingUiState
+                    || Math.Abs(_lensFocusValue - value) < 0.001)
+                {
                     return;
+                }
 
                 _lensFocusValue = value;
                 OnPropertyChanged();
@@ -235,9 +248,9 @@ namespace ExpressPackingMonitoring.ViewModels
             ILensController controller = source?.LensController;
             bool available = controller != null
                 && CameraLensPolicy.ShouldShowControls(controller.ZoomRange, controller.FocusRange);
-            if (available)
-                ApplyLensStartupPlan(controller, stored);
-            LensUiSnapshot snapshot = CaptureLensUiSnapshot(controller);
+            LensUiSnapshot snapshot = available
+                ? ApplyLensStartupPlan(controller, stored)
+                : CaptureLensUiSnapshot(controller);
 
             int generation = Volatile.Read(ref _lensAttachGeneration);
             _ = RunOnUiThreadAsync(() =>
@@ -278,9 +291,9 @@ namespace ExpressPackingMonitoring.ViewModels
                 CameraLensSettings stored = null;
                 await RunOnUiThreadAsync(() => stored = ReadLensStoredState(configKey)).ConfigureAwait(false);
                 bool available = CameraLensPolicy.ShouldShowControls(controller.ZoomRange, controller.FocusRange);
-                if (available)
-                    ApplyLensStartupPlan(controller, stored);
-                LensUiSnapshot snapshot = CaptureLensUiSnapshot(controller);
+                LensUiSnapshot snapshot = available
+                    ? ApplyLensStartupPlan(controller, stored)
+                    : CaptureLensUiSnapshot(controller);
 
                 await RunOnUiThreadAsync(() =>
                 {
@@ -373,14 +386,23 @@ namespace ExpressPackingMonitoring.ViewModels
             IsLensPanelOpen = !IsLensPanelOpen;
         }
 
-        private void ApplyLensStartupPlan(ILensController controller, CameraLensSettings stored)
+        internal LensUiSnapshot ApplyLensStartupPlan(
+            ILensController controller,
+            CameraLensSettings stored)
         {
+            LensUiSnapshot snapshot = CaptureLensUiSnapshot(controller);
             CameraLensApplyPlan plan = CameraLensPolicy.BuildStartupPlan(
                 controller.ZoomRange,
                 controller.FocusRange,
                 stored);
+            plan = CameraLensPolicy.RequireReadableStateForStartup(
+                plan,
+                controller.ZoomRange,
+                controller.FocusRange,
+                snapshot.ZoomValue,
+                snapshot.FocusState);
             if (plan.IsEmpty)
-                return;
+                return snapshot;
 
             bool zoomApplied = plan.Zoom == null || controller.TrySetZoom(plan.Zoom.Value);
             bool focusModeApplied = true;
@@ -398,6 +420,7 @@ namespace ExpressPackingMonitoring.ViewModels
                 + $"，focusAuto={(plan.FocusAuto == null ? "不动" : plan.FocusAuto.Value.ToString())}"
                 + $"，focus={(plan.FocusManual == null ? "-" : plan.FocusManual.Value.ToString())}"
                 + $"，结果 zoomOk={zoomApplied} focusOk={focusModeApplied}");
+            return CaptureLensUiSnapshot(controller);
         }
 
         /// <summary>
@@ -422,7 +445,7 @@ namespace ExpressPackingMonitoring.ViewModels
             }
             catch (Exception ex)
             {
-                RuntimeLog.Warn("Camera", $"读取镜头当前值失败，按设备默认显示：{ex.Message}");
+                RuntimeLog.Warn("Camera", $"读取镜头当前值失败，按记忆值或设备默认值显示：{ex.Message}");
             }
 
             return new LensUiSnapshot(zoomRange, focusRange, zoomValue, focusState);
@@ -540,6 +563,9 @@ namespace ExpressPackingMonitoring.ViewModels
         private void ApplyLensZoomNow()
         {
             _lensZoomApplyTimer?.Stop();
+            if (!IsLensZoomControlEnabled)
+                return;
+
             ILensController controller = _lensController;
             LensRange zoomRange = controller?.ZoomRange;
             if (controller == null || zoomRange == null)
@@ -556,6 +582,9 @@ namespace ExpressPackingMonitoring.ViewModels
         private void ApplyLensFocusNow()
         {
             _lensFocusApplyTimer?.Stop();
+            if (!IsLensFocusControlEnabled)
+                return;
+
             ILensController controller = _lensController;
             LensRange focusRange = controller?.FocusRange;
             if (controller == null || focusRange == null || LensFocusAuto)
