@@ -269,6 +269,37 @@ public sealed class CameraLensPolicyTests
         Assert.Equal("", viewModel.LensStatusText);
     }
 
+    [Fact]
+    public async Task RefreshingLensPanel_DoesNotOverwriteANewerZoomOperation()
+    {
+        var viewModel = (MainViewModel)RuntimeHelpers.GetUninitializedObject(typeof(MainViewModel));
+        using var readStarted = new ManualResetEventSlim();
+        using var releaseRead = new ManualResetEventSlim();
+        var controller = new CountingLensController
+        {
+            ZoomReadStarted = readStarted,
+            ZoomReadRelease = releaseRead
+        };
+        SetPrivateField(viewModel, "_lensController", controller);
+        SetPrivateField(viewModel, "_lensZoomControlEnabled", false);
+        SetPrivateField(viewModel, "_lensFocusControlEnabled", false);
+        SetPrivateField(viewModel, "_lensZoomValue", 320d);
+        SetPrivateField(viewModel, "_lensStored", new CameraLensSettings());
+        SetPrivateField(viewModel, "_lensZoomApplyVersion", 1L);
+
+        Task refresh = viewModel.RefreshLensControlStateAsync();
+        Assert.True(readStarted.Wait(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken));
+        SetPrivateField(viewModel, "_lensZoomApplyVersion", 2L);
+        releaseRead.Set();
+        await refresh;
+
+        Assert.Equal(320, viewModel.LensZoomValue);
+        Assert.False(viewModel.IsLensZoomControlEnabled);
+        Assert.True(viewModel.IsLensFocusControlEnabled);
+    }
+
     [Theory]
     [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Manual, 1, true)]
     [InlineData(0, 0, 40, LensControlFlags.Manual, 40, LensControlFlags.Auto, 1, false)]
@@ -368,6 +399,9 @@ public sealed class CameraLensPolicyTests
         private int _focus = 1000;
         private bool _focusAuto = true;
 
+        public ManualResetEventSlim? ZoomReadStarted { get; init; }
+        public ManualResetEventSlim? ZoomReadRelease { get; init; }
+
         public LensRange? ZoomRange => CameraLensPolicyTests.ZoomRange;
 
         public LensRange? FocusRange => CameraLensPolicyTests.FocusRange;
@@ -378,7 +412,12 @@ public sealed class CameraLensPolicyTests
 
         public int FocusWrites { get; private set; }
 
-        public int? TryReadZoom() => _zoom;
+        public int? TryReadZoom()
+        {
+            ZoomReadStarted?.Set();
+            ZoomReadRelease?.Wait();
+            return _zoom;
+        }
 
         public (int Value, bool Auto)? TryReadFocusState() => (_focus, _focusAuto);
 

@@ -405,6 +405,8 @@ namespace ExpressPackingMonitoring.ViewModels
                 if (controller == null)
                     return;
 
+                long zoomVersion = Volatile.Read(ref _lensZoomApplyVersion);
+                long focusVersion = Volatile.Read(ref _lensFocusApplyVersion);
                 LensUiSnapshot snapshot = await Task.Run(
                     () => CaptureLensUiSnapshot(controller));
                 await RunOnUiThreadAsync(() =>
@@ -412,12 +414,10 @@ namespace ExpressPackingMonitoring.ViewModels
                     if (!ReferenceEquals(_lensController, controller) || _isDisposed)
                         return;
 
-                    NotifyLensUiState(snapshot);
-                    if ((!HasLensZoom || snapshot.ZoomValue != null)
-                        && (!HasLensFocus || snapshot.FocusState != null))
-                    {
-                        LensStatusText = "";
-                    }
+                    NotifyLensUiState(
+                        snapshot,
+                        updateZoom: zoomVersion == Volatile.Read(ref _lensZoomApplyVersion),
+                        updateFocus: focusVersion == Volatile.Read(ref _lensFocusApplyVersion));
                 });
             }
             catch (Exception ex)
@@ -496,7 +496,10 @@ namespace ExpressPackingMonitoring.ViewModels
         }
 
         /// <summary>按当前控制器与记忆值刷新面板的区间与初值；只在挂接/换设备时调用。</summary>
-        private void NotifyLensUiState(LensUiSnapshot snapshot)
+        private void NotifyLensUiState(
+            LensUiSnapshot snapshot,
+            bool updateZoom = true,
+            bool updateFocus = true)
         {
             _lensUpdatingUiState = true;
             try
@@ -506,17 +509,33 @@ namespace ExpressPackingMonitoring.ViewModels
 
                 HasLensZoom = zoomRange is { IsValid: true, SupportsManual: true };
                 HasLensFocus = CameraLensPolicy.SupportsManualFocus(focusRange);
-                IsLensZoomControlEnabled = CameraLensPolicy.CanOperateZoom(
-                    zoomRange,
-                    snapshot.ZoomValue);
-                IsLensFocusControlEnabled = CameraLensPolicy.CanOperateFocus(
-                    focusRange,
-                    snapshot.FocusState);
-                if ((HasLensZoom && snapshot.ZoomValue == null)
-                    || (HasLensFocus && snapshot.FocusState == null))
+                if (updateZoom)
+                {
+                    IsLensZoomControlEnabled = CameraLensPolicy.CanOperateZoom(
+                        zoomRange,
+                        snapshot.ZoomValue);
+                }
+                if (updateFocus)
+                {
+                    IsLensFocusControlEnabled = CameraLensPolicy.CanOperateFocus(
+                        focusRange,
+                        snapshot.FocusState);
+                }
+
+                bool zoomUnreadable = updateZoom
+                    && HasLensZoom
+                    && snapshot.ZoomValue == null;
+                bool focusUnreadable = updateFocus
+                    && HasLensFocus
+                    && snapshot.FocusState == null;
+                if (zoomUnreadable || focusUnreadable)
                 {
                     LensStatusText = AppLanguage.Get(
                         "镜头设置未生效，请重试或使用摄像头厂商软件");
+                }
+                else if (updateZoom && updateFocus)
+                {
+                    LensStatusText = "";
                 }
 
                 if (zoomRange != null)
@@ -524,12 +543,15 @@ namespace ExpressPackingMonitoring.ViewModels
                     LensZoomMinimum = zoomRange.Min;
                     LensZoomMaximum = zoomRange.Max;
                     LensZoomTick = Math.Max(1, zoomRange.Step);
-                    _lensZoomValue = CameraLensPolicy.ResolveZoomDisplayValue(
-                        zoomRange,
-                        snapshot.ZoomValue,
-                        _lensStored?.Zoom ?? CameraLensSettings.Unset);
-                    OnPropertyChanged(nameof(LensZoomValue));
-                    OnPropertyChanged(nameof(LensZoomPercentText));
+                    if (updateZoom)
+                    {
+                        _lensZoomValue = CameraLensPolicy.ResolveZoomDisplayValue(
+                            zoomRange,
+                            snapshot.ZoomValue,
+                            _lensStored?.Zoom ?? CameraLensSettings.Unset);
+                        OnPropertyChanged(nameof(LensZoomValue));
+                        OnPropertyChanged(nameof(LensZoomPercentText));
+                    }
                 }
 
                 if (focusRange != null)
@@ -538,25 +560,28 @@ namespace ExpressPackingMonitoring.ViewModels
                     LensFocusMaximum = focusRange.Max;
                     LensFocusTick = Math.Max(1, focusRange.Step);
 
-                    // 模式优先信设备当前状态，读不到再按记忆：重连后设备未必回到上次的模式。
-                    (int Value, bool Auto)? deviceFocus = snapshot.FocusState;
-                    if (deviceFocus != null)
+                    if (updateFocus)
                     {
-                        _lensFocusAuto = deviceFocus.Value.Auto;
-                        _lensFocusValue = focusRange.Clamp(deviceFocus.Value.Value);
-                    }
-                    else
-                    {
-                        _lensFocusAuto = _lensStored?.FocusAuto ?? true;
-                        _lensFocusValue = CameraLensPolicy.ResolveFocusDisplayValue(
-                            focusRange,
-                            null,
-                            _lensStored?.Focus ?? CameraLensSettings.Unset);
-                    }
+                        // 模式优先信设备当前状态，读不到再按记忆：重连后设备未必回到上次的模式。
+                        (int Value, bool Auto)? deviceFocus = snapshot.FocusState;
+                        if (deviceFocus != null)
+                        {
+                            _lensFocusAuto = deviceFocus.Value.Auto;
+                            _lensFocusValue = focusRange.Clamp(deviceFocus.Value.Value);
+                        }
+                        else
+                        {
+                            _lensFocusAuto = _lensStored?.FocusAuto ?? true;
+                            _lensFocusValue = CameraLensPolicy.ResolveFocusDisplayValue(
+                                focusRange,
+                                null,
+                                _lensStored?.Focus ?? CameraLensSettings.Unset);
+                        }
 
-                    OnPropertyChanged(nameof(LensFocusAuto));
-                    OnPropertyChanged(nameof(IsLensFocusManual));
-                    OnPropertyChanged(nameof(LensFocusValue));
+                        OnPropertyChanged(nameof(LensFocusAuto));
+                        OnPropertyChanged(nameof(IsLensFocusManual));
+                        OnPropertyChanged(nameof(LensFocusValue));
+                    }
                 }
 
                 OnPropertyChanged(nameof(HasLensZoom));
