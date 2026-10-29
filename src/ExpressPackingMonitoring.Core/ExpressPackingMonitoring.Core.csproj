@@ -77,6 +77,7 @@
     <Compile Include="..\ExpressPackingMonitoring\Data\RecordingTransferQueueStore.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Data\SharedFileMigrationRecords.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Data\VideoDatabase.cs" />
+    <Compile Include="..\ExpressPackingMonitoring\Data\VideoDatabase.Deletion.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Data\VideoDatabase.DeviceFolderMigration.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Data\VideoDatabase.Duration.cs" />
     <Compile Include="..\ExpressPackingMonitoring\Data\VideoDatabase.LibraryEvents.cs" />
