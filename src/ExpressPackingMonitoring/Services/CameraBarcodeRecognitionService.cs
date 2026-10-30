@@ -631,6 +631,9 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
     private readonly Func<bool> _qrCodeEnabledProvider;
     // 🔴 摆正+放大兜底默认开启；关掉后退回改动前的行为（测试要对比用）。
     private readonly bool _enableEnhancedDecode;
+    // 可选的面单定向：返回「面单长轴与水平线的夹角（度）」，null 表示这一帧拿不到。
+    // 由上层注入（YOLO-OBB 模型），本类不关心它是怎么算出来的。
+    private readonly Func<Mat, double?>? _obbAngleProvider;
 
     // 快速通道永远只认一维码：框里有一维码时二维码解码完全不参与，识别延迟不变。
     private readonly BarcodeReaderGeneric _fastReader = new()
@@ -674,10 +677,12 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
 
     public CameraBarcodeFrameDecoder(
         Func<bool>? qrCodeEnabledProvider = null,
-        bool enableEnhancedDecode = true)
+        bool enableEnhancedDecode = true,
+        Func<Mat, double?>? obbAngleProvider = null)
     {
         _qrCodeEnabledProvider = qrCodeEnabledProvider ?? (() => false);
         _enableEnhancedDecode = enableEnhancedDecode;
+        _obbAngleProvider = obbAngleProvider;
     }
 
     internal int PixelBufferAllocationCount =>
@@ -756,7 +761,8 @@ internal sealed class CameraBarcodeFrameDecoder : IDisposable
         if (!_enhancedDecoder.TryDecode(
                 cropped,
                 image => DecodeEnhancedOnce(image, isValid),
-                out string? code)
+                out string? code,
+                _obbAngleProvider)
             || string.IsNullOrEmpty(code))
         {
             return null;
@@ -1541,6 +1547,8 @@ internal sealed class CameraBarcodeRecognitionService : IDisposable
     private readonly Func<CameraBarcodeGuideGeometry> _guideGeometryProvider;
     private readonly bool _reportVisibleCodes;
     private readonly CameraBarcodeFrameDecoder _decoder;
+    // 可选的面单定向（YOLO-OBB）：模型加载与降级都在这个类里。
+    private readonly CameraBarcodeYoloAngleSource? _yoloAngleSource;
     private readonly CameraBarcodeMotionGate _motionGate = new();
     private readonly CameraBarcodeStabilityTracker _stabilityTracker = new();
     private readonly object _pendingLock = new();
@@ -1582,10 +1590,19 @@ internal sealed class CameraBarcodeRecognitionService : IDisposable
         Func<TimeSpan>? guideIntervalProvider = null,
         Func<CameraBarcodeGuideGeometry>? guideGeometryProvider = null,
         Func<int>? confirmationHitsProvider = null,
-        Func<bool>? qrCodeEnabledProvider = null)
+        Func<bool>? qrCodeEnabledProvider = null,
+        Func<(bool Enabled, string Path)>? yoloDetectionProvider = null)
     {
         _candidateValidator = candidateValidator ?? throw new ArgumentNullException(nameof(candidateValidator));
-        _decoder = new CameraBarcodeFrameDecoder(qrCodeEnabledProvider);
+        _yoloAngleSource = yoloDetectionProvider == null
+            ? null
+            : new CameraBarcodeYoloAngleSource(yoloDetectionProvider);
+        _decoder = new CameraBarcodeFrameDecoder(
+            qrCodeEnabledProvider,
+            enableEnhancedDecode: true,
+            obbAngleProvider: _yoloAngleSource is null
+                ? null
+                : new Func<Mat, double?>(_yoloAngleSource.Detect));
         _confirmationWindowProvider = confirmationWindowProvider;
         _confirmationHitsProvider = confirmationHitsProvider;
         _rearmDelayProvider = rearmDelayProvider;
@@ -1946,6 +1963,7 @@ internal sealed class CameraBarcodeRecognitionService : IDisposable
         if (Interlocked.Exchange(ref _workerResourcesDisposed, 1) != 0)
             return;
         _decoder.Dispose();
+        _yoloAngleSource?.Dispose();
         _motionGate.Dispose();
         _pendingSignal.Dispose();
         _cts.Dispose();

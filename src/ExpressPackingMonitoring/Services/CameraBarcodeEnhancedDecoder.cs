@@ -28,7 +28,17 @@ internal sealed class CameraBarcodeEnhancedDecoder : IDisposable
     /// </summary>
     /// <param name="roi">引导框裁出来的区域（彩色或灰度都行）。</param>
     /// <param name="decode">对一张图做解码的委托，返回 null 表示没读出来。</param>
-    public bool TryDecode(Mat roi, Func<Mat, string?> decode, out string? code)
+    /// <param name="code">解出的单号。</param>
+    /// <param name="obbAngleProvider">
+    /// 可选的面单定向：给定原始 ROI，返回面单长轴与水平线的夹角（度）。
+    /// 返回 null 表示"这一帧拿不到"（模型不可用或没检出面单），
+    /// 此时退回全画面梯度方向去估 —— 注意这和"模型说面单是正的"是两回事。
+    /// </param>
+    public bool TryDecode(
+        Mat roi,
+        Func<Mat, string?> decode,
+        out string? code,
+        Func<Mat, double?>? obbAngleProvider = null)
     {
         code = null;
         if (_disposed || roi == null || roi.IsDisposed || roi.Empty())
@@ -49,15 +59,39 @@ internal sealed class CameraBarcodeEnhancedDecoder : IDisposable
                 return false;
         }
 
-        // 估角在常规分辨率上做就够：角度与分辨率无关，
-        // 而 4K 图上跑一遍 Sobel 明显更慢。
-        ResizeToLimit(
-            _gray,
-            CameraBarcodeFrameDecoder.MaxDecodeDimension,
-            CameraBarcodeUpscalePolicy.PixelsForDimension(
-                CameraBarcodeFrameDecoder.MaxDecodeDimension),
-            _mid);
-        double? angle = CameraBarcodeDeskewPolicy.EstimateSkewAngle(_mid);
+        double? angle = null;
+        bool angleDecidedByModel = false;
+        if (obbAngleProvider != null)
+        {
+            // 模型直接给角度，优先用它：画面里有多个方向不同的面单、
+            // 或者背景有规则斜纹时，梯度法会挑错方向，模型不会。
+            angle = obbAngleProvider(roi);
+            if (angle.HasValue)
+            {
+                angleDecidedByModel = true;
+                angle = CameraBarcodeObbPolicy.NormalizeAxisAngle(angle.Value);
+                if (Math.Abs(angle.Value) < CameraBarcodeDeskewPolicy.MinAngle ||
+                    Math.Abs(angle.Value) > CameraBarcodeDeskewPolicy.MaxAngle)
+                {
+                    // 模型判为「本来就正」或「接近竖直」→ 不扶正，
+                    // 也不要再退回梯度法把它转歪。
+                    angle = null;
+                }
+            }
+        }
+
+        if (!angleDecidedByModel)
+        {
+            // 估角在常规分辨率上做就够：角度与分辨率无关，
+            // 而 4K 图上跑一遍 Sobel 明显更慢。
+            ResizeToLimit(
+                _gray,
+                CameraBarcodeFrameDecoder.MaxDecodeDimension,
+                CameraBarcodeUpscalePolicy.PixelsForDimension(
+                    CameraBarcodeFrameDecoder.MaxDecodeDimension),
+                _mid);
+            angle = CameraBarcodeDeskewPolicy.EstimateSkewAngle(_mid);
+        }
 
         Mat? working = null;
         try
